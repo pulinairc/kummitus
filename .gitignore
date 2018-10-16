@@ -3,3 +3,4 @@ malwaredomains.txt
 logs/
 sopel.pid
 *.db
+modules/*.pyc
