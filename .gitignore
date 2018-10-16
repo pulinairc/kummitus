@@ -1,0 +1,5 @@
+default.db
+malwaredomains.txt
+logs/
+sopel.pid
+*.db
