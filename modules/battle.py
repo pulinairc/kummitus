@@ -15,7 +15,7 @@ def battle(bot, trigger):
         bot.say('Tarttis parametrejä')
         return
     
-    query = re.split(r',\s*\S+', group.strip())
+    query = re.split(r',\W*', group.strip())
     if len(query) < 2:
         bot.say('Tarttis enemmän parametrejä')
         return
