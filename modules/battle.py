@@ -6,6 +6,8 @@ import random
 import re
 import sopel.module
 
+NORRIS = re.compile(r'chuck norris', re.I)
+
 @sopel.module.commands('battle')
 def battle(bot, trigger):
     group = trigger.group(2)
@@ -21,6 +23,11 @@ def battle(bot, trigger):
     weights = []
     weight = 0
     for x in range(len(query)):
+        word = query[x]
+        if NORRIS.match(word):
+            answer = ', '.join(['%s: %d%%' % (query[i], 100 if i is x else 0) for i in range(len(query))])
+            bot.say(answer)
+            return
         rand = random.random()
         weights.append(rand)
         weight += rand
@@ -42,7 +49,7 @@ def battle(bot, trigger):
             if v > max:
                 max = v
                 i = x
-        values[i] -= 1
+        values[i] -= total - 100
     
     answer = ', '.join(['%s: %d%%' % (query[x], values[x]) for x in range(len(query))])
     bot.say(answer)
