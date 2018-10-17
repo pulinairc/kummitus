@@ -1,29 +1,27 @@
 # coding=utf-8
 """
 battle.py
-Made by Roni Laukkarinen
+Made by lapyo
 """
-import sopel.module
 import sys
 import re
 import random
+import sopel.module
 
 @sopel.module.commands('battle')
 
-def battle(bot, message):
-    if re.match('^battle .', message, 0):
-        query = message[len("battle "):].split(", ")
-        #print(query[0])
-        range = 100
-        answer = ""
-        i = 0
-        while i < len(query) - 1:
-            randval = random.randint(0,range)
-            range -= randval
-            answer += query[i] + ": " + str(randval) + "%. "
-            i += 1
+def battle(bot, trigger):
 
-    answer += query[len(query) - 1] + " " + str(range) + "%"
-    return answer
+    word = trigger.group(2).strip()
+    query = word = trigger.group(2).strip().split(", ")
+    range = 100
+    answer = "battle: "
+    i = 0
+    while i < len(query) - 1:
+        randval = random.randint(0,range)
+        range -= randval
+        answer += query[i] + ": " + str(randval) + "%. "
+        i += 1
 
-print(battle(sys.argv[1]))
+    answer += query[len(query) - 1] + ": " + str(range) + "%"
+    bot.say(answer)
