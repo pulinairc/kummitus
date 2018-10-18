@@ -17,6 +17,7 @@ def saa(bot, trigger):
     import datetime
     import pprint
     import fmiapi
+    import json
 
     query = trigger.group(2).strip()
     endtime = datetime.datetime.utcnow().replace(microsecond=0)
