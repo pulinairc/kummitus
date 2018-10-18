@@ -60,6 +60,6 @@ def saa(bot, trigger):
     city = city_get[0].text.strip()
     temperature = temperature_get[0].text.strip()
     textweather = textweather_get[0].strip()
-    precipitation_amount = textweather_get[0].strip()
+    precipitation_amount = precipitation_amount_get[0].strip()
 
     bot.say('\x02' + city + '\x0F ' + temperature + ' (' + textweather + '). Auringonnousu tänään ' + sunrise_today + ', auringonlasku tänään ' + sunset_today + '. Päivän pituus on ' + day_lenght_today + '. Huomispäiväksi luvattu ' + temperature_nextday + ' (' + nextday_text + '). Sateen todennäköisyys tunnin sisään: ' + rain_probability + ', ' + precipitation_amount + '.')
