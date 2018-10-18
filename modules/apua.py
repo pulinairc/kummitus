@@ -26,8 +26,8 @@ def setup(bot):
 
 
 @rule('$nick' '(?i)(help|doc) +([A-Za-z]+)(?:\?+)?$')
-@example('.apua tell')
-@commands('apua', 'commands')
+@example('!apua tell')
+@commands('apua', 'commands', 'komennot')
 @priority('low')
 def help(bot, trigger):
     """Shows a command's documentation, and possibly an example."""
@@ -58,7 +58,7 @@ def help(bot, trigger):
         if 'command-list' in bot.memory and bot.memory['command-list'][0] == len(bot.command_groups):
             url = bot.memory['command-list'][1]
         else:
-            bot.say("Odota hetki, haen juuri listan komennoista...")
+            bot.say("Haetaan listaa komennoista, pikku hetki...")
             msgs = []
 
             name_length = max(6, max(len(k) for k in bot.command_groups.keys()))

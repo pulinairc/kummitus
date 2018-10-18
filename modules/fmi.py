@@ -9,6 +9,7 @@ import sopel.module
 
 def saa(bot, trigger):
 
+  import urllib
   from urllib.request import urlopen
   from urllib.error import HTTPError
   from urllib.error import URLError
@@ -24,8 +25,8 @@ def saa(bot, trigger):
 
     query = trigger.group(2).strip()
  
-    url = "https://ilmatieteenlaitos.fi/saa/%s" % query
-    api = "http://data.fmi.fi/fmi-apikey/0218711b-a299-44b2-a0b0-a4efc34b6160/wfs?request=getFeature&storedquery_id=fmi::observations::weather::timevaluepair&place=%s&timezone=Europe/Helsinki" % query
+    url = urllib.parse.urlencode("https://ilmatieteenlaitos.fi/saa/%s") % query
+    api = urllib.parse.urlencode("http://data.fmi.fi/fmi-apikey/0218711b-a299-44b2-a0b0-a4efc34b6160/wfs?request=getFeature&storedquery_id=fmi::observations::weather::timevaluepair&place=%s&timezone=Europe/Helsinki") % query
 
     source = urlopen(url).encode('utf-8')
     res = BeautifulSoup(source.read(), "html5lib")
