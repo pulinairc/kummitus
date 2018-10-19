@@ -1,41 +1,87 @@
 Pane
+Pane puuta
+Paina bombay-nappia
 Masturboi
+Onanisoi
+Ejakuloi
 KVG: http://bit.ly/1qf4Ncj
 Tee jotain sellaista mitä sinun ei odoteta tekevän
 Kysy kaverilta
+Kysy äidiltä
+Kysy isältä
+Kysy Karpolta
+Kysy Eki-sedältä
 Ehdota itse jotain
+Aseta itsesi ehdolle
 Lue jotain
+Lue uutisia
 Mene baariin
+Mene ojaan nukkumaan
+Mene leikkipuistoon
+Mene tivoliin
+Mene hierojalle
 Lähde ryyppäämään
+Lähde meneen
 Mene uimaan
 Mene saunaan
 Meditoi
 Murise
+Örise
 Laula
 Käy hakemassa pikaruokaa
+Käy hakemassa pizzaa
+Käy hakemassa kaljaa
+Käy hakemassa suklaata
 Nukkuisit joskus
+Älä nuku lainkaan
+Nuku, mutta pidä silmät auki
 Ota torkut
+Ota superpikatorkut
 Mene kerjäämään rahaa
+Mene antamaan jollekin rahaa
 Mieti saatana itte
+Kaikki pitää nykyään tehdä itte
 Etsi uutta musiikkia (Rekkaa www.last.fm)
 Selaile koneessasi olevia tiedostoja, jos vaikka löytyisi jotain kivaa
 Mene uimaan
+Mene uimahalliin
+Mene karaokebaariin
 Riko tavaroita
+Riko lautasia
+Heitä kirves kaivoon
 Hanki kaveri/kavereita
+Hanki nainen/mies/muunsukupuolinen
 Ryhdy jehovantodistajaksi
+Ryhdy pelaajaksi
+Ryhdy koodariksi
 Tee samaa mitä teit eilen
+Tee samaa mitä teet huomenna
 Jatka samaa mitä teet nytkin?
+Älä jatka samaa mitä teit juuri äsken
 Halaa tyynyä. Forever alone
+Halaa pehmolelua. Forever alone
+Palvo Palvikinkkua
 Palvo Saatanaa
 Tee pahojasi
+Tee hyvää
+Laita hyvä kiertämään
 Katso animea
+Lue mangaa
 Katso leffa
+Katso sarja
 Mene nukkumaan
+Herää
 Käy kävelyllä
+Konttaa kadulla
 Virkkaa
+Neulo
 Pelaa jotain peliä
+Pelaa pasianssia
+Pelaa miinaharavaa
 Lue kirjaa
 Kirjoita
+Kirjoita runo
+Kirjoita satu
 Käy kaverilla
 Käy kaupungilla
 Käy ostoksilla
@@ -45,16 +91,23 @@ Tee hyvä teko
 Tee itsellesi nettisivut, jos sinulla ei sellaisia vielä ole
 Soita kitaraa, pianoa, tai jotain muuta soitinta
 Tee musiikkia
+Säestä
 Musisoi
+Metelöi
 Soita kaverillesi ja pyydä kylään
 Soita kaverillesi ja kysy pääseekö käymään ja tehkää jotain kivaa
 Soita kaverillesi ja pitäkää tyttöjen/ukkojen ilta
 Lähde ryyppäämään. Heti
 Käy paskalla
+Käy kusella
+Käy suihkussa
 Lue vitsejä. !vitsi
 Runkkaa
+Runkkaa lisää
 Katso pornoa
+Katso PornHubista jotain
 Mene töihin
+Mene oikeisiin töihin
 Koodaa pythonia
 Koodaa javaa
 Koodaa C++:aa
@@ -63,8 +116,11 @@ Kuuntele black metallia
 Kuuntele death metallia
 Kuuntele folkkia
 Kuuntele Rihannaa
+Kuuntele Sannia
 Juo kaljaa
+Juo mehua
 Hali kaveria tai nallea. Nyt.
+Hali itseäsi. Nyt.
 Pyydä äiti kylään
 Pyydä isä käymään
 Lähde isän kanssa kalalle
@@ -80,6 +136,7 @@ NO IRKKAA
 Käy happihyppelyllä
 Käy ajelulla
 Jumppaa
+Joogaa
 Koodaa, jos et osaa: opettele. On olemassa codeacademya ja treehousea siihenkin tarkoitukseen
 Tee nettisivuja, jos et osaa: opettele
 Bloggaa Pulinaan http://www.pulina.fi/blogi
@@ -97,14 +154,23 @@ Katso kelloa. Jos se on liikaa, mene nukkumaan
 Hmm... keksi itte
 Opiskele jotain hyödyllistä
 Opettele uusi taito
+Hae opiskelemaan toiselle paikkakunnalle
+Hae opiskelemaan
 Laske matematiikkaa
+Lue kvanttifysikkaa
 Asenna linux
+Asenna Windows
 Käy tekemässä heräteostoksia
+Törsää
+Käy Ebayssa tai Amazonissa
 Tee samaa mitä nytkin
 Asenna Linux
 Tee jotain uutta
+Tee jotain vanhaa
 Lepäile
+Koomaile
 Ota rennosti
+Ota iisisti
 Minäkö se aina joudun keksimään SULLE tekemistä? Mitä vittua? Keksi välillä ihan itte! Ei voi olla niin tylsää. Saatana
 Onpa sulla huono mielikuvitus
 Kirjoita satu
@@ -118,8 +184,8 @@ Repäise ja lähde vaikka maailmanympärimatkalle
 Mene paskalle ja jatka sieltä irkkaamista
 Ainako pitäis keksiä..
 !do !do !do !do !do !do !do !do !do !do !do !do ?do
-do re mi fa sol..
-do or do not, there's no try
+Do re mi fa sol..
+Do or do not, there's no try
 Mene ja tiedä
 Keksi tekemistä ittelles
 Keksi tekemistä muille
