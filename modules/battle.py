@@ -51,5 +51,6 @@ def battle(bot, trigger):
                 i = x
         values[i] -= total - 100
     
-    answer = ', '.join(['%s %s: %d%%' % (trigger.nick, query[x], values[x]) for x in range(len(query))])
+    answer = '%s ' % trigger.nick
+    answer += ', '.join(['%s: %d%%' % (query[x], values[x]) for x in range(len(query))])
     bot.say(answer)
