@@ -5,7 +5,7 @@ Made by rolle
 """
 import sopel.module
 
-@sopel.module.commands('sää', 'keli')
+@sopel.module.commands('keli')
 
 def saa(bot, trigger):
 
@@ -17,7 +17,7 @@ def saa(bot, trigger):
   import datetime
 
   if not trigger.group(2):
-    bot.say("!sää <kaupunki> - Esim. !sää jyväskylä kertoo Jyväskylän sään. Hakee säätiedot Ilmatieteen laitokselta.")
+    bot.say("!keli <kaupunki> - Esim. !sää jyväskylä kertoo Jyväskylän sään. Hakee säätiedot Ilmatieteen laitokselta.")
     return
   else:
 
