@@ -1,3 +1,4 @@
+Lisää kummitukselle tekemisiä: https://github.com/pulinairc/kummitus/blob/master/modules/tekemiset.txt
 Pane
 Pane puuta
 Paina bombay-nappia
