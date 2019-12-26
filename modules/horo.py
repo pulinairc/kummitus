@@ -90,11 +90,11 @@ def horo(bot, trigger):
   elif word == 'skor':
     bot.say(skorpioni)
   elif word == 'Jousimies':
-    bot.say(jousimiess)
+    bot.say(jousimies)
   elif word == 'jousimies':
-    bot.say(jousimiess)
+    bot.say(jousimies)
   elif word == 'jou':
-    bot.say(jousimiess)
+    bot.say(jousimies)
   elif word == 'Kauris':
     bot.say(kauris)
   elif word == 'kauris':
