@@ -11,4 +11,4 @@ import random
 @sopel.module.commands('tilastot')
 
 def stats (bot, trigger):
-    bot.say('Kanavan tilastot: https://pulina.fi/stats')
+    bot.say('Kanavan tilastot: https://pulina.fi/statsit - Kuukausi: https://pulina.fi/statsit/kuukausi - Reaaliaikainen: https://pulina.fi/stats')
