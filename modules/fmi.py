@@ -4,17 +4,16 @@ fmi.py
 Made by rolle
 """
 import sopel.module
+from urllib.request import urlopen
+import lxml.etree
+from lxml import etree
+import lxml.html
+import requests
+import datetime
 
 @sopel.module.commands('sää', 'keli')
 
 def saa(bot, trigger):
-
-  from urllib.request import urlopen
-  import lxml.etree
-  from lxml import etree
-  import lxml.html
-  import requests
-  import datetime
 
   if not trigger.group(2):
     bot.say("!sää <kaupunki> - Esim. !sää jyväskylä kertoo Jyväskylän sään. Hakee säätiedot Ilmatieteen laitokselta.")
