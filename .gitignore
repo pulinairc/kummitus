@@ -5,3 +5,4 @@ sopel.pid
 *.db
 modules/*.pyc
 modules/__pycache__/
+modules/paikat.json
