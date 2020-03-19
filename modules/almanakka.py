@@ -27,4 +27,4 @@ def almanakka(bot, trigger):
     paiva = paiva_get[0].text.strip()
     erikoispaiva = erikoispaiva_get[0].text.strip()
 
-    bot.say('\x02' + paiva + '\x0F:' + erikoispaiva + '. ' + nimet + '')
+    bot.say('\x02' + paiva + '\x0F: ' + erikoispaiva + '. ' + nimet + '')
