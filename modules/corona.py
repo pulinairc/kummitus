@@ -1,137 +1,92 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-# Module for sopel, will fetch coronavirus data
-# Codebase by Falconix - the legend
-# 2020-03-05
-
-import re
-from collections import defaultdict
-from datetime import datetime, timedelta
-
-from bs4 import BeautifulSoup
-from sopel import module
-from sopel.formatting import *
 import requests
-import csv
+import json
+import country_converter as coco
+import us
+from sopel.module import commands, example, NOLIMIT
+from sopel.tools import web
+from sopel.formatting import *
+from sopel import bot
 
 
-class Corona:
-    __deaths = 0
-    __recovered = 0
-    __confirmed = 0
-    __critical = 0
-    __new_deaths = ''
-    __new_cases = ''
+def show_country_data(countries_json, matched_countries, search_string):
+    for country_dict in countries_json:
+        if country_dict['country'] == matched_countries[search_string]:
+            country = country_dict['country']
+            cases = country_dict['cases']
+            cases_today = country_dict['todayCases']
+            deaths = country_dict['deaths']
+            deaths_today = country_dict['todayDeaths']
+            recovered = country_dict['recovered']
+            cases_per_mil = country_dict['casesPerOneMillion']
 
-    @property
-    def deaths(self):
-        return self.__deaths
+            msg = f'Infected in {country}: {cases:,} (+{cases_today:,}), deaths: {deaths:,} (+{deaths_today:,}), recovered: {recovered:,}, cases per million people: {cases_per_mil:,}'
 
-    @deaths.setter
-    def deaths(self, value):
-        self.__deaths += value
-
-    @property
-    def new_deaths(self):
-        return self.__new_deaths
-
-    @new_deaths.setter
-    def new_deaths(self, value):
-        self.__new_deaths += value
-
-    @property
-    def recovered(self):
-        return self.__recovered
-
-    @recovered.setter
-    def recovered(self, value):
-        self.__recovered += value
-
-    @property
-    def confirmed(self):
-        return self.__confirmed
-
-    @confirmed.setter
-    def confirmed(self, value):
-        self.__confirmed += value
-
-    @property
-    def new_cases(self):
-        return self.__new_cases
-
-    @new_cases.setter
-    def new_cases(self, value):
-        self.__new_cases += value
-
-    @property
-    def critical(self):
-        return self.__critical
-
-    @critical.setter
-    def critical(self, value):
-        self.__critical += value
+            return msg
 
 
-@module.commands('corona', 'cor')
+def show_state_data(state_name):
+    states_json = requests.get('https://corona.lmao.ninja/states').json()
+    for state_dict in states_json:
+        if state_dict['state'] == state_name:
+            state = state_dict['state']
+            cases = state_dict['cases']
+            cases_today = state_dict['todayCases']
+            deaths = state_dict['deaths']
+            deaths_today = state_dict['todayDeaths']
+            recovered = state_dict['recovered']
+            msg = f'Infected in {state}: {cases:,} (+{cases_today:,}), deaths: {deaths:,} (+{deaths_today:,}), recovered: {recovered:,}'
+            return msg
 
-def coronavirus(bot, trigger):
 
-    if trigger.group(2) == None:
-        country = 'ALL'
+def show_region_data(region_json, region_name):
+    for region_dict in region_json:
+        try:
+            if region_dict['province'].lower() == region_name.lower():
+                country = region_dict['country']
+                province = region_dict['province']
+                cases = int(region_dict['stats']['confirmed'])
+                deaths = int(region_dict['stats']['deaths'])
+                recovered = int(region_dict['stats']['recovered'])
+                last_update = region_dict['updatedAt']
+                msg = f'Infected in {province}, {country}: {cases:,}, deaths: {deaths:,}, recovered: {recovered:,}, last update at {last_update}'
+                return msg
+        except AttributeError:
+            pass
+
+
+def return_message(search_string):
+    countries_json = requests.get('https://corona.lmao.ninja/countries').json()
+    countries_list = [d['country'] for d in countries_json]
+    matched_countries = coco.match(
+        [search_string], countries_list, not_found='Not found')
+
+    # first, check if country exists
+    if matched_countries[search_string] != 'Not found':
+        msg = show_country_data(
+            countries_json, matched_countries, search_string)
+        return msg
     else:
-        country = trigger.group(2).lower()
+        # if not country, check if US state
+        try:
+            state = us.states.lookup(search_string).name
+            msg = show_state_data(state)
+            return msg
+        # if not US state, check if international region
+        except AttributeError:
+            regions_json = requests.get(
+                'https://corona.lmao.ninja/jhucsse').json()
+            regions_list = [d['province'].lower()
+                            for d in regions_json if d['province']]
+            if search_string.lower() in regions_list:
+                msg = show_region_data(regions_json, search_string)
+                return msg
+            else:
+                msg = 'No country or region with that name found. Either it does not exist, or no data has been recorded yet'
+                return msg
 
 
-
-    base_url = 'https://www.worldometers.info/coronavirus/'
-    response = requests.get(base_url)
-    if not response.status_code == 200:
-        return None
-
-    content = response.content
-    if not content:
-        return None
-
-    soup = BeautifulSoup(response.content.decode(), "html.parser")
-    cases = defaultdict(Corona)
-
-    table = soup.find('table', {'id': 'main_table_countries'}).find("tbody", recursive=True)
-    rows = table.find_all('tr')
-
-    tag_re = re.compile(r'(<!--.*?-->|<[^>]*>)')
-    total = Corona
-    for row in rows:
-        columns = row.find_all('td')
-        columns = [tag_re.sub('', str(x)).strip() for x in columns]
-        if columns[0].lower() == 'total:':
-            total.deaths = int(columns[3].replace(',', '') or 0)
-            total.confirmed = int(columns[1].replace(',', '') or 0)
-            total.recovered = int(columns[6].replace(',', '') or 0)
-            total.new_deaths = str(columns[4])
-            total.new_cases = str(columns[2])
-
-            continue
-        cases[columns[0].lower()].deaths = int(columns[3].replace(',', '') or 0)
-        cases[columns[0].lower()].confirmed = int(columns[1].replace(',', '') or 0)
-        cases[columns[0].lower()].recovered = int(columns[6].replace(',', '') or 0)
-        cases[columns[0].lower()].new_deaths = str(columns[4])
-        cases[columns[0].lower()].new_cases = str(columns[2])
-
-    if country == 'ALL':
-        bot.say(f'😷 \x0308{total.confirmed}\x03'
-                f'(+\x0308{total.new_cases}\x03) '
-                f'⚰️ \x0304{total.deaths}\x03'
-                f'(+\x0304{total.new_deaths}\x0304) '
-                f'👍 \x0303{total.recovered}\x03 '
-                f'☠️ \x0305{round(total.deaths / total.confirmed * 100, 2)}%\x03')
-
-    else:
-        if str(country) in cases:
-            bot.say(f'😷 \x0308{cases[str(country)].confirmed}\x03'
-                    f'(\x0308{cases[str(country)].new_cases}\x03) '
-                    f'⚰️ \x0304{cases[str(country)].deaths}\x03'
-                    f'(\x0304{cases[str(country)].new_deaths}\x03) '
-                    f'👍 \x0303{cases[str(country)].recovered}\x03 '
-                    f'☠️ \x0305{round(cases[str(country)].deaths / cases[str(country)].confirmed * 100, 2)}%\x03')
-        else:
-            bot.say(f'Country not in the list')
+@commands('corona')
+@example('.corona sweden')
+def corona(bot, trigger):
+    msg = return_message(trigger.group(2))
+    bot.say(msg)

@@ -85,7 +85,7 @@ def saa(bot, trigger):
   timezone = 'Europe/Helsinki'
 
   url = "https://ilmatieteenlaitos.fi/saa/%s" % place    
-  api_call = "http://data.fmi.fi/fmi-apikey/%s/wfs?request=%s&storedquery_id=%s&place=%s&timezone=%s&starttime=%s&endtime=%s" % (api_key, request, storedquery_id, place, timezone, starttime, endtime)
+  api_call = "http://opendata.fmi.fi/wfs?request=%s&storedquery_id=%s&place=%s&timezone=%s&starttime=%s&endtime=%s" % (request, storedquery_id, place, timezone, starttime, endtime)
 
   # LXML Xpath based scraping
   r = requests.get(url)
@@ -99,23 +99,36 @@ def saa(bot, trigger):
       root_jkl = lxml.html.fromstring(r_jkl.content)
 
       try:
-          # Lähipäivät, kello 15 kohdalla oleva lämpötiladiv
-          temperature_nextday_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[2]/table/tbody/tr[2]/td[8]/div')
-          sunrise_today_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[7]/div[2]/strong[1]')
-          sunset_today_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[7]/div[2]/strong[2]')
-          day_lenght_today_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[7]/div[2]/strong[3]')
+          # Lähipäivät, kello 15 kohdalla olevan lämpötiladivin XPath
+          temperature_nextday_get = root.xpath('//*[@id="__BVID__157"]/tbody/tr[2]/td[9]/span')
 
-          # Sateen todennäköisyys ja määrä, ensimmäinen prosenttisarake (ei toimi kovin luotettavasti joten toistaiseksi disabloitu)
-          #rain_probability_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[1]/table/tbody/tr[7]/td[1]/div/span')
+          # "Auringonnousu tänään" div XPath
+          sunrise_today_get = root.xpath('//*[@id="main-content"]/div[5]/div/div/div/div/div[2]/div[1]')
+
+          # "Auringonlasku tänään" div XPath
+          sunset_today_get = root.xpath('//*[@id="main-content"]/div[5]/div/div/div/div/div[2]/div[2]')
+
+          # "Päivän pituus tänään" div XPath
+          day_lenght_today_get = root.xpath('//*[@id="main-content"]/div[5]/div/div/div/div/div[2]/div[3]')
+
+          # Sateen todennäköisyys ja määrä, ensimmäinen prosenttisarake (ei toimi kovin luotettavasti)
+          # "Sateen todennäköisyys ja määrä" ekan palstan divin XPath, jossa jotain kuten "<10%"
+          rain_probability_get = root.xpath('//*[@id="__BVID__157"]/tbody/tr[9]/td[1]/span')
           
           # Lähipäivät, klo 15 sarakkeen kuva ja /@title perään
-          nextday_text_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[2]/table/tbody/tr[1]/td[8]/div/@title')
-          city_get = root_jkl.xpath('//*[@id="content"]/fieldset/legend')
-          time_get = root_jkl.xpath('//*[@id="c2"]/text()')
-          temperature_get = root_jkl.xpath('//*[@id="table-a"]/tbody/tr[1]/td[2]')
+          nextday_text_get = root.xpath('//*[@id="__BVID__157"]/tbody/tr[1]/td[5]/img/@title')
 
-          # Lähitunnit, ensimmäisen sarakkeen kuvan XPath ja /@title perään
-          textweather_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[1]/table/tbody/tr[1]/td[1]/div/@title')
+          # "Havaintoasema:" jälkeinen kaupunki, esim. "Jyväskylä lentoasema" ja sen XPath
+          city_get = root_jkl.xpath('//*[@id="__BVID__140"]')
+
+          # "Viimeisin säähavainto" ajan kohdan spanin XPath ja /text() perään
+          time_get = root_jkl.xpath('//*[@id="main-content"]/div[7]/div/div/div/div[3]/span[2]/text()')
+
+          # "Lämpötila" jälkeen lämpötilan XPath
+          temperature_get = root_jkl.xpath('//*[@id="main-content"]/div[7]/div/div/div/div[4]/div[1]/div/span[2]')
+
+          # Nykyisen päivän ensimmäisen sarakkeen kuvan XPath ja /@title perään
+          textweather_get = root.xpath('//*[@id="__BVID__157"]/tbody/tr[1]/td[1]/img/@title')
 
           # Lähitunnit, tuntuu kuin div
           #feelslike_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[1]/table/tbody/tr[5]/td[1]/div')
@@ -146,32 +159,33 @@ def saa(bot, trigger):
   else:
 
       try:
-          # Lähipäivät, kello 15 kohdalla oleva lämpötiladiv
-          temperature_nextday_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[2]/table/tbody/tr[2]/td[8]/div')
-      except:
-          bot.say('Koitapa uudestaan. Joko \x02' + place + '\x0F ei ole oikea paikka tai Ilmatieteenlaitos on hetkellisesti alhaalla.')
+          # Lähipäivät, kello 15 kohdalla olevan lämpötiladivin XPath
+          #temperature_nextday_get = root.xpath('//*[@id="__BVID__157"]/tbody/tr[2]/td[9]/span')
 
-      try:
-          # Lähipäivät, kello 15 kohdalla oleva lämpötiladiv
-          temperature_nextday_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[2]/table/tbody/tr[2]/td[8]/div')
-          sunrise_today_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[7]/div[2]/strong[1]')
-          sunset_today_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[7]/div[2]/strong[2]')
-          day_lenght_today_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[7]/div[2]/strong[3]')
+          # "Auringonnousu tänään" div XPath
+          #sunrise_today_get = root.xpath('//*[@id="main-content"]/div[5]/div/div/div/div/div[2]/div[1]')
 
-          # Sateen todennäköisyys ja määrä, ensimmäinen prosenttisarake (ei toimi kovin luotettavasti joten toistaiseksi disabloitu)
-          #rain_probability_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[1]/table/tbody/tr[7]/td[1]/div/span')
+          # "Auringonlasku tänään" div XPath
+          #sunset_today_get = root.xpath('//*[@id="main-content"]/div[5]/div/div/div/div/div[2]/div[2]')
+
+          # "Päivän pituus tänään" div XPath
+          #day_lenght_today_get = root.xpath('//*[@id="main-content"]/div[5]/div/div/div/div/div[2]/div[3]')
+
+          # Sateen todennäköisyys ja määrä, ensimmäinen prosenttisarake (ei toimi kovin luotettavasti)
+          # "Sateen todennäköisyys ja määrä" ekan palstan divin XPath, jossa jotain kuten "<10%"
+          #rain_probability_get = root.xpath('//*[@id="__BVID__157"]/tbody/tr[9]/td[1]/span')
           
           # Lähipäivät, klo 15 sarakkeen kuva ja /@title perään
-          nextday_text_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[2]/table/tbody/tr[1]/td[8]/div/@title')
+          #nextday_text_get = root.xpath('//*[@id="__BVID__157"]/tbody/tr[1]/td[5]/img/@title')
 
-          # Havaintoasema <select>:
-          city_get = root.xpath('//*[@id="observation-station-menu"]/option[1]')
+          # "Havaintoasema:" jälkeinen kaupunki, esim. "Jyväskylä lentoasema" ja sen XPath
+          city_get = root.xpath('//*[@id="__BVID__140"]')
 
-          # Lähitunnit, ensimmäisen sarakkeen lämpötila
-          temperature_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[1]/table/tbody/tr[2]/td[1]/div')
-          
-          # Lähitunnit, ensimmäisen sarakkeen kuvan XPath ja /@title perään
-          textweather_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[1]/table/tbody/tr[1]/td[1]/div/@title')
+          # "Viimeisin säähavainto" ajan kohdan spanin XPath ja /text() perään
+          #time_get = root.xpath('//*[@id="main-content"]/div[7]/div/div/div/div[3]/span[2]/text()')
+
+          # "Lämpötila" jälkeen lämpötilan XPath
+          temperature_get = root.xpath('//*[@id="main-content"]/div[4]/div/div/div/div/div[2]/div[1]')
 
           # Lähitunnit, tuntuu kuin div
           #feelslike_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/section/div/div[1]/table/tbody/tr[5]/td[1]/div')
@@ -179,21 +193,22 @@ def saa(bot, trigger):
           # Sademäärä-ennuste (ei toimi kovin luotettavasti joten toistaiseksi disabloitu)
           #precipitation_amount_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/div[1]/div/div[1]/table/tbody/tr[9]/td[1]/span/@title')
 
-          temperature_nextday = temperature_nextday_get[0].text.strip()
-          sunrise_today = sunrise_today_get[0].text.strip()
-          sunset_today = sunset_today_get[0].text.strip()
-          day_lenght_today = day_lenght_today_get[0].text.strip()
+          #temperature_nextday = temperature_nextday_get[0].text.strip()
+          #sunrise_today = sunrise_today_get[0].text.strip()
+          #sunset_today = sunset_today_get[0].text.strip()
+          #day_lenght_today = day_lenght_today_get[0].text.strip()
           #rain_probability = rain_probability_get[0].text.strip()
-          nextday_text = nextday_text_get[0].strip()
+          #nextday_text = nextday_text_get[0].strip()
           city = city_get[0].text.strip()
           temperature = temperature_get[0].text.strip()
-          textweather = textweather_get[0].strip()
+          #textweather = textweather_get[0].strip()
           #feelslike = feelslike_get[0].strip()
 
           # Sademäärä-ennuste, hakeminen (ei toimi kovin luotettavasti joten toistaiseksi disabloitu)
           #precipitation_amount = precipitation_amount_get[0].strip()
 
-          bot.say('\x02' + city + '\x0F ' + temperature + ' (' + textweather + '). Auringonnousu tänään ' + sunrise_today + ', auringonlasku tänään ' + sunset_today + '. Päivän pituus on ' + day_lenght_today + '. Huomispäiväksi luvattu ' + temperature_nextday + ' (' + nextday_text + ').')
+          #bot.say('\x02' + city + '\x0F ' + temperature + ' (' + textweather + '). Auringonnousu tänään ' + sunrise_today + ', auringonlasku tänään ' + sunset_today + '. Päivän pituus on ' + day_lenght_today + '. Huomispäiväksi luvattu ' + temperature_nextday + ' (' + nextday_text + ').')
+          bot.say('' + starttime + '')
 
       except:
-            bot.say('Koitapa uudestaan. Joko \x02' + place + '\x0F ei ole oikea paikka tai Ilmatieteenlaitos on hetkellisesti alhaalla.')
+            bot.say('Koitapa uudestaan. Joko \x02' + place + '\x0F ei ole oikea paikka, Ilmatieteenlaitos on hetkellisesti alhaalla tai jokin on oleellisesti muuttunut ja sääscripti bugaa.')
