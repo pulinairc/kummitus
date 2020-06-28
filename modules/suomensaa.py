@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 suomensaa.py
 Made by rolle
@@ -80,7 +79,8 @@ def saa(bot, trigger):
   url = "https://yle.fi/saa/suomi/%s" % place    
 
   # LXML Xpath based scraping
-  r = requests.get(url)
+  r = requests.get(url, headers={'Accept-Language': 'fi-FI', 'Content-type': 'text/html;charset=UTF-8', "accept-encoding": "gzip, deflate"})
+  r.encoding == 'ISO-8859-1' and not 'ISO-8859-1' in r.headers.get('Content-Type', '')
   root = lxml.html.fromstring(r.content)
 
   if place == 'jyväskylä':
@@ -139,7 +139,7 @@ def saa(bot, trigger):
       #rain_probability = rain_probability_get[0].text.strip()
       #nextday_text = nextday_text_get[0].strip()
       temperature = temperature_get[0].text.strip()
-      textweather = textweather_get[0].text
+      textweather = textweather_get[0].text.strip().encode('latin-1').decode(encoding='utf-8',errors='strict')
       feelslike = feelslike_get[0]
 
       # Sademäärä-ennuste, hakeminen (ei toimi kovin luotettavasti joten toistaiseksi disabloitu)
