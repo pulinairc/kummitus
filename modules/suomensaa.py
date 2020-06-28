@@ -1,7 +1,7 @@
 """
 suomensaa.py
 Made by rolle
-Updated 20200624
+Updated 20200628
 """
 import sopel.module
 from urllib.request import urlopen
@@ -77,6 +77,7 @@ def saa(bot, trigger):
     place = trigger.group(2).strip()
 
   url = "https://yle.fi/saa/suomi/%s" % place    
+  url_sunsetsunrise = "http://www.moisio.fi/taivas/aurinko.php?paikka=%s" % place    
 
   # LXML Xpath based scraping
   r = requests.get(url, headers={'Accept-Language': 'fi-FI', 'Content-type': 'text/html;charset=UTF-8', "accept-encoding": "gzip, deflate"})
@@ -88,37 +89,50 @@ def saa(bot, trigger):
     r_jkl = requests.get(url_jkl)
     root_jkl = lxml.html.fromstring(r_jkl.content)
 
-    try:
-      bot.say('Soon, my friend.')
-      #bot.say('\x02Jyväskylä, ' + city + '\x0F ' + temperature + ' (' + textweather + '), mitattu ' + time + '. Auringonnousu tänään ' + sunrise_today + ', auringonlasku tänään ' + sunset_today + '. Päivän pituus on ' + day_lenght_today + '. Huomispäiväksi luvattu ' + temperature_nextday + ' (' + nextday_text + ').')
+    #try:
 
-    except:
-      bot.say('Error, tilt, nyt bugaa! Sijainnin \x02' + place.capitalize() + '\x0F säätä ei saatu haettua. Heitä ihmeessä pull requestia, jos tiedät miten tämä korjataan. Sään tarjoilee: https://github.com/pulinairc/kummitus/blob/master/modules/suomensaa.py')
+    # http://weather.jyu.fi/
+    place_exact_get = root_jkl.xpath('//*[@id="content"]/fieldset/legend')
+    place_exact = place_exact_get[0].text.strip()
+    temperature_get = root_jkl.xpath('//*[@id="table-a"]/tbody/tr[1]/td[2]')
+    temperature = temperature_get[0].text.strip()
+    time_get = root_jkl.xpath('//*[@id="c2"]/text()')
+
+    # Nämä samat kuin elsen jälkeen
+    rain_probability_get = root.xpath('//*[@id="pointdata-container"]/div[2]/div[2]/div[1]/span/span[1]/span[3]')
+    temperature_nextday_get = root.xpath('//*[@id="dailydata"]/li[1]/span[2]/span[5]/span[3]/span[1]/span[2]')
+    textweather_get = root.xpath('//*[@id="pointdata-container"]/div[2]/div[1]/div[1]/span/span')
+    textweather = textweather_get[0].text.strip().encode('latin-1').decode(encoding='utf-8',errors='strict')
+    nextday_text_get = root.xpath('//*[@id="dailydata"]/li[1]/span[2]/span[5]/span[2]/span/span')
+    feelslike_get = root.xpath('//*[@id="pointdata-container"]/div[2]/div[1]/div[2]/span/text()')
+    precipitation_amount_get = root.xpath('//*[@id="pointdata-container"]/div[2]/div[2]/div[1]/span/span[1]/span[5]/strong')
+    temperature_nextday = temperature_nextday_get[0].text.strip()
+    rain_probability = rain_probability_get[0].text.strip()
+    nextday_text = nextday_text_get[0].text.strip().encode('latin-1').decode(encoding='utf-8',errors='strict')
+    textweather = textweather_get[0].text.strip().encode('latin-1').decode(encoding='utf-8',errors='strict')
+    time = time_get[0]
+    feelslike = feelslike_get[0]
+    precipitation_amount = precipitation_amount_get[0].text.strip()
+
+    bot.say('\x02Jyväskylä, ' + place_exact + '\x0F: ' + temperature + ' (' + textweather + ', ' + feelslike + '), mitattu ' + time + '. Sateen todennäköisyys: ' + rain_probability + '%, määrä: ' + precipitation_amount + '. Huomispäiväksi luvattu ' + temperature_nextday + ' (' + nextday_text + ').')
+
+    #except:
+      #bot.say('Error, tilt, nyt bugaa! Sijainnin \x02' + place.capitalize() + '\x0F säätä ei saatu haettua. Heitä ihmeessä pull requestia, jos tiedät miten tämä korjataan. Sään tarjoilee: https://github.com/pulinairc/kummitus/blob/master/modules/suomensaa.py')
 
   else:
 
-    #try:
-      # Lähipäivät, kello 15 kohdalla olevan lämpötiladivin XPath
-      #temperature_nextday_get = root.xpath('//*[@id="__BVID__157"]/tbody/tr[2]/td[9]/span')
+    try:
+      # "Säätila tänään klo XX:XX" XPath
+      time_get = root.xpath('//*[@id="pointdata-container"]/div[1]/h3')
 
-      # "Auringonnousu tänään" div XPath
-      #sunrise_today_get = root.xpath('//*[@id="main-content"]/div[5]/div/div/div/div/div[2]/div[1]')
+      # "Sää tulevina päivinä", seuraavan päivän kello 16 kohdalla olevan lämpötiladivin XPath
+      temperature_nextday_get = root.xpath('//*[@id="dailydata"]/li[1]/span[2]/span[5]/span[3]/span[1]/span[2]')
 
-      # "Auringonlasku tänään" div XPath
-      #sunset_today_get = root.xpath('//*[@id="main-content"]/div[5]/div/div/div/div/div[2]/div[2]')
-
-      # "Päivän pituus tänään" div XPath
-      #day_lenght_today_get = root.xpath('//*[@id="main-content"]/div[5]/div/div/div/div/div[2]/div[3]')
-
-      # Sateen todennäköisyys ja määrä, ensimmäinen prosenttisarake (ei toimi kovin luotettavasti)
-      # "Sateen todennäköisyys ja määrä" ekan palstan divin XPath, jossa jotain kuten "<10%"
-      #rain_probability_get = root.xpath('//*[@id="__BVID__157"]/tbody/tr[9]/td[1]/span')
+      # Sateen todennäköisyys
+      rain_probability_get = root.xpath('//*[@id="pointdata-container"]/div[2]/div[2]/div[1]/span/span[1]/span[3]')
           
-      # Lähipäivät, klo 15 sarakkeen kuva ja /@title perään
-      #nextday_text_get = root.xpath('//*[@id="__BVID__157"]/tbody/tr[1]/td[5]/img/@title')
-
-      # "Viimeisin säähavainto" ajan kohdan spanin XPath ja /text() perään
-      #time_get = root.xpath('//*[@id="main-content"]/div[7]/div/div/div/div[3]/span[2]/text()')
+      # "Sää tulevina päivinä", seuraavan päivän kello 16 kohdalla olevan kuvan sisällä olevan spanin XPath
+      nextday_text_get = root.xpath('//*[@id="dailydata"]/li[1]/span[2]/span[5]/span[2]/span/span')
 
       # XPath: https://dsh.re/accc8
       temperature_get = root.xpath('//*[@id="pointdata-container"]/div[2]/div[1]/div[2]/div/span[2]')
@@ -129,24 +143,19 @@ def saa(bot, trigger):
       # XPath: https://dsh.re/0c95b
       textweather_get = root.xpath('//*[@id="pointdata-container"]/div[2]/div[1]/div[1]/span/span')
 
-      # Sademäärä-ennuste (ei toimi kovin luotettavasti joten toistaiseksi disabloitu)
-      #precipitation_amount_get = root.xpath('//*[@id="p_p_id_localweatherportlet_WAR_fmiwwwweatherportlets_"]/div/div/div/div[2]/div/div[1]/div/div[1]/table/tbody/tr[9]/td[1]/span/@title')
+      # Sademäärä-ennuste
+      precipitation_amount_get = root.xpath('//*[@id="pointdata-container"]/div[2]/div[2]/div[1]/span/span[1]/span[5]/strong')
 
-      #temperature_nextday = temperature_nextday_get[0].text.strip()
-      #sunrise_today = sunrise_today_get[0].text.strip()
-      #sunset_today = sunset_today_get[0].text.strip()
-      #day_lenght_today = day_lenght_today_get[0].text.strip()
-      #rain_probability = rain_probability_get[0].text.strip()
-      #nextday_text = nextday_text_get[0].strip()
+      temperature_nextday = temperature_nextday_get[0].text.strip()
+      rain_probability = rain_probability_get[0].text.strip()
+      nextday_text = nextday_text_get[0].text.strip().encode('latin-1').decode(encoding='utf-8',errors='strict')
       temperature = temperature_get[0].text.strip()
       textweather = textweather_get[0].text.strip().encode('latin-1').decode(encoding='utf-8',errors='strict')
+      time = time_get[0].text.strip().encode('latin-1').decode(encoding='utf-8',errors='strict')
       feelslike = feelslike_get[0]
+      precipitation_amount = precipitation_amount_get[0].text.strip()
 
-      # Sademäärä-ennuste, hakeminen (ei toimi kovin luotettavasti joten toistaiseksi disabloitu)
-      #precipitation_amount = precipitation_amount_get[0].strip()
+      bot.say('\x02' + place.capitalize() + '\x0F - ' + time + ': ' + temperature + ' (' + textweather + ', ' + feelslike + '). Sateen todennäköisyys: ' + rain_probability + '%, määrä: ' + precipitation_amount + '. Huomispäiväksi luvattu ' + temperature_nextday + ' (' + nextday_text + ').')
 
-      #bot.say('\x02' + city + '\x0F ' + temperature + ' (' + textweather + '). Auringonnousu tänään ' + sunrise_today + ', auringonlasku tänään ' + sunset_today + '. Päivän pituus on ' + day_lenght_today + '. Huomispäiväksi luvattu ' + temperature_nextday + ' (' + nextday_text + ').')
-      bot.say('\x02' + place.capitalize() + '\x0F ' + temperature + ' (' + textweather + ', ' + feelslike + ')')
-
-    #except:
-      #bot.say('Error, tilt, nyt bugaa! Sijainnin \x02' + place.capitalize() + '\x0F säätä ei saatu haettua. Heitä ihmeessä pull requestia, jos tiedät miten tämä korjataan. Sään tarjoilee: https://github.com/pulinairc/kummitus/blob/master/modules/suomensaa.py')
+    except:
+      bot.say('Error, tilt, nyt bugaa! Sijainnin \x02' + place.capitalize() + '\x0F säätä ei saatu haettua. Heitä ihmeessä pull requestia, jos tiedät miten tämä korjataan. Sään tarjoilee: https://github.com/pulinairc/kummitus/blob/master/modules/suomensaa.py')
