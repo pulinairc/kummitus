@@ -12,6 +12,7 @@ import requests
 import datetime
 import os
 import json
+from pprint import pprint
 
 # paikkojen tiedosto
 places_file = '/home/rolle/.sopel/modules/paikat.json' 
@@ -118,6 +119,15 @@ def saa(bot, trigger):
 
     #except:
       #bot.say('Error, tilt, nyt bugaa! Sijainnin \x02' + place.capitalize() + '\x0F säätä ei saatu haettua. Heitä ihmeessä pull requestia, jos tiedät miten tämä korjataan. Sään tarjoilee: https://github.com/pulinairc/kummitus/blob/master/modules/suomensaa.py')
+
+  elif place == 'rolle':
+
+    url_rolle = "http://192.168.2.151:1234/ruuvi.php"
+    r_rolle = requests.get(url_rolle)
+    root_rolle = lxml.html.fromstring(r_rolle.content)
+
+    temps = root_rolle.xpath('/html/body/div//text()')[0]
+    bot.say('\x02Jyväskylä, Rollen ja mustikkasopan koti\x0F: ' + temps + '')
 
   else:
 
