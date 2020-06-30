@@ -6,25 +6,23 @@ http://sopel.chat/
 """
 import sopel.module
 from sopel.module import commands
-from urllib.request import urlopen
-import lxml.etree
-from lxml import etree
-import lxml.html
+from bs4 import BeautifulSoup
 import requests
-from bs4 import BeautifulSoup as BS4
 
 @commands(u'almanakka', u'tänään', u'nimipäivät', 'pvm')
 def almanakka(bot, trigger):
-    url = "http://almanakka.helsinki.fi/fi/"
+    
+    url = "https://almanakka.helsinki.fi/"
 
-    # LXML Xpath based scraping
-    r = requests.get(url)
-    root = lxml.html.fromstring(r.content)
-    paiva_get = root.xpath('//*[@id="rt-sidebar-a"]/div[2]/div/div/h2')
-    nimet_get = root.xpath('//*[@id="rt-sidebar-a"]/div[2]/div/div/p[2]/text()')
-    erikoispaiva_get = root.xpath('//*[@id="rt-sidebar-a"]/div[2]/div/div/p[1]')
-    nimet = "".join(nimet_get)
-    paiva = paiva_get[0].text.strip()
-    erikoispaiva = erikoispaiva_get[0].text.strip()
+    # Get HTML page
+    user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.36'
+    headers = {"user-agent": user_agent}
+    req = requests.get(url, headers=headers)
 
-    bot.say('\x02' + paiva + '\x0F: ' + erikoispaiva + '. ' + nimet + '')
+    # Get stuff
+    soup = BeautifulSoup(req.text, "html.parser")
+    day = soup.select("#rt-sidebar-a > div.rt-block.nosto > div > div > h2")
+    names = soup.select("#rt-sidebar-a > div.rt-block.nosto > div > div > p:nth-child(3)")
+
+    #bot.say('\x02' + paiva + '\x0F: ' + erikoispaiva + '. ' + nimet + '')
+    bot.say('\x02' + day[0].text.strip() + '\x0F. ' + names[0].text.strip() + '')
