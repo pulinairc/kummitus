@@ -24,5 +24,4 @@ def almanakka(bot, trigger):
     day = soup.select("#rt-sidebar-a > div.rt-block.nosto > div > div > h2")
     names = soup.select("#rt-sidebar-a > div.rt-block.nosto > div > div > p:nth-child(3)")
 
-    #bot.say('\x02' + paiva + '\x0F: ' + erikoispaiva + '. ' + nimet + '')
     bot.say('\x02' + day[0].text.strip() + '\x0F. ' + names[0].text.strip() + '')

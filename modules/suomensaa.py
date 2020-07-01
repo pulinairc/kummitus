@@ -23,7 +23,7 @@ places_cfg = {}
 def load_cfg():
   # NOTE: menis nätimmin class propertyillä tmv. toki
   global places_file
-  global places_cfg 
+  global places_cfg
 
   if os.path.exists(places_file):
     filehandle = open(places_file, 'r')
@@ -132,6 +132,9 @@ def saa(bot, trigger):
   else:
 
     try:
+      # Pääinputin value
+      city = root.xpath('//*[@id="searchField"]/@value')[0].encode('latin-1').decode(encoding='utf-8',errors='strict')
+
       # "Säätila tänään klo XX:XX" XPath
       time_get = root.xpath('//*[@id="pointdata-container"]/div[1]/h3')
 
@@ -140,7 +143,7 @@ def saa(bot, trigger):
 
       # Sateen todennäköisyys
       rain_probability_get = root.xpath('//*[@id="pointdata-container"]/div[2]/div[2]/div[1]/span/span[1]/span[3]')
-          
+
       # "Sää tulevina päivinä", seuraavan päivän kello 16 kohdalla olevan kuvan sisällä olevan spanin XPath
       nextday_text_get = root.xpath('//*[@id="dailydata"]/li[1]/span[2]/span[5]/span[2]/span/span')
 
@@ -165,7 +168,7 @@ def saa(bot, trigger):
       feelslike = feelslike_get[0]
       precipitation_amount = precipitation_amount_get[0].text.strip()
 
-      bot.say('\x02' + place.capitalize() + '\x0F - ' + time + ': ' + temperature + ' (' + textweather + ', ' + feelslike + '). Sateen todennäköisyys: ' + rain_probability + '%, määrä: ' + precipitation_amount + '. Huomispäiväksi luvattu ' + temperature_nextday + ' (' + nextday_text + ').')
+      bot.say('\x02' + city.capitalize() + '\x0F - ' + time + ': ' + temperature + ' (' + textweather + ', ' + feelslike + '). Sateen todennäköisyys: ' + rain_probability + '%, määrä: ' + precipitation_amount + '. Huomispäiväksi luvattu ' + temperature_nextday + ' (' + nextday_text + ').')
 
     except:
       bot.say('Error, tilt, nyt bugaa! Sijainnin \x02' + place.capitalize() + '\x0F säätä ei saatu haettua. Heitä ihmeessä pull requestia, jos tiedät miten tämä korjataan. Sään tarjoilee: https://github.com/pulinairc/kummitus/blob/master/modules/suomensaa.py')
