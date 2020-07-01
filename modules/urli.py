@@ -14,6 +14,9 @@ from sopel.config.types import ValidatedAttribute, ListAttribute, StaticSection
 
 import requests
 
+import urllib.request
+import json
+
 USER_AGENT = 'Sopel/{} (https://sopel.chat)'.format(__version__)
 default_headers = {'User-Agent': USER_AGENT}
 url_finder = None
@@ -28,6 +31,8 @@ re_dcc = re.compile(r'(?i)dcc\ssend')
 # just keep downloading until there's no more memory. 640k ought to be enough
 # for anybody.
 max_bytes = 655360
+
+YOUTUBE = ['https://www.youtube.com', 'https://youtu.be']
 
 
 class UrlSection(StaticSection):
@@ -183,6 +188,26 @@ def check_callbacks(bot, trigger, url, run=True):
 
 def find_title(url, verify=True):
     """Return the title for the given URL."""
+
+    # special cases 
+
+    # youtube
+    for i in range(len(YOUTUBE)):
+        if url[0:len(YOUTUBE[i])] == YOUTUBE[i]:
+            try:
+                response = urllib.request.urlopen('https://noembed.com/embed?url=' + url)
+                response_bytes = response.read()
+                response_string = response_bytes.decode("utf8")
+                response.close()
+
+
+                youtube_info = json.loads(response_string)
+
+                return youtube_info['title'] + " | lataaja: " + youtube_info['author_name']
+            except:
+                print("not a valid URL")
+
+
     try:
         response = requests.get(url, stream=True, verify=verify,
                                 headers=default_headers)
