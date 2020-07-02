@@ -5,7 +5,7 @@ youtube-haku
 import sopel.module
 from searchyt import searchyt
 
-BASE_URL = 'https://youtu.be'
+BASE_URL = 'https://youtu.be/'
 
 @sopel.module.commands('yt')
 def pakko(bot, trigger):
