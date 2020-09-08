@@ -22,7 +22,7 @@ def lannistaja_kuha(bot, trigger):
         url = urlopen("http://lannistajakuha.com/" + number).read().decode()
     else:
         url = urlopen("http://lannistajakuha.com/random").read().decode()
-    soup = BeautifulSoup(url)
+    soup = BeautifulSoup(url, features = "lxml")
     result = (soup.find("p", attrs={"class": "teksti"}))
     result = result.text.strip()
     bot.say(result)
