@@ -27,7 +27,7 @@ def setup(bot):
 
 @rule('$nick' '(?i)(help|doc) +([A-Za-z]+)(?:\?+)?$')
 @example('!apua tell')
-@commands('apua', 'commands', 'komennot')
+@commands('apua', 'commands')
 @priority('low')
 def help(bot, trigger):
     """Shows a command's documentation, and possibly an example."""

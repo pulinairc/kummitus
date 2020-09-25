@@ -1,3 +1,4 @@
+.env
 default.db
 malwaredomains.txt
 logs/
@@ -5,3 +6,6 @@ sopel.pid
 *.db
 modules/*.pyc
 modules/__pycache__/
+modules/paikat.json
+._.DS_Store
+.DS_Store

@@ -32,7 +32,7 @@ re_dcc = re.compile(r'(?i)dcc\ssend')
 # for anybody.
 max_bytes = 655360
 
-YOUTUBE = ['https://www.youtube.com', 'https://youtu.be']
+YOUTUBE = ['https://www.youtube.com', 'https://youtu.be', 'https://music.youtube.com']
 
 
 class UrlSection(StaticSection):
