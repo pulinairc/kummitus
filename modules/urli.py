@@ -32,7 +32,8 @@ re_dcc = re.compile(r'(?i)dcc\ssend')
 # for anybody.
 max_bytes = 655360
 
-YOUTUBE = ['https://www.youtube.com', 'https://youtu.be', 'https://music.youtube.com']
+YOUTUBE = ['https://www.youtube.com', 'https://youtu.be']
+TWITTER = ['https://twitter.com', 'https://m.twitter.com', 'https://mobile.twitter.com']
 
 
 class UrlSection(StaticSection):
@@ -207,6 +208,13 @@ def find_title(url, verify=True):
             except:
                 print("not a valid URL")
 
+    # twatter
+    for i in range(len(TWITTER)):
+        if url != TWITTER[i] and url[0:len(TWITTER[i])] == TWITTER[i]:
+            # // use open sores twatter client 'Nitter' to get the title
+            url = 'https://nitter.net' + url[len(TWITTER[i]):]
+
+    # end of special cases
 
     try:
         response = requests.get(url, stream=True, verify=verify,
@@ -239,6 +247,9 @@ def find_title(url, verify=True):
 
     # More cryptic regex substitutions. This one looks to be myano's invention.
     title = re_dcc.sub('', title)
+
+    # twatter hack
+    title = "Twitter".join(title.rsplit("nitter", 1))
 
     return title or None
 
