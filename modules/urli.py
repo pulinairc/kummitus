@@ -204,7 +204,7 @@ def find_title(url, verify=True):
 
                 youtube_info = json.loads(response_string)
 
-                return youtube_info['title'] + " | lataaja: " + youtube_info['author_name']
+                return youtube_info['title'] + " | lataaja: " + youtube_info['author_name'] + " | YouTube "
             except:
                 print("not a valid URL")
 
