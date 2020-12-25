@@ -122,7 +122,7 @@ def saa(bot, trigger):
 
   elif place == 'rolle':
 
-    url_rolle = "http://192.168.2.151:1234/ruuvi.php"
+    url_rolle = "https://ruuvirawdata.peikko.us/ruuvi.php"
     r_rolle = requests.get(url_rolle)
     root_rolle = lxml.html.fromstring(r_rolle.content)
 
