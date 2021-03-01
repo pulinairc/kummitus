@@ -20,7 +20,7 @@ imdb_re = re.compile(r'.*(https?:\/\/(www\.)?imdb\.com\/title\/)(tt[0-9]+).*')
 
 
 class IMDBSection(StaticSection):
-    api_key = ValidatedAttribute('api_key', str, default='a412cffe')
+    api_key = ValidatedAttribute('api_key', str, default='607f1bdb')
 
 
 # Walk the user through defining variables required
