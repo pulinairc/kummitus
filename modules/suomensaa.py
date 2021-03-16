@@ -15,7 +15,7 @@ import json
 from pprint import pprint
 
 # paikkojen tiedosto
-places_file = '/home/rolle/.sopel/modules/paikat.json' 
+places_file = '/home/rolle/.sopel/modules/paikat.json'
 # nimimerkkien paikat muistissa
 places_cfg = {}
 
@@ -122,11 +122,8 @@ def saa(bot, trigger):
 
   elif place == 'rolle':
 
-    url_rolle = "https://ruuvirawdata.peikko.us/ruuvi.php"
-    r_rolle = requests.get(url_rolle)
-    root_rolle = lxml.html.fromstring(r_rolle.content)
-
-    temps = root_rolle.xpath('/html/body/div//text()')[0]
+    url_rolle = "https://ruuvirawdata.peikko.us/ruuvidata.txt"
+    temps = urlopen(url_rolle).read().decode("utf-8")
     bot.say('\x02Jyväskylä, Rollen ja mustikkasopan koti\x0F: ' + temps + '')
 
   else:
