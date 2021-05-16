@@ -33,7 +33,7 @@ def almanakka(bot, trigger):
 
 def setup(bot):
     # schedule the message at midnight every day
-    schedule.every.day.at('15:54').do(scheduled_message, bot=bot)
+    schedule.every.day.at('15:55').do(scheduled_message, bot=bot)
 
 @module.interval(60)
 def run_schedule(bot):
