@@ -29,12 +29,6 @@ trainer.export_for_training('./export.json')
 
 import sopel.module
 
-@sopel.module.commands("*")
-def chatterbot_everyline(bot, trigger):
-    match_everything = trigger.replace('!', '')
-    only_message_everything = match_everything.split(": ",1)[1] 
-    bot.say(only_message_everything)
-
 @sopel.module.nickname_commands(".*")
 
 def chatterbot(bot, trigger):
@@ -42,8 +36,9 @@ def chatterbot(bot, trigger):
 
     only_message = query.split(": ",1)[1] 
 
-    bot.reply(only_message)
-    #request = query
-    #response = chatbot.get_response(request)
+    # Parrot mode:
+    #bot.reply(only_message)
 
-    #bot.reply(response)
+    request = only_message
+    response = chatbot.get_response(request)
+    bot.reply(response)
