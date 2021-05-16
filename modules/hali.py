@@ -5,11 +5,8 @@ Licensed under the WTFPL. Do whatever the fuck you want with this. You just
   can't hold me responsible if it breaks something either.
 A module for the Sopel IRC Bots.
 """
-
 from random import choice
-
 from sopel.module import commands, example
-
 
 verb = ["halaa", "halaa", "halaa", "litistää", "taklaa", "ruttuhalaa",
         "syleilee", "puristaa", "rutistaa", "ruttaa", "pusertaa"]
