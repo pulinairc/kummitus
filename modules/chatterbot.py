@@ -8,7 +8,6 @@ A module for the Sopel IRC Bots.
 import sopel
 import sys
 import chatterbot
-from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer
 trainer = ChatterBotCorpusTrainer(chatbot)
 trainer.train(
