@@ -7,6 +7,7 @@ http://sopel.chat/
 import sopel.module
 from sopel.module import commands
 from bs4 import BeautifulSoup
+import schedule
 import requests
 
 @commands(u'almanakka', u'tänään', u'nimipäivät', 'pvm')
@@ -25,3 +26,11 @@ def almanakka(bot, trigger):
     names = soup.select("#rt-sidebar-a > div.rt-block.nosto > div > div > p:nth-child(3)")
 
     bot.say('\x02' + day[0].text.strip() + '\x0F. ' + names[0].text.strip() + '')
+
+def setup(bot):
+    # schedule the message at midnight every day
+    schedule.every.day.at('15:49').do(almanakka, bot=bot)
+
+@module.interval(60)
+def run_schedule(bot):
+    schedule.run_pending()
