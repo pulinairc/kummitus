@@ -15,6 +15,16 @@ import xmltodict
 import sys
 
 from chatterbot import ChatBot
+from chatterbot.trainers import ChatterBotCorpusTrainer
+
+chatbot = ChatBot('kummitus')
+#trainer = ChatterBotCorpusTrainer(chatbot)
+
+#trainer.train(
+#    "/home/rolle/.sopel/modules/chatterbot-corpus/chatterbot_corpus/data/finnish/"
+#)
+
+from chatterbot import ChatBot
 
 from chatterbot.trainers import ListTrainer
 
