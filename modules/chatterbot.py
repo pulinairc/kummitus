@@ -6,6 +6,7 @@ Licensed under the WTFPL. Do whatever the fuck you want with this. You just
 A module for the Sopel IRC Bots.
 """
 import sys
+import chatterbot
 from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer
 import sopel
