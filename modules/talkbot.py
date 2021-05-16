@@ -63,10 +63,12 @@ import sopel.module
 @sopel.module.rule('.*')
 
 def talkbot_all(bot, trigger):
-    only_message_all = trigger.split(": ", 0)[1] 
+    only_message_all = trigger.split(": ", 1)
 
-    # Parrot mode:
-    bot.say(only_message_all)
+    if len(only_message_all) >= 2 and only_message_all[1]:
+      bot.say(only_message_all)
+    else:
+      bot.say(trigger)
 
     #request = only_message
     #response = chatbot.get_response(request)
