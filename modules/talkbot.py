@@ -55,9 +55,9 @@ import sopel.module
 @sopel.module.commands(".*", "")
 
 def talkbot_all(bot, trigger):
-    query_all = trigger.replace('!', '')
+    #query_all = trigger.replace('!', '')
 
-    only_message_all = query_all.split(": ",1)[1] 
+    only_message_all = trigger.split(": ",1)[1] 
 
     # Parrot mode:
     bot.say(only_message_all)
