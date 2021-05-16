@@ -34,7 +34,7 @@ import sopel.module
 def chatterbot(bot, trigger):
     query = trigger.replace('!', '')
 
-    only_message = query.split(":",1)[1] 
+    only_message = query.split(": ",1)[1] 
 
     bot.reply(only_message)
     #request = query
