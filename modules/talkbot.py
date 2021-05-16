@@ -60,12 +60,10 @@ trainer.export_for_training('./export.json')
 
 import sopel.module
 
-@sopel.module.rule(r'(?s).*')
+@sopel.module.rule('.*')
 
 def talkbot_all(bot, trigger):
-    query_all = trigger.replace('!', '')
-
-    only_message_all = query_all.split(": ",1)[1] 
+    only_message_all = trigger.split(": ", 0)[1] 
 
     # Parrot mode:
     bot.say(only_message_all)
@@ -75,12 +73,12 @@ def talkbot_all(bot, trigger):
     #bot.reply(response)
 
 
-@sopel.module.nickname_commands(".*")
+@sopel.module.nickname_commands('.*')
 
 def talkbot(bot, trigger):
     query = trigger.replace('!', '')
 
-    only_message = query.split(": ",1)[1] 
+    only_message = query.split(": ", 1)[1] 
 
     # Parrot mode:
     #bot.reply(only_message)
