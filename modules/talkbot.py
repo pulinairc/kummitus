@@ -64,9 +64,9 @@ import sopel.module
 
 def talkbot_all(bot, trigger):
     only_message_all_check_only = trigger.split(": ", 1)
-    only_message_all = trigger.split(": ", 1)[1]
 
     if len(only_message_all_check_only) >= 2 and only_message_all_check_only[1]:
+      only_message_all = trigger.split(": ", 1)[1]
       bot.say(only_message_all)
     else:
       bot.say(trigger)
