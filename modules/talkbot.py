@@ -35,10 +35,12 @@ conversation = [
     "Hyvää",
     "Hyvää yötä",
     "Öitä!",
-    "Mee nukkumaan.",
+    "Mene nukkumaan.",
     "Niin menenkin.",
     "Huomenta",
-    "Hyvää huomenta!"
+    "Hyvää huomenta!",
+    "Pitäisikö mennä nukkumaan?",
+    "Pitäisi."
 ]
 
 trainer = ListTrainer(chatbot)
@@ -50,9 +52,24 @@ trainer.export_for_training('./export.json')
 
 import sopel.module
 
+@sopel.module.commands(".*", "")
+
+def talkbot_all(bot, trigger):
+    query_all = trigger.replace('!', '')
+
+    only_message_all = query_all.split(": ",1)[1] 
+
+    # Parrot mode:
+    bot.say(only_message_all)
+
+    #request = only_message
+    #response = chatbot.get_response(request)
+    #bot.reply(response)
+
+
 @sopel.module.nickname_commands(".*")
 
-def chatterbot(bot, trigger):
+def talkbot(bot, trigger):
     query = trigger.replace('!', '')
 
     only_message = query.split(": ",1)[1] 
