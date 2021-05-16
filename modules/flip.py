@@ -9,7 +9,6 @@ A module for the Sopel IRC Bots.
 from sopel.module import commands, example
 import upsidedown
 
-
 @commands("flippaa")
 @example('!flippaa')
 @example('!flippaa pöytä/pöydät')
