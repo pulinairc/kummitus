@@ -60,7 +60,7 @@ trainer.export_for_training('./export.json')
 
 import sopel.module
 
-@sopel.module.commands(".*", '*', "")
+@sopel.module.rule(r'([^\s]+)')
 
 def talkbot_all(bot, trigger):
     query_all = trigger.replace('!', '')
@@ -68,7 +68,7 @@ def talkbot_all(bot, trigger):
     only_message_all = trigger.split(": ",1)[1] 
 
     # Parrot mode:
-    bot.say(query_all)
+    bot.say(only_message_all)
 
     #request = only_message
     #response = chatbot.get_response(request)
