@@ -63,10 +63,10 @@ import sopel.module
 @sopel.module.rule('.*')
 
 def talkbot_all(bot, trigger):
-    only_message_all = trigger.split(": ", 1)
+    only_message_all = trigger.split(": ", 1)[1]
 
     if len(only_message_all) >= 2 and only_message_all[1]:
-      # Do nothing as we don't want answers
+      bot.say(only_message_all)
     else:
       bot.say(trigger)
 
