@@ -13,7 +13,7 @@ chatbot = ChatBot('Ron Obvious')
 trainer = ChatterBotCorpusTrainer(chatbot)
 
 trainer.train(
-    "./chatterbot-corpus/chatterbot_corpus/data/finnish/"
+    "/home/rolle/.sopel/modules/chatterbot-corpus/chatterbot_corpus/data/finnish/"
 )
 
 # Stores data in file so that it can remember
