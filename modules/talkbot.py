@@ -66,7 +66,7 @@ def talkbot_all(bot, trigger):
     only_message_all = trigger.split(": ", 1)
 
     if len(only_message_all) >= 2 and only_message_all[1]:
-      bot.say(only_message_all)
+      # Do nothing as we don't want answers
     else:
       bot.say(trigger)
 
