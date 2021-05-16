@@ -37,7 +37,4 @@ def chatterbot(bot, trigger):
     request = query
     response = chatbot.get_response(request)
 
-    if chatbot.confidence > 0.80:
-        bot.reply(response)
-    if chatbot.confidence < 0.80:
-        bot.reply('Sori, en ymmärtänyt.')
+    bot.reply(response)
