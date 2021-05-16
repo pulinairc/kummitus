@@ -5,8 +5,10 @@ Licensed under the WTFPL. Do whatever the fuck you want with this. You just
   can't hold me responsible if it breaks something either.
 A module for the Sopel IRC Bots.
 """
-from __future__ import unicode_literals, absolute_import, print_function, division
+import sopel
+import sys
 import chatterbot
+from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer
 trainer = ChatterBotCorpusTrainer(chatbot)
 trainer.train(
@@ -17,7 +19,6 @@ trainer.train(
 trainer.export_for_training('./export.json')
 
 from sopel.module import commands, example
-import sopel.module
 
 @sopel.module.nickname_commands(".*")
 
