@@ -11,7 +11,7 @@ from chatterbot.trainers import ChatterBotCorpusTrainer
 trainer = ChatterBotCorpusTrainer(chatbot)
 trainer.train(
     "./chatterbot-corpus/chatterbot_corpus/data/finnish/"
-)~
+)
 
 # Stores data in file so that it can remember
 trainer.export_for_training('./export.json')
