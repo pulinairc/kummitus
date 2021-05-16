@@ -29,7 +29,7 @@ trainer.export_for_training('./export.json')
 
 import sopel.module
 
-@sopel.module.commands(".*")
+@sopel.module.commands("*")
 def chatterbot_everyline(bot, trigger):
     match_everything = trigger.replace('!', '')
     only_message_everything = match_everything.split(": ",1)[1] 
