@@ -21,7 +21,7 @@ flavor = ["tiukasti", "hellästi", "vammasimmalla mahdollisella tavalla", "rakas
 @example('!hali <nimimerkki>')
 def hug(bot, trigger):
     """Anna hali... tai jopa enemmän."""
-    if not trigger.group(2):
+    if not trigger.group(3):
       bot.say(f"{trigger.nick} {choice(verb)} itseään {choice(flavor)}.")
     else:
       hugged = trigger.group(3)
