@@ -9,7 +9,8 @@ from sopel.module import commands, example
 from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer
 
-chatbot = ChatBot('kummitus')
+chatbot = ChatBot('Ron Obvious')
+trainer = ChatterBotCorpusTrainer(chatbot)
 
 trainer.train(
     "./chatterbot-corpus/chatterbot_corpus/data/finnish/"
