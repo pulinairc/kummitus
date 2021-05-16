@@ -5,23 +5,14 @@ Licensed under the WTFPL. Do whatever the fuck you want with this. You just
   can't hold me responsible if it breaks something either.
 A module for the Sopel IRC Bots.
 """
-import sys
-import chatterbot
-from chatterbot import ChatBot
+from sopel.module import commands, example
 from chatterbot.trainers import ChatterBotCorpusTrainer
-import sopel
-
-chatbot = ChatBot('kummitus')
-
-trainer = ChatterBotCorpusTrainer(chatbot)
 trainer.train(
     "./chatterbot-corpus/chatterbot_corpus/data/finnish/"
 )
 
 # Stores data in file so that it can remember
 trainer.export_for_training('./export.json')
-
-from sopel.module import commands, example
 
 @sopel.module.nickname_commands(".*")
 
