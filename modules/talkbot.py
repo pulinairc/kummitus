@@ -60,7 +60,7 @@ trainer.export_for_training('./export.json')
 
 import sopel.module
 
-@sopel.module.rule(".*")
+@sopel.module.rule(r'(?s).*')
 
 def talkbot_all(bot, trigger):
     query_all = trigger.replace('!', '')
