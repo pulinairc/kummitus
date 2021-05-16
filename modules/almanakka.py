@@ -25,11 +25,11 @@ def almanakka(bot, trigger):
     day = soup.select("#rt-sidebar-a > div.rt-block.nosto > div > div > h2")
     names = soup.select("#rt-sidebar-a > div.rt-block.nosto > div > div > p:nth-child(3)")
 
-    bot.say('\x02' + day[0].text.strip() + '\x0F. ' + names[0].text.strip() + '')
+    bot.say('\x02' + day[0].text.strip() + '\x0F. ' + names[0].text.strip() + '', '#pulina')
 
 def setup(bot):
     # schedule the message at midnight every day
-    schedule.every.day.at('15:49').do(almanakka, bot=bot)
+    schedule.every.day.at('15:53').do(almanakka, bot=bot)
 
 @module.interval(60)
 def run_schedule(bot):
