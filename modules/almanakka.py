@@ -11,6 +11,10 @@ import schedule
 import requests
 
 @commands(u'almanakka', u'tänään', u'nimipäivät', 'pvm')
+
+def scheduled_message(bot):
+    bot.say("This is the scheduled message.", "#pulina")
+
 def almanakka(bot, trigger):
     
     url = "https://almanakka.helsinki.fi/"
@@ -25,11 +29,11 @@ def almanakka(bot, trigger):
     day = soup.select("#rt-sidebar-a > div.rt-block.nosto > div > div > h2")
     names = soup.select("#rt-sidebar-a > div.rt-block.nosto > div > div > p:nth-child(3)")
 
-    bot.say('\x02' + day[0].text.strip() + '\x0F. ' + names[0].text.strip() + '', '#pulina')
+    bot.say('\x02' + day[0].text.strip() + '\x0F. ' + names[0].text.strip() + '')
 
 def setup(bot):
     # schedule the message at midnight every day
-    schedule.every.day.at('15:53').do(almanakka, bot=bot)
+    schedule.every.day.at('15:54').do(scheduled_message, bot=bot)
 
 @module.interval(60)
 def run_schedule(bot):
