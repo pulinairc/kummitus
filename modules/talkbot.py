@@ -15,14 +15,25 @@ import xmltodict
 import sys
 
 from chatterbot import ChatBot
-from chatterbot.trainers import ChatterBotCorpusTrainer
 
-chatbot = ChatBot('Ron Obvious')
-trainer = ChatterBotCorpusTrainer(chatbot)
+from chatterbot.trainers import ListTrainer
 
-trainer.train(
-    "/home/rolle/.sopel/modules/chatterbot-corpus/chatterbot_corpus/data/finnish/"
-)
+conversation = [
+    "Moi",
+    "Moro!",
+    "Mitä kuuluu?",
+    "Hyvää",
+    "Hyvää yötä",
+    "Öitä!",
+    "Mee nukkumaan.",
+    "Niin menenkin.",
+    "Huomenta",
+    "Hyvää huomenta!"
+]
+
+trainer = ListTrainer(chatbot)
+
+trainer.train(conversation)
 
 # Stores data in file so that it can remember
 trainer.export_for_training('./export.json')
