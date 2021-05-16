@@ -40,7 +40,15 @@ conversation = [
     "Huomenta",
     "Hyvää huomenta!",
     "Pitäisikö mennä nukkumaan?",
-    "Pitäisi."
+    "Pitäisi.",
+    "Onko?",
+    "On."
+    "Onko?",
+    "Ei ole."
+    "Kalja",
+    "Kalja on hyvää",
+    "Kalja",
+    "Kalja on pahaa"
 ]
 
 trainer = ListTrainer(chatbot)
