@@ -6,7 +6,11 @@ Licensed under the WTFPL. Do whatever the fuck you want with this. You just
 A module for the Sopel IRC Bots.
 """
 from sopel.module import commands, example
+from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer
+
+chatbot = ChatBot('kummitus')
+
 trainer.train(
     "./chatterbot-corpus/chatterbot_corpus/data/finnish/"
 )
