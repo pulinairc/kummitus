@@ -29,6 +29,12 @@ trainer.export_for_training('./export.json')
 
 import sopel.module
 
+@sopel.module.commands('')
+def olenaa(bot, trigger):
+    match_everything = trigger.replace('!', '')
+    only_message_everything = query.split(": ",1)[1] 
+    bot.say(only_message_everything)
+
 @sopel.module.nickname_commands(".*")
 
 def chatterbot(bot, trigger):
