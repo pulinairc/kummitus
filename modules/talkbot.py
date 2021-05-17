@@ -34,7 +34,7 @@ trainer = ChatterBotCorpusTrainer(chatbot)
 from chatterbot.trainers import ListTrainer
 
 trainer.train(
-    "./pulina-2010-03.json"
+    "./pul.json"
 )
 
 import sopel.module
