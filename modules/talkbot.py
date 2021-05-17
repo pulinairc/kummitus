@@ -65,7 +65,7 @@ def talkbot(bot, trigger):
     only_message_check_only = trigger.split(": ", 1)
 
     if len(only_message_check_only) >= 2 and only_message_check_only[1]:
-      only_message = query.split(": ", 1)[1]
+      only_message = trigger.split(": ", 1)[1]
 
       # Parrot mode:
       #bot.reply(only_message)
