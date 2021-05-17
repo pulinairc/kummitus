@@ -32,6 +32,11 @@ chatbot = ChatBot(
 trainer = ChatterBotCorpusTrainer(chatbot)
 
 from chatterbot.trainers import ListTrainer
+
+trainer.train(
+    "./all.json"
+)
+
 import sopel.module
 
 @sopel.module.rule('[^\*]*')
