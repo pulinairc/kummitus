@@ -20,21 +20,8 @@ from chatterbot.logic import LogicAdapter
 from chatterbot import filters
 
 # Create a new instance of a ChatBot
-chatbot = ChatBot(
-    'kummitus',
-    storage_adapter='chatterbot.storage.SQLStorageAdapter',
-    logic_adapters=[
-        {
-            'import_path': 
-              [
-                'chatterbot.logic.BestMatch',
-                "chatterbot.logic.MathematicalEvaluation"
-              ],
-            'default_response': 'En ymmärrä. Opettelen vielä...',
-            'maximum_similarity_threshold': 0.90
-        }
-    ]
-)
+chatbot = ChatBot('kummitus')
+
 #trainer = ChatterBotCorpusTrainer(chatbot)
 
 #trainer.train(
