@@ -19,8 +19,15 @@ from chatterbot.trainers import ChatterBotCorpusTrainer
 from chatterbot.logic import LogicAdapter
 from chatterbot import filters
 
-# Create a new instance of a ChatBot
-chatbot = ChatBot('kummitus')
+# Create a new ChatBot instance
+bot = ChatBot(
+    'kummitus',
+    storage_adapter='chatterbot.storage.MongoDatabaseAdapter',
+    logic_adapters=[
+        'chatterbot.logic.BestMatch'
+    ],
+    database_uri='mongodb://localhost:27017/chatterbot-database'
+)
 
 #trainer = ChatterBotCorpusTrainer(chatbot)
 
