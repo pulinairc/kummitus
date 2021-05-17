@@ -25,8 +25,11 @@ chatbot = ChatBot(
     storage_adapter='chatterbot.storage.SQLStorageAdapter',
     logic_adapters=[
         {
-            "chatterbot.logic.MathematicalEvaluation",
-            'import_path': 'chatterbot.logic.BestMatch',
+            'import_path': 
+              [
+                'chatterbot.logic.BestMatch',
+                "chatterbot.logic.MathematicalEvaluation"
+              ],
             'default_response': 'En ymmärrä. Opettelen vielä...',
             'maximum_similarity_threshold': 0.90
         }
