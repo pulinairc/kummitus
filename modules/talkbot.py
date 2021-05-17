@@ -86,10 +86,14 @@ def talkbot(bot, trigger):
       # Parrot mode:
       #bot.reply(only_message)
 
-      if chatbot.confidence > 0.80:
-        request = only_message
-        response = chatbot.get_response(request)
-        bot.reply(response)
+      request = only_message
+      response = chatbot.get_response(request)
+      bot.reply(response)
+
+      #if chatbot.confidence > 0.80:
+      #  request = only_message
+      #  response = chatbot.get_response(request)
+      #  bot.reply(response)
       
-      if chatbot.confidence < 0.80:
-        bot.reply('En ymmärrä. Opettelen vielä...')
+      #if chatbot.confidence < 0.80:
+      #  bot.reply('En ymmärrä. Opettelen vielä...')
