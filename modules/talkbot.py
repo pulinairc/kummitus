@@ -20,7 +20,7 @@ from chatterbot.logic import LogicAdapter
 from chatterbot import filters
 
 # Create a new ChatBot instance
-bot = ChatBot(
+chatbot = ChatBot(
     'kummitus',
     storage_adapter='chatterbot.storage.MongoDatabaseAdapter',
     logic_adapters=[
@@ -31,7 +31,6 @@ bot = ChatBot(
 
 trainer = ChatterBotCorpusTrainer(chatbot)
 
-from chatterbot import ChatBot
 from chatterbot.trainers import ListTrainer
 
 trainer.train(
