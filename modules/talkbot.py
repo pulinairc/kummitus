@@ -28,32 +28,13 @@ from chatterbot import ChatBot
 
 from chatterbot.trainers import ListTrainer
 
-conversation = [
-    "Moi",
-    "Moro!",
-    "Mitä kuuluu?",
-    "Hyvää",
-    "Hyvää yötä",
-    "Öitä!",
-    "Mene nukkumaan.",
-    "Niin menenkin.",
-    "Huomenta",
-    "Hyvää huomenta!",
-    "Pitäisikö mennä nukkumaan?",
-    "Pitäisi.",
-    "Onko?",
-    "On."
-    "Onko?",
-    "Ei ole."
-    "Kalja",
-    "Kalja on hyvää",
-    "Kalja",
-    "Kalja on pahaa"
+conversations = [
+  "Moi", "Moro!", "Moro!", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Hyvää", "Hyvää yötä", "Hyvää yötä", "Öitä!", "Öitä!", "Mee nukkumaan.", "Mee nukkumaan.", "Niin menenkin.", "Niin menenkin.", "Huomenta", "Huomenta", "Hyvää huomenta!", "Iltaa", "Moi", "Iltaa", "Mitäpä kuuluu?", "Mitäpä kuuluu?", "Hyvää", "Mitäpä kuuluu?", "No hyvä.", "No hyvä.", "Moi", "No hyvä.", "Moi vaan.", "Moi vaan.", "Moi", "Moi vaan.", "Kiva juttu.", "Kiva juttu.", "Iltaa", "Moi", "Moro!", "Moro!", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Hyvää", "Hyvää yötä", "Hyvää yötä", "Öitä!", "Öitä!", "Mee nukkumaan.", "Mee nukkumaan.", "Niin menenkin.", "Niin menenkin.", "Huomenta", "Huomenta", "Hyvää huomenta!", "Hyvää huomenta!", "Onko?", "On se.", "Ei ole.Kalja", "Ei ole.Kalja", "Kalja on hyvää", "Kalja on hyvää", "Kalja", "Kalja", "Kalja on pahaa", "Kiva juttu.", "Onko kivaa", "Onko kivaa", "Iltaa", "Onko kivaa", "Onko?", "Onko?", "On.", "Onko?", "Ei ole.", "Ei ole.", "Kalja on hyvää", "Ei ole.", "Vai mitä?", "Vai mitä?", "Moi", "Vai mitä?", "No moi moi.", "No moi moi.", "Moi", "No moi moi.", "Kalja on pahaa,.", "Kalja on pahaa,.", "Moi", "Kalja on pahaa,.", "Nyt on yö.", "Nyt on yö.", "Iltaa", "Nyt on yö.", "Pitäiskö mennä nukkumaan?", "Pitäiskö mennä nukkumaan?", "Iltaa", "Pitäiskö mennä nukkumaan?", "Iltaa iltaa.", "Iltaa iltaa.", "Iltaa", "Iltaa iltaa.", "Miten menee?", "Miten menee?", "Moi", "Miten menee?", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Mitä kuuluu?", "Hyvä että kuuluu hyvää.", "Hyvä että kuuluu hyvää.", "Moi", "Hyvä että kuuluu hyvää.", "Moi moi.", "Moi moi.", "Moi", "Moi", "Moro!", "Moro!", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Hyvää", "Hyvää yötä", "Hyvää yötä", "Öitä!", "Öitä!", "Mee nukkumaan.", "Mee nukkumaan.", "Niin menenkin.", "Niin menenkin.", "Huomenta", "Huomenta", "Hyvää huomenta!", "Hyvää huomenta!", "Onko?", "Ei ole kaljaa.", "Kalja on hyvää", "Kalja on hyvää", "Kalja", "Kalja", "Kalja on pahaa", "Moi", "Moro!", "Moro!", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Hyvää", "Hyvää yötä", "Hyvää yötä", "Öitä!", "Öitä!", "Mene nukkumaan.", "Mene nukkumaan.", "Niin menenkin.", "Niin menenkin.", "Huomenta", "Huomenta", "Hyvää huomenta!", "Hyvää huomenta!", "Pitäisikö mennä nukkumaan?", "Pitäisikö mennä nukkumaan?", "Pitäisi.", "Pitäisi.", "Onko?", "Onko?", "Kalja on loppu.", "Kalja on hyvää", "Kalja on hyvää", "Kalja", "Kalja", "Kalja on pahaa", "Moi", "Moro!", "Moro!", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Hyvää", "Hyvää yötä", "Hyvää yötä", "Öitä!", "Öitä!", "Mene nukkumaan.", "Mene nukkumaan.", "Niin menenkin.", "Niin menenkin.", "Huomenta", "Huomenta", "Hyvää huomenta!", "Hyvää huomenta!", "Pitäisikö mennä nukkumaan?", "Pitäisikö mennä nukkumaan?", "Pitäisi.", "Pitäisi.", "Onko?", "Onko?", "On.Onko?", "On.Onko?", "Ei ole.Kalja", "Ei ole.Kalja", "Kalja on hyvää", "Kalja on hyvää", "Kalja", "Kalja", "Kalja on pahaa", "Moi", "Moro!", "Moro!", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Hyvää", "Hyvää yötä", "Hyvää yötä", "Öitä!", "Öitä!", "Mene nukkumaan.", "Mene nukkumaan.", "Niin menenkin.", "Niin menenkin.", "Huomenta", "Huomenta", "Hyvää huomenta!", "Hyvää huomenta!", "Pitäisikö mennä nukkumaan?", "Pitäisikö mennä nukkumaan?", "Pitäisi.", "Pitäisi.", "Onko?", "Onko?", "On.Onko?", "On.Onko?", "Ei ole.Kalja", "Ei ole.Kalja", "Kalja on hyvää", "Kalja on hyvää", "Kalja", "Kalja", "Kalja on pahaa", "Moi", "Moro!", "Moro!", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Hyvää", "Hyvää yötä", "Hyvää yötä", "Öitä!", "Öitä!", "Mene nukkumaan.", "Mene nukkumaan.", "Niin menenkin.", "Niin menenkin.", "Huomenta", "Huomenta", "Hyvää huomenta!", "Hyvää huomenta!", "Pitäisikö mennä nukkumaan?", "Pitäisikö mennä nukkumaan?", "Pitäisi.", "Pitäisi.", "Onko?", "Onko?", "On.Onko?", "On.Onko?", "Ei ole.Kalja", "Ei ole.Kalja", "Kalja on hyvää", "Kalja on hyvää", "Kalja", "Kalja", "Kalja on pahaa", "Moi", "Moro!", "Moro!", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Hyvää", "Hyvää yötä", "Hyvää yötä", "Öitä!", "Öitä!", "Mene nukkumaan.", "Mene nukkumaan.", "Niin menenkin.", "Niin menenkin.", "Huomenta", "Huomenta", "Hyvää huomenta!", "Hyvää huomenta!", "Pitäisikö mennä nukkumaan?", "Pitäisikö mennä nukkumaan?", "Pitäisi.", "Pitäisi.", "Onko?", "Onko?", "On.Onko?", "On.Onko?", "Ei ole.Kalja", "Ei ole.Kalja", "Kalja on hyvää", "Kalja on hyvää", "Kalja", "Kalja", "Kalja on pahaa", "Moi", "Moro!", "Moro!", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Hyvää", "Hyvää yötä", "Hyvää yötä", "Öitä!", "Öitä!", "Mene nukkumaan.", "Mene nukkumaan.", "Niin menenkin.", "Niin menenkin.", "Huomenta", "Huomenta", "Hyvää huomenta!", "Hyvää huomenta!", "Pitäisikö mennä nukkumaan?", "Pitäisikö mennä nukkumaan?", "Pitäisi.", "Pitäisi.", "Onko?", "Onko?", "On.Onko?", "On.Onko?", "Ei ole.Kalja", "Ei ole.Kalja", "Kalja on hyvää", "Kalja on hyvää", "Kalja", "Kalja", "Kalja on pahaa", "Moi", "Moro!", "Moro!", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Hyvää", "Hyvää yötä", "Hyvää yötä", "Öitä!", "Öitä!", "Mene nukkumaan.", "Mene nukkumaan.", "Niin menenkin.", "Niin menenkin.", "Huomenta", "Huomenta", "Hyvää huomenta!", "Hyvää huomenta!", "Pitäisikö mennä nukkumaan?", "Pitäisikö mennä nukkumaan?", "Pitäisi.", "Pitäisi.", "Onko?", "Onko?", "On.Onko?", "On.Onko?", "Ei ole.Kalja", "Ei ole.Kalja", "Kalja on hyvää", "Kalja on hyvää", "Kalja", "Kalja", "Kalja on pahaa", "Moi", "Moro!", "Moro!", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Hyvää", "Hyvää yötä", "Hyvää yötä", "Öitä!", "Öitä!", "Mene nukkumaan.", "Mene nukkumaan.", "Niin menenkin.", "Niin menenkin.", "Huomenta", "Huomenta", "Hyvää huomenta!", "Hyvää huomenta!", "Pitäisikö mennä nukkumaan?", "Pitäisikö mennä nukkumaan?", "Pitäisi.", "Pitäisi.", "Onko?", "Onko?", "On.Onko?", "On.Onko?", "Ei ole.Kalja", "Ei ole.Kalja", "Kalja on hyvää", "Kalja on hyvää", "Kalja", "Kalja", "Kalja on pahaa", "Moi moi.", "Moi", "Moi", "Moro!", "Moi", "Moro!", "Moro!", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Hyvää", "Hyvää yötä", "Hyvää yötä", "Öitä!", "Öitä!", "Mene nukkumaan.", "Mene nukkumaan.", "Niin menenkin.", "Niin menenkin.", "Huomenta", "Huomenta", "Hyvää huomenta!", "Hyvää huomenta!", "Pitäisikö mennä nukkumaan?", "Pitäisikö mennä nukkumaan?", "Pitäisi.", "Pitäisi.", "Onko?", "Onko?", "On.Onko?", "On.Onko?", "Ei ole.Kalja", "Ei ole.Kalja", "Kalja on hyvää", "Kalja on hyvää", "Kalja", "Kalja", "Kalja on pahaa", "Moi", "Moro!", "Moro!", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Hyvää", "Hyvää yötä", "Hyvää yötä", "Öitä!", "Öitä!", "Mene nukkumaan.", "Mene nukkumaan.", "Niin menenkin.", "Niin menenkin.", "Huomenta", "Huomenta", "Hyvää huomenta!", "Hyvää huomenta!", "Pitäisikö mennä nukkumaan?", "Pitäisikö mennä nukkumaan?", "Pitäisi.", "Pitäisi.", "Onko?", "Onko?", "On.Onko?", "On.Onko?", "Ei ole.Kalja", "Ei ole.Kalja", "Kalja on hyvää", "Kalja on hyvää", "Kalja", "Kalja", "Kalja on pahaa", "Moi", "Moro!", "Moro!", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Hyvää", "Hyvää yötä", "Hyvää yötä", "Öitä!", "Öitä!", "Mene nukkumaan.", "Mene nukkumaan.", "Niin menenkin.", "Niin menenkin.", "Huomenta", "Huomenta", "Hyvää huomenta!", "Hyvää huomenta!", "Pitäisikö mennä nukkumaan?", "Pitäisikö mennä nukkumaan?", "Pitäisi.", "Pitäisi.", "Onko?", "Onko?", "On.Onko?", "On.Onko?", "Ei ole.Kalja", "Ei ole.Kalja", "Kalja on hyvää", "Kalja on hyvää", "Kalja", "Kalja", "Kalja on pahaa", "Moi", "Eiks nii", "Eiks nii", "Iltaa", "Moi", "Moro!", "Moro!", "Mitä kuuluu?", "Mitä kuuluu?", "Hyvää", "Hyvää", "Hyvää yötä", "Hyvää yötä", "Öitä!", "Öitä!", "Mene nukkumaan.", "Mene nukkumaan.", "Niin menenkin.", "Niin menenkin.", "Huomenta", "Huomenta", "Hyvää huomenta!", "Hyvää huomenta!", "Pitäisikö mennä nukkumaan?", "Pitäisikö mennä nukkumaan?", "Pitäisi.", "Pitäisi.", "Kalja", "Kalja on hyvää.", "Kalja", "Kalja", "Kalja on pahaa", "Onko kaikki hyvin?", "On.", "Onko kaikki hyvin?", "Ei ole."
 ]
 
 trainer = ListTrainer(chatbot)
 
-trainer.train(conversation)
+trainer.train(conversations)
 
 # Stores data in file so that it can remember
 trainer.export_for_training('./export.json')
@@ -81,13 +62,14 @@ def talkbot_all(bot, trigger):
 @sopel.module.nickname_commands('.*')
 
 def talkbot(bot, trigger):
-    query = trigger.replace('!', '')
+    only_message_check_only = trigger.split(": ", 1)
 
-    only_message = query.split(": ", 1)[1] 
+    if len(only_message_check_only) >= 2 and only_message_check_only[1]:
+      only_message = query.split(": ", 1)[1]
 
-    # Parrot mode:
-    #bot.reply(only_message)
+      # Parrot mode:
+      #bot.reply(only_message)
 
-    request = only_message
-    response = chatbot.get_response(request)
-    bot.reply(response)
+      request = only_message
+      response = chatbot.get_response(request)
+      bot.reply(response)
