@@ -42,7 +42,7 @@ trainer.export_for_training('./export.json')
 
 import sopel.module
 
-@sopel.module.rule('[^*]*')
+@sopel.module.rule('[^\*]*')
 
 def talkbot_all(bot, trigger):
     only_message_all_check_only = trigger.split(": ", 1)
@@ -60,7 +60,7 @@ def talkbot_all(bot, trigger):
       #bot.say(only_message_all_no_colons)
       chatbot.get_response(only_message_all_no_colons)
 
-@sopel.module.nickname_commands('[^*]*')
+@sopel.module.nickname_commands('[^\*]*')
 
 def talkbot(bot, trigger):
     only_message_check_only = trigger.split(": ", 1)
