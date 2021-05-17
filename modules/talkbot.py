@@ -16,8 +16,22 @@ import sys
 
 from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer
+from chatterbot.logic import LogicAdapter
+from chatterbot import filters
 
-chatbot = ChatBot('kummitus')
+# Create a new instance of a ChatBot
+chatbot = ChatBot(
+    'kummitus',
+    storage_adapter='chatterbot.storage.SQLStorageAdapter',
+    logic_adapters=[
+        {
+            "chatterbot.logic.MathematicalEvaluation",
+            'import_path': 'chatterbot.logic.BestMatch',
+            'default_response': 'En ymmärrä. Opettelen vielä...',
+            'maximum_similarity_threshold': 0.90
+        }
+    ]
+)
 #trainer = ChatterBotCorpusTrainer(chatbot)
 
 #trainer.train(
@@ -58,7 +72,6 @@ def talkbot_all(bot, trigger):
       #bot.say(only_message_all_no_colons)
       chatbot.get_response(only_message_all_no_colons)
 
-
 @sopel.module.nickname_commands('.*')
 
 def talkbot(bot, trigger):
@@ -70,6 +83,10 @@ def talkbot(bot, trigger):
       # Parrot mode:
       #bot.reply(only_message)
 
-      request = only_message
-      response = chatbot.get_response(request)
-      bot.reply(response)
+      if chatbot.confidence > 0.80:
+        request = only_message
+        response = chatbot.get_response(request)
+        bot.reply(response)
+      
+      if chatbot.confidence < 0.80:
+        bot.reply('En ymmärrä. Opettelen vielä...')
