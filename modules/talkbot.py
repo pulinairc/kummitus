@@ -32,14 +32,6 @@ chatbot = ChatBot(
 trainer = ChatterBotCorpusTrainer(chatbot)
 
 from chatterbot.trainers import ListTrainer
-
-trainer.train(
-    "./export.json"
-)
-
-# Stores data in file so that it can remember
-trainer.export_for_training('./export.json')
-
 import sopel.module
 
 @sopel.module.rule('[^\*]*')
