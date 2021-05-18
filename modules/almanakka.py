@@ -5,6 +5,7 @@ Licensed under the Eiffel Forum License 2.
 http://sopel.chat/
 """
 import schedule
+import time
 import sopel.module
 from sopel.module import commands
 from bs4 import BeautifulSoup
@@ -12,15 +13,15 @@ import requests
 import datetime
 from babel.dates import format_date, format_datetime, format_time
 
-def scheduled_message(bot):
+def job_that_executes_once(bot):
     bot.say('This is the scheduled message.')
+    return schedule.CancelJob
 
-def setup(bot):
-    schedule.every.day.at('21:46:00').do(scheduled_message, bot=bot)
+schedule.every().day.at('21:48').do(job_that_executes_once)
 
-@module.interval(1)
-def run_schedule(bot):
+while True:
     schedule.run_pending()
+    time.sleep(1)
 
 @commands(u'almanakka', u'tänään', u'nimipäivät', 'pvm')
 def almanakka(bot, trigger):
