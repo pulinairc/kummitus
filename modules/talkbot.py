@@ -25,14 +25,18 @@ chatbot = ChatBot(
     'kummitus',
     storage_adapter='chatterbot.storage.MongoDatabaseAdapter',
     logic_adapters=[
-        "chatterbot.logic.ClosestMeaningAdapter",
-        "chatterbot.logic.ClosestMatchAdapter"
+        {
+            "import_path": "chatterbot.logic.BestMatch",
+            "statement_comparison_function": chatterbot.comparisons.levenshtein_distance,
+            "response_selection_method": chatterbot.response_selection.get_first_response
+        }
     ],
     database_uri='mongodb://localhost:27017/chatterbot-database'
 )
 
-#trainer = ChatterBotCorpusTrainer(chatbot)
-#from chatterbot.trainers import ListTrainer
+trainer = ChatterBotCorpusTrainer(chatbot)
+
+from chatterbot.trainers import ListTrainer
 
 # trainer.train(
 #     "./training/pulina-2008-04.log.json",
