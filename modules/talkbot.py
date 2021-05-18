@@ -25,7 +25,7 @@ from chatterbot.filters import RepetitiveResponseFilter
 chatbot = ChatBot(
     'kummitus',
     storage_adapter='chatterbot.storage.MongoDatabaseAdapter',
-    filters=["chatterbot.filters.RepetitiveResponseFilter"],
+    filters=[RepetitiveResponseFilter],
     logic_adapters=[
         "chatterbot.logic.ClosestMeaningAdapter",
         "chatterbot.logic.ClosestMatchAdapter"
