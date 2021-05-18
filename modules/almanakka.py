@@ -17,7 +17,7 @@ def job_that_executes_once(bot):
     bot.say('This is the scheduled message.', '#pulina')
     return schedule.CancelJob
 
-schedule.every().day.at('21:48').do(job_that_executes_once)
+schedule.every().day.at('21:50').do(job_that_executes_once)
 
 while True:
     schedule.run_pending()
