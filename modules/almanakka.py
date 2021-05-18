@@ -16,9 +16,9 @@ def scheduled_message(bot):
     bot.say('This is the scheduled message.', '#pulina')
 
 def setup(bot):
-    schedule.every.day.at('21:54:00').do(scheduled_message, bot=bot)
+    schedule.every.day.at('21:58').do(scheduled_message, bot=bot)
 
-@module.interval(1)
+@sopel.module.interval(60)
 def run_schedule(bot):
     schedule.run_pending()
     
