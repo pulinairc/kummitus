@@ -8,11 +8,14 @@ import sopel.module
 from sopel.module import commands
 from bs4 import BeautifulSoup
 import requests
+import datetime
+from babel.dates import format_date, format_datetime, format_time
 
 @commands(u'almanakka', u'tänään', u'nimipäivät', 'pvm')
 def almanakka(bot, trigger):
     
     url = "https://almanakka.helsinki.fi/"
+    now = datetime.datetime.now()
 
     # Get HTML page
     user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.36'
@@ -23,5 +26,6 @@ def almanakka(bot, trigger):
     soup = BeautifulSoup(req.text, "html.parser")
     day = soup.select("#rt-sidebar-a > div.rt-block.nosto > div > div > h2")
     names = soup.select("#rt-sidebar-a > div.rt-block.nosto > div > div > p:nth-child(3)")
+    findate = format_date(now, locale='fi_FI')
 
-    bot.say('\x02' + day[0].text.strip() + '\x0F. ' + names[0].text.strip() + '')
+    bot.say('\x02' + findate + '\x0F. ' + names[0].text.strip() + '')
