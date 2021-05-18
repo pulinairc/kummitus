@@ -19,13 +19,11 @@ from chatterbot.trainers import ChatterBotCorpusTrainer
 from chatterbot.logic import LogicAdapter
 from chatterbot.comparisons import levenshtein_distance
 from chatterbot import filters
-from chatterbot.filters import RepetitiveResponseFilter
 
 # Create a new ChatBot instance
 chatbot = ChatBot(
     'kummitus',
     storage_adapter='chatterbot.storage.MongoDatabaseAdapter',
-    filters=[RepetitiveResponseFilter],
     logic_adapters=[
         "chatterbot.logic.ClosestMeaningAdapter",
         "chatterbot.logic.ClosestMatchAdapter"
