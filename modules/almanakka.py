@@ -30,7 +30,7 @@ def scheduled_message(bot):
     bot.say('Tänään on \x02' + findate + '\x0F. ' + names[0].text.strip() + '', '#pulina')
 
 def setup(bot):
-    schedule.every().day.at('22:25').do(scheduled_message, bot=bot)
+    schedule.every().day.at('22:27').do(scheduled_message, bot=bot)
 
 @sopel.module.interval(60)
 def run_schedule(bot):
