@@ -17,7 +17,6 @@ import sys
 from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer
 from chatterbot.logic import LogicAdapter
-from chatterbot.comparisons import levenshtein_distance
 from chatterbot import filters
 
 # Create a new ChatBot instance
@@ -25,11 +24,7 @@ chatbot = ChatBot(
     'kummitus',
     storage_adapter='chatterbot.storage.MongoDatabaseAdapter',
     logic_adapters=[
-      {
-          "import_path": "chatterbot.logic.BestMatch",
-          "response_selection_method": "chatterbot.comparisons.levenshtein_distance",
-          "statement_comparison_function": "chatterbot.response_selection.get_first_response"       
-      }
+        'chatterbot.logic.BestMatch'
     ],
     database_uri='mongodb://localhost:27017/chatterbot-database'
 )
