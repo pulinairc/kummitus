@@ -33,7 +33,7 @@ trainer = ChatterBotCorpusTrainer(chatbot)
 
 from chatterbot.trainers import ListTrainer
 
-# trainer.train(
+trainer.train(
 #     "./training/pulina-2008-04.log.json",
 #     "./training/pulina-2008-05.log.json",
 #     "./training/pulina-2008-06.log.json",
@@ -178,21 +178,21 @@ from chatterbot.trainers import ListTrainer
 #     "./training/pulina-2020-01.log.json",
 #     "./training/pulina-2020-02.log.json",
 #     "./training/pulina-2020-03.log.json",
-#     "./training/pulina-2020-04.log.json",
-#     "./training/pulina-2020-05.log.json",
-#     "./training/pulina-2020-06.log.json",
-#     "./training/pulina-2020-07.log.json",
-#     "./training/pulina-2020-08.log.json",
-#     "./training/pulina-2020-09.log.json",
-#     "./training/pulina-2020-10.log.json",
-#     "./training/pulina-2020-11.log.json",
-#     "./training/pulina-2020-12.log.json",
-#     "./training/pulina-2021-01.log.json",
-#     "./training/pulina-2021-02.log.json",
-#     "./training/pulina-2021-03.log.json",
-#     "./training/pulina-2021-04.log.json",
+    "./training/pulina-2020-04.log.json",
+    "./training/pulina-2020-05.log.json",
+    "./training/pulina-2020-06.log.json",
+    "./training/pulina-2020-07.log.json",
+    "./training/pulina-2020-08.log.json",
+    "./training/pulina-2020-09.log.json",
+    "./training/pulina-2020-10.log.json",
+    "./training/pulina-2020-11.log.json",
+    "./training/pulina-2020-12.log.json",
+    "./training/pulina-2021-01.log.json",
+    "./training/pulina-2021-02.log.json",
+    "./training/pulina-2021-03.log.json",
+    "./training/pulina-2021-04.log.json",
 #     "./training/pulina-2021-05.log.json"
-# )
+)
 
 import sopel.module
 
