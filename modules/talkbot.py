@@ -17,21 +17,23 @@ import sys
 from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer
 from chatterbot.logic import LogicAdapter
+from chatterbot.comparisons import levenshtein_distance
 from chatterbot import filters
 
 # Create a new ChatBot instance
 chatbot = ChatBot(
     'kummitus',
     storage_adapter='chatterbot.storage.MongoDatabaseAdapter',
+    filters=["chatterbot.filters.RepetitiveResponseFilter"],
     logic_adapters=[
-        'chatterbot.logic.BestMatch'
+        "chatterbot.adapters.logic.ClosestMeaningAdapter",
+        "chatterbot.adapters.logic.ClosestMatchAdapter"
     ],
     database_uri='mongodb://localhost:27017/chatterbot-database'
 )
 
-trainer = ChatterBotCorpusTrainer(chatbot)
-
-from chatterbot.trainers import ListTrainer
+#trainer = ChatterBotCorpusTrainer(chatbot)
+#from chatterbot.trainers import ListTrainer
 
 # trainer.train(
 #     "./training/pulina-2008-04.log.json",
