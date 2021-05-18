@@ -12,11 +12,8 @@ import requests
 import datetime
 from babel.dates import format_date, format_datetime, format_time
 
-def scheduled_message(bot):
-    bot.say('This is the scheduled message.', '#pulina')
-
 def setup(bot):
-    schedule.every().day.at('22:00').do(scheduled_message, bot=bot)
+    schedule.every().day.at('22:04').do(almanakka, bot=bot)
 
 @sopel.module.interval(60)
 def run_schedule(bot):
@@ -39,4 +36,4 @@ def almanakka(bot, trigger):
     names = soup.select("#rt-sidebar-a > div.rt-block.nosto > div > div > p:nth-child(3)")
     findate = format_date(now, format='full', locale='fi_FI')
 
-    bot.say('Tänään on \x02' + findate + '\x0F. ' + names[0].text.strip() + '')
+    bot.say('Tänään on \x02' + findate + '\x0F. ' + names[0].text.strip() + '', '#pulina')
