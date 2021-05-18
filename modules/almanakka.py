@@ -13,7 +13,7 @@ import datetime
 from babel.dates import format_date, format_datetime, format_time
 
 def setup(bot):
-    schedule.every().day.at('22:18').do(almanakka, bot=bot, trigger='pvm')
+    schedule.every().day.at('22:19').do(almanakka, bot=bot, trigger='!pvm')
 
 @sopel.module.interval(60)
 def run_schedule(bot):
