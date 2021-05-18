@@ -220,17 +220,17 @@ import sopel.module
 
 def talkbot(bot, trigger):
 
-    # Coin flip
-    result = random.randrange(2)
+    ## Coin flip
+    #result = random.randrange(2)
 
-    if result == 0:
-      # "Heads"
-      query = trigger.replace('!', '')
-      uri = 'http://www.lintukoto.net/viihde/oraakkeli/index.php?kysymys=%s&html' % query
-      answer = requests.get(uri, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36'}).text
-      bot.reply(answer)
+    #if result == 0:
+    #  # "Heads"
+    #  query = trigger.replace('!', '')
+    #  uri = 'http://www.lintukoto.net/viihde/oraakkeli/index.php?kysymys=%s&html' % query
+    #  answer = requests.get(uri, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36'}).text
+    #  bot.reply(answer)
 
-    else:
+    #else:
       # "Tails"
       only_message_check_only = trigger.split(": ", 1)
 
