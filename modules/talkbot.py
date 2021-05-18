@@ -195,6 +195,7 @@ chatbot = ChatBot(
 
 import sopel.module
 
+# Learn everything (for some reason this regex causes problems when someone says ":(" for example):
 @sopel.module.rule('[^\*]*')
 
 def talkbot_all(bot, trigger):
@@ -208,7 +209,7 @@ def talkbot_all(bot, trigger):
       chatbot.get_response(only_message_all)
     else:
       only_message_all_no_colons = trigger
-      
+
       # Parrot mode:
       #bot.say(only_message_all_no_colons)
       chatbot.get_response(only_message_all_no_colons)
