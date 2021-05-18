@@ -13,7 +13,7 @@ import datetime
 from babel.dates import format_date, format_datetime, format_time
 
 def setup(bot):
-    schedule.every().day.at('22:13').do(almanakka, bot=bot)
+    schedule.every().day.at('22:13').do(almanakka, bot=bot, trigger=None)
 
 @sopel.module.interval(60)
 def run_schedule(bot):
@@ -24,9 +24,6 @@ def almanakka(bot, trigger):
     
     url = "https://almanakka.helsinki.fi/"
     now = datetime.datetime.now()
-
-    if not trigger:
-      trigger = None
 
     # Get HTML page
     user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.36'
