@@ -31,10 +31,10 @@ chatbot = ChatBot(
 )
 
 # Enable/disable these lines based on when you want to train new data
-# trainer = ChatterBotCorpusTrainer(chatbot)
-# from chatterbot.trainers import ListTrainer
+ trainer = ChatterBotCorpusTrainer(chatbot)
+ from chatterbot.trainers import ListTrainer
 
-# trainer.train(
+ trainer.train(
 #     "./training/pulina-2008-04.log.json",
 #     "./training/pulina-2008-05.log.json",
 #     "./training/pulina-2008-06.log.json",
@@ -137,7 +137,7 @@ chatbot = ChatBot(
 #     "./training/pulina-2016-07.log.json",
 #     "./training/pulina-2016-08.log.json",
 #     "./training/pulina-2016-09.log.json",
-#     "./training/pulina-2016-10.log.json",
+     "./training/pulina-2016-10.log.json",
 #     "./training/pulina-2016-11.log.json",
 #     "./training/pulina-2016-12.log.json",
 #     "./training/pulina-2017-01.log.json",
@@ -182,7 +182,7 @@ chatbot = ChatBot(
 #     "./training/pulina-2020-04.log.json",
 #     "./training/pulina-2020-05.log.json",
 #     "./training/pulina-2020-06.log.json",
-#     "./training/pulina-2020-07.log.json",
+     "./training/pulina-2020-07.log.json",
 #     "./training/pulina-2020-08.log.json",
 #     "./training/pulina-2020-09.log.json",
 #     "./training/pulina-2020-10.log.json",
@@ -191,9 +191,9 @@ chatbot = ChatBot(
 #     "./training/pulina-2021-01.log.json",
 #     "./training/pulina-2021-02.log.json",
 #     "./training/pulina-2021-03.log.json",
-#     "./training/pulina-2021-04.log.json",
+     "./training/pulina-2021-04.log.json",
 #     "./training/pulina-2021-05.log.json"
-#)
+)
 
 import sopel.module
 
@@ -232,10 +232,12 @@ def talkbot(bot, trigger):
 
     #else:
       # "Tails"
+
       only_message_check_only = trigger.split(": ", 1)
 
       if len(only_message_check_only) >= 2 and only_message_check_only[1]:
-        only_message = trigger.split(": ", 1)[1]
+        query = trigger.replace('!', '')
+        only_message = query.split(": ", 1)[1]
 
         # Parrot mode:
         #bot.reply(only_message)
