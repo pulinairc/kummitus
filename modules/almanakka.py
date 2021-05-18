@@ -26,6 +26,6 @@ def almanakka(bot, trigger):
     soup = BeautifulSoup(req.text, "html.parser")
     day = soup.select("#rt-sidebar-a > div.rt-block.nosto > div > div > h2")
     names = soup.select("#rt-sidebar-a > div.rt-block.nosto > div > div > p:nth-child(3)")
-    findate = format_date(now, locale='fi_FI')
+    findate = format_date(now, format='full', locale='fi_FI')
 
-    bot.say('\x02' + findate + '\x0F. ' + names[0].text.strip() + '')
+    bot.say('Tänään on \x02' + findate + '\x0F. ' + names[0].text.strip() + '')
