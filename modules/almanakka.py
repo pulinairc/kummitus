@@ -16,7 +16,7 @@ def scheduled_message(bot):
     bot.say('This is the scheduled message.')
 
 def setup(bot):
-    schedule.every.day.at('21:44:00').do(scheduled_message, bot=bot)
+    schedule.every.day.at('21:45:00').do(scheduled_message, bot=bot)
 
 @module.interval(1)
 def run_schedule(bot):
