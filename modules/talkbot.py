@@ -31,10 +31,10 @@ chatbot = ChatBot(
 )
 
 # Enable/disable these lines based on when you want to train new data
- trainer = ChatterBotCorpusTrainer(chatbot)
- from chatterbot.trainers import ListTrainer
+trainer = ChatterBotCorpusTrainer(chatbot)
+from chatterbot.trainers import ListTrainer
 
- trainer.train(
+trainer.train(
 #     "./training/pulina-2008-04.log.json",
 #     "./training/pulina-2008-05.log.json",
 #     "./training/pulina-2008-06.log.json",
