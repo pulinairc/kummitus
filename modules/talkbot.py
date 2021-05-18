@@ -29,9 +29,8 @@ chatbot = ChatBot(
     database_uri='mongodb://localhost:27017/chatterbot-database'
 )
 
-trainer = ChatterBotCorpusTrainer(chatbot)
-
-from chatterbot.trainers import ListTrainer
+# trainer = ChatterBotCorpusTrainer(chatbot)
+# from chatterbot.trainers import ListTrainer
 
 # trainer.train(
 #     "./training/pulina-2008-04.log.json",
