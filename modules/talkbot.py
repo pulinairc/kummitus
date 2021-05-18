@@ -13,6 +13,7 @@ from sopel.module import commands, example
 import requests
 import xmltodict
 import sys
+import random
 
 from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer
@@ -29,6 +30,7 @@ chatbot = ChatBot(
     database_uri='mongodb://localhost:27017/chatterbot-database'
 )
 
+# Enable/disable these lines based on when you want to train new data
 # trainer = ChatterBotCorpusTrainer(chatbot)
 # from chatterbot.trainers import ListTrainer
 
@@ -196,27 +198,41 @@ chatbot = ChatBot(
 import sopel.module
 
 # Learn everything (for some reason this regex causes problems when someone says ":(" for example):
-@sopel.module.rule('[^\*]*')
+#@sopel.module.rule(".*")
+#
+#def talkbot_all(bot, trigger):
+#    only_message_all_check_only = trigger.split(": ", 1)
+#
+#    if len(only_message_all_check_only) >= 2 and only_message_all_check_only[1]:
+#      only_message_all = trigger.split(": ", 1)[1]
+#
+#      # Parrot mode:
+#      #bot.say(only_message_all)
+#      chatbot.get_response(only_message_all)
+#    else:
+#      only_message_all_no_colons = trigger
+#
+#      # Parrot mode:
+#      #bot.say(only_message_all_no_colons)
+#      chatbot.get_response(only_message_all_no_colons)
 
-def talkbot_all(bot, trigger):
-    only_message_all_check_only = trigger.split(": ", 1)
-
-    if len(only_message_all_check_only) >= 2 and only_message_all_check_only[1]:
-      only_message_all = trigger.split(": ", 1)[1]
-
-      # Parrot mode:
-      #bot.say(only_message_all)
-      chatbot.get_response(only_message_all)
-    else:
-      only_message_all_no_colons = trigger
-
-      # Parrot mode:
-      #bot.say(only_message_all_no_colons)
-      chatbot.get_response(only_message_all_no_colons)
-
-@sopel.module.nickname_commands('[^\*]*')
+@sopel.module.nickname_commands(".*")
 
 def talkbot(bot, trigger):
+
+    # Coin flip
+    result = random.randrange(2)
+
+    if result == 0:
+      # "Heads"
+      query = trigger.replace('!', '')
+      uri = 'http://www.lintukoto.net/viihde/oraakkeli/index.php?kysymys=%s&html' % query
+      answer = requests.get(uri, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36'}).text
+      bot.reply(answer)
+
+    else:
+      # "Tails"
+
     only_message_check_only = trigger.split(": ", 1)
 
     if len(only_message_check_only) >= 2 and only_message_check_only[1]:
@@ -228,11 +244,3 @@ def talkbot(bot, trigger):
       request = only_message
       response = chatbot.get_response(request)
       bot.reply(response)
-
-      #if chatbot.confidence > 0.80:
-      #  request = only_message
-      #  response = chatbot.get_response(request)
-      #  bot.reply(response)
-      
-      #if chatbot.confidence < 0.80:
-      #  bot.reply('En ymmärrä. Opettelen vielä...')
