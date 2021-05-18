@@ -4,12 +4,23 @@ Copyright 2020, Roni "rolle" Laukkarinen <roni@dude.fi>
 Licensed under the Eiffel Forum License 2.
 http://sopel.chat/
 """
+import schedule
 import sopel.module
 from sopel.module import commands
 from bs4 import BeautifulSoup
 import requests
 import datetime
 from babel.dates import format_date, format_datetime, format_time
+
+def scheduled_message(bot):
+    bot.say('This is the scheduled message.')
+
+def setup(bot):
+    schedule.every.day.at('21:44:00').do(scheduled_message, bot=bot)
+
+@module.interval(1)
+def run_schedule(bot):
+    schedule.run_pending()
 
 @commands(u'almanakka', u'tänään', u'nimipäivät', 'pvm')
 def almanakka(bot, trigger):
