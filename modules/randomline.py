@@ -15,8 +15,6 @@ def randomline(bot, trigger):
     files = glob.glob("./training/*.json")
     file = random.choice(files)
 
-    with open(file) as f:
-        content = json.loads(f.read())
-        winner = choice(content)
-        line = json.dumps(winner, indent=4)
-        bot.say(line)
+    line = open(file).read()
+    loadlist = json.loads(line)
+    bot.say(random.choice(loadlist))
