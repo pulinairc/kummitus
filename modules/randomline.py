@@ -14,5 +14,5 @@ import random
 def randomline(bot, trigger):
     files = glob.glob("/home/rolle/.sopel/training/*.json")
     file = random.choice(files)
-    line = random.choice(list(open(file)))[:-1].replace('"', '')
+    line = random.choice(list(open(file))).replace('",', '').replace('"', '')
     bot.say(line)
