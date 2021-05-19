@@ -14,11 +14,4 @@ import random
 def randomline(bot, trigger):
     files = glob.glob("./training/*.json")
     file = random.choice(files)
-  
-    with open(file) as fp:
-        data = json.load(fp)
-        lines = data["conversations"]
-        random_index = randint(0, len(questions)-1)
-        randomline = lines[random_index]['lines']
-
-        bot.say(randomline)
+    bot.say(file)
