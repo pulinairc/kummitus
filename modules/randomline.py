@@ -12,7 +12,7 @@ import random
 @sopel.module.commands('randomjuttu')
 
 def randomline(bot, trigger):
-    files = glob.glob("/home/rolle/.sopel/training/*.json").replace('"', '').rstrip(',')
+    files = glob.glob("/home/rolle/.sopel/training/*.json")
     file = random.choice(files)
-    line = random.choice(list(open(file)))
+    line = random.choice(list(open(file))).replace('"', '').rstrip(',')
     bot.say(line)
