@@ -35,6 +35,8 @@ chatbot = ChatBot(
 #from chatterbot.trainers import ListTrainer
 
 #trainer.train(
+#      "./training/oraakkeli.yml"
+#      "./training/oraakkeli.json"
 #     "./training/pulina-2008-04.log.json",
 #     "./training/pulina-2008-05.log.json",
 #     "./training/pulina-2008-06.log.json",
