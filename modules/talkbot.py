@@ -19,6 +19,8 @@ from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer
 from chatterbot.logic import LogicAdapter
 from chatterbot import filters
+import chatterbot.comparisons
+import chatterbot.response_selection
 
 # Create a new ChatBot instance
 chatbot = ChatBot(
