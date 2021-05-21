@@ -25,7 +25,11 @@ chatbot = ChatBot(
     'kummitus',
     storage_adapter='chatterbot.storage.MongoDatabaseAdapter',
     logic_adapters=[
-        'chatterbot.logic.BestMatch'
+        {
+            'import_path': 'chatterbot.logic.BestMatch',
+            'default_response': 'Pahoitteluni, mutta en osaa vastata.',
+            'maximum_similarity_threshold': 0.90
+        }
     ],
     database_uri='mongodb://localhost:27017/chatterbot-database'
 )
