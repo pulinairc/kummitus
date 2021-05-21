@@ -7,4 +7,4 @@ import sopel.module
 
 @sopel.module.commands('komennot')
 def commands(bot, trigger):
-    bot.say('Bottien komennot: https://www.pulina.fi/komennot')
+    bot.say('Kanavakomennot: https://www.pulina.fi/komennot')
