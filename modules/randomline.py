@@ -9,7 +9,7 @@ import json
 import sopel.module
 import random
 
-@sopel.module.commands('randomjuttu')
+@sopel.module.commands('randomjuttu', 'rj')
 
 def randomline(bot, trigger):
     files = glob.glob("/home/rolle/.sopel/training/*.json")

@@ -6,7 +6,7 @@ Made by Roni "rolle" Laukkarinen
 import sopel.module
 import random
 
-@sopel.module.commands('aijamatto', 'äijämatto', 'äm', 'äijästoori')
+@sopel.module.commands('aijamatto', 'äijämatto', 'äm', 'äijästoori', 'äijämättö')
 
 def aijamatto(bot, trigger):
     matto = random.choice(list(open('/home/rolle/.sopel/modules/aijamatto.txt')))
