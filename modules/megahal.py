@@ -30,8 +30,8 @@ def talkbot(bot, trigger):
 
     if len(only_message_check_only) >= 2 and only_message_check_only[1]:
       query = trigger.replace('!', '')
-        only_message = query.split(": ", 1)[1]
+      only_message = query.split(": ", 1)[1]
 
-        request = only_message
-        response = b.reply(request)
-        bot.reply(response)
+      request = only_message
+      response = b.reply(request)
+       bot.reply(response)
