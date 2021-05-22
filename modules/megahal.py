@@ -6,7 +6,6 @@ Licensed under the WTFPL. Do whatever the fuck you want with this. You just
 A module for the Sopel IRC Bots.
 """
 
-import megahal
 from megahal import *
 import sopel.module
 
