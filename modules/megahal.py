@@ -34,4 +34,4 @@ def talkbot(bot, trigger):
 
       request = only_message
       response = b.reply(request)
-       bot.reply(response)
+      bot.reply(response)
