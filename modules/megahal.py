@@ -1,5 +1,5 @@
 """
-talkbot.py - MegaHAL for sopel IRC bot
+megahal.py - MegaHAL for sopel IRC bot
 Copyright 2021, Roni Laukkarinen [roni@dude.fi]"
 Licensed under the WTFPL. Do whatever the fuck you want with this. You just
   can't hold me responsible if it breaks something either.
@@ -15,7 +15,7 @@ b.learn('./trainerfile.txt')
 # Learn everything (for some reason this regex causes problems when someone says ":(" for example):
 @sopel.module.rule(".*")
 
-def talkbot_all(bot, trigger):
+def megahal_all(bot, trigger):
     only_message_all_check_only = trigger.split(": ", 1)
 
     if len(only_message_all_check_only) >= 2 and only_message_all_check_only[1]:
@@ -24,7 +24,7 @@ def talkbot_all(bot, trigger):
 
 @sopel.module.nickname_commands(".*")
 
-def talkbot(bot, trigger):
+def megahal(bot, trigger):
 
     only_message_check_only = trigger.split(": ", 1)
 
