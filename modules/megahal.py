@@ -6,7 +6,7 @@ Licensed under the WTFPL. Do whatever the fuck you want with this. You just
 A module for the Sopel IRC Bots.
 """
 
-from cobe.brain import Brain
+from megahal import *
 import sopel.module
 
 megahal = MegaHAL()
