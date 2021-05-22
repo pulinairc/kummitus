@@ -9,8 +9,8 @@ A module for the Sopel IRC Bots.
 from cobe.brain import Brain
 import sopel.module
 
-b = Brain("cobe.brain")
-b.learn('./trainerfile.txt')
+megahal = MegaHAL()
+megahal.train('/home/rolle/.sopel/trainerfile.txt')
 
 # Learn everything (for some reason this regex causes problems when someone says ":(" for example):
 @sopel.module.rule(".*")
@@ -20,7 +20,9 @@ def megahal_all(bot, trigger):
 
     if len(only_message_all_check_only) >= 2 and only_message_all_check_only[1]:
       only_message_all = trigger.split(": ", 1)[1]
-      b.learn
+      megahal.learn(only_message_all)
+      megahal.sync()
+      megahal.close() 
 
 @sopel.module.nickname_commands(".*")
 
@@ -33,5 +35,6 @@ def megahal(bot, trigger):
       only_message = query.split(": ", 1)[1]
 
       request = only_message
-      response = b.reply(request)
+      megahal.learn(only_message)
+      response = megahal.get_reply(request)
       bot.reply(response)
