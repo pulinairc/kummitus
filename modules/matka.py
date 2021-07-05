@@ -16,7 +16,6 @@ def module(bot, trigger):
         bot.reply('Tarvitaan lähtö- ja saapumispaikat')
     else:
         url = 'https://www.vaelimatka.org/route.json?stops=' + start + '|' + end
-        url = url.encode('latin-1')
-        response = urlopen(url)
+        response = urlopen(url).decode('utf-8')
         data_json = json.loads(response.read())
         bot.reply(data_json["distance"])
