@@ -63,8 +63,8 @@ def run_schedule(bot):
 def almanakka(bot, trigger):
     
     now = datetime.datetime.now()
-    day = now.strftime("%dd")
-    month = now.strftime("%mm")
+    day = now.strftime("%d")
+    month = now.strftime("%m")
 
     if os.path.exists(names_file):
       filehandle = open(names_file, 'r')
