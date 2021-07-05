@@ -11,13 +11,12 @@ import json
 def module(bot, trigger):
     start = trigger.group(3)
     end = trigger.group(4)
-    start = start.encode('latin-1').decode(encoding='utf-8', errors='strict')
-    end = end.encode('latin-1').decode(encoding='utf-8', errors='strict')
-
+    
     if not start or not end:
         bot.reply('Tarvitaan lähtö- ja saapumispaikat')
     else:
         url = 'https://www.vaelimatka.org/route.json?stops=' + start + '|' + end
+        url = url.encode('latin-1')
         response = urlopen(url)
         data_json = json.loads(response.read())
         bot.reply(data_json["distance"])
