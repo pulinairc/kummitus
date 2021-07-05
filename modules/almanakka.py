@@ -31,7 +31,7 @@ def scheduled_message(bot):
 
     findate = format_date(now, format='full', locale='fi_FI')
 
-    bot.say('Päivä vaihtui!Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s' % (findate, namedaynames_commalist), '#pulina')
+    bot.say('Päivä vaihtui!Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist), '#pulina')
 
 def scheduled_message_morning(bot):
     now = datetime.datetime.now()
@@ -48,7 +48,7 @@ def scheduled_message_morning(bot):
 
     findate = format_date(now, format='full', locale='fi_FI')
 
-    bot.say('Huomenta aamuvirkut! Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s' % (findate, namedaynames_commalist), '#pulina')
+    bot.say('Huomenta aamuvirkut! Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist), '#pulina')
 
 def setup(bot):
     schedule.every().day.at('00:00').do(scheduled_message, bot=bot)
@@ -75,4 +75,4 @@ def almanakka(bot, trigger):
 
     findate = format_date(now, format='full', locale='fi_FI')
 
-    bot.say('Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s' % (findate, namedaynames_commalist))
+    bot.say('Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist))
