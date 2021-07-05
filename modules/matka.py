@@ -4,6 +4,7 @@ Made by rolle
 """
 import sopel.module
 from urllib.request import urlopen
+from smartencoding import smart_unicode, smart_unicode_with_replace
 import json
 
 @sopel.module.example('!matka Helsinki Riihimäki')
@@ -15,7 +16,9 @@ def module(bot, trigger):
     if not start or not end:
         bot.reply('Tarvitaan lähtö- ja saapumispaikat')
     else:
-        url = 'https://www.vaelimatka.org/route.json?stops=' + start + '|' + end
-        response = urlopen(url)
+        url = 'https://www.vaelimatka.org/route.json?stops=%s|%s'
+        start = smart_unicode_with_replace(start)
+        end = smart_unicode_with_replace(end)
+        response = urlopen(url % (start, end))
         data_json = json.loads(response.read())
         bot.reply(data_json["distance"])
