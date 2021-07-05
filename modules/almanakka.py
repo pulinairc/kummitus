@@ -71,8 +71,9 @@ def almanakka(bot, trigger):
       data_json = json.loads(filehandle.read())
       filehandle.close()
 
-      names = data_json['%s-%s' % (month, day)]
+      namedaynames_raw = data_json['%s-%s' % (month, day)]
+      namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
 
     findate = format_date(now, format='full', locale='fi_FI')
 
-    bot.say('Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s' % (findate, names))
+    bot.say('Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s' % (findate, namedaynames_commalist))
