@@ -10,6 +10,7 @@ import json
 url = 'https://www.vaelimatka.org/route.json?stops=%s|%s'
 
 @sopel.module.example('!matka Helsinki Riihimäki')
+@sopel.module.commands('matka', 'välimatka', 'valimatka')
 def module(bot, trigger):
     start = trigger.group(1)
     end = trigger.group(2)
