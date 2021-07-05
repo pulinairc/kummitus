@@ -21,7 +21,7 @@ def module(bot, trigger):
         response = urlopen(url % (start.strip(), end.strip()))
         data_json = json.loads(response.read())
         distance = data_json["distance"]
-        unit = ' km'
+        unit = 'km'
         bot.reply('%s %s' % (
             distance,
             unit,
