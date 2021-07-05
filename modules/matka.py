@@ -3,10 +3,10 @@ matka.py
 Made by rolle
 """
 from __future__ import unicode_literals
-import sys
-sys.setdefaultencoding('UTF8')
-if sys.version_info[0] >= 3:
-    unicode = str
+import os
+import locale
+os.environ["PYTHONIOENCODING"] = "utf-8"
+scriptLocale=locale.setlocale(category=locale.LC_ALL, locale="fi_FI.UTF-8")
 import sopel.module
 from urllib.request import urlopen
 from smartencoding import smart_unicode, smart_unicode_with_replace
@@ -22,8 +22,8 @@ def module(bot, trigger):
         bot.reply('Tarvitaan lähtö- ja saapumispaikat')
     else:
         url = 'https://www.vaelimatka.org/route.json?stops=%s|%s'
-        start = unicode(start)
-        end = unicode(end)
+        start = start
+        end = end
         response = urlopen(url % (start, end))
         data_json = json.loads(response.read())
         bot.reply(data_json["distance"] + ' km')
