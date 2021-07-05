@@ -10,8 +10,8 @@ import json
 @sopel.module.example('!matka Helsinki Riihimäki')
 @sopel.module.commands('matka', 'välimatka', 'valimatka')
 def module(bot, trigger):
-    start = trigger.group(2)
-    end = trigger.group(3)
+    start = trigger.group(3).encode('utf-8')
+    end = trigger.group(4).encode('utf-8')
 
     if not start or not end:
         bot.reply('Tarvitaan lähtö- ja saapumispaikat')
