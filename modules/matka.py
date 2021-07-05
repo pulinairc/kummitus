@@ -7,13 +7,12 @@ import sopel.module
 from urllib.request import urlopen
 import json
 
-url = 'https://www.vaelimatka.org/route.json?stops=%s|%s'
-
 @sopel.module.example('!matka Helsinki Riihimäki')
 @sopel.module.commands('matka', 'välimatka', 'valimatka')
 def module(bot, trigger):
     start = trigger.group(1)
     end = trigger.group(2)
+    url = 'https://www.vaelimatka.org/route.json?stops=' + start + '|' + end
 
     if not start or not end:
         bot.reply('Tarvitaan lähtö- ja saapumispaikat')
