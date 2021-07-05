@@ -1,3 +1,4 @@
+  
 """
 matka.py
 Made by rolle
@@ -5,6 +6,8 @@ Made by rolle
 import sopel.module
 from urllib.request import urlopen
 import json
+
+url = 'https://www.vaelimatka.org/route.json?stops=%s|%s'
 
 @sopel.module.example('!matka Helsinki Riihimäki')
 @sopel.module.commands('matka', 'välimatka', 'valimatka')
@@ -15,7 +18,6 @@ def module(bot, trigger):
     if not start or not end:
         bot.reply('Tarvitaan lähtö- ja saapumispaikat')
     else:
-        url = 'https://www.vaelimatka.org/route.json?stops=' + start + '|' + end
-        response = urlopen(url)
+        response = urlopen(url % (start.strip(), end.strip()))
         data_json = json.loads(response.read())
-        bot.reply(data_json["distance"] + ' km')
+        bot.reply(data_json["distance"])
