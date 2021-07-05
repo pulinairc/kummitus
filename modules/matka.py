@@ -17,11 +17,6 @@ def module(bot, trigger):
     if not start or not end:
         bot.reply('Tarvitaan lähtö- ja saapumispaikat')
     
-    try:
-        response = urlopen(url)
-        data_json = json.loads(response.read())
-        bot.reply(data_json.distance)
-
-    except Exception as e:
-        bot.reply('Ei toimi prkl!' % (e))
-        raise e
+    response = urlopen(url)
+    data_json = json.loads(response.read())
+    bot.reply(data_json.distance)
