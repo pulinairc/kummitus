@@ -20,4 +20,4 @@ def module(bot, trigger):
     
     response = urlopen(url)
     data_json = json.loads(response.read())
-    bot.reply(data_json.distance)
+    bot.reply(data_json["distance"])
