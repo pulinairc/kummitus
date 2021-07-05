@@ -71,7 +71,7 @@ def almanakka(bot, trigger):
       data_json = json.loads(filehandle.read())
       filehandle.close()
 
-      names = data_json['%s-%s' % (day, month)]
+      names = data_json['%s-%s' % (month, day)]
 
     findate = format_date(now, format='full', locale='fi_FI')
 
