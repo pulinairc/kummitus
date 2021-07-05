@@ -9,8 +9,7 @@ import json
 
 url = 'https://www.vaelimatka.org/route.json?stops=%s|%s'
 
-@sopel.module.rule(r'^.matka (\w+) (\w+)(?: (\d+))?')
-@sopel.module.example('!matka Helsinki Riihimäki 100')
+@sopel.module.example('!matka Helsinki Riihimäki')
 def module(bot, trigger):
     start = trigger.group(1)
     end = trigger.group(2)
