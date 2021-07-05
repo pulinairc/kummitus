@@ -4,8 +4,7 @@ Made by rolle
 """
 import sopel.module
 from urllib.request import urlopen
-import django.utils
-from django.utils.encoding import smart_text
+from smartencoding import smart_unicode, smart_unicode_with_replace
 import json
 
 url = 'https://www.vaelimatka.org/route.json?stops=%s|%s'
@@ -19,6 +18,8 @@ def module(bot, trigger):
     if not start or not end:
         bot.reply('Tarvitaan lähtö- ja saapumispaikat')
     else:
-        response = urlopen(url % (smart_text(start), smart_text(end)))
+        start = smart_unicode_with_replace(start)
+        end = smart_unicode_with_replace(end)
+        response = urlopen(url % (start, end))
         data_json = json.loads(response.read())
         bot.reply(data_json["distance"])
