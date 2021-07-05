@@ -75,4 +75,4 @@ def almanakka(bot, trigger):
 
     findate = format_date(now, format='full', locale='fi_FI')
 
-    bot.say('Tänään on \x02' + findate + '\x0F. Nimipäiviään viettävät: ' + names + '')
+    bot.say('Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s' % (findate, names))
