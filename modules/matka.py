@@ -15,9 +15,7 @@ def module(bot, trigger):
     if not start or not end:
         bot.reply('Tarvitaan lähtö- ja saapumispaikat')
     else:
-        start = start.encode('utf-8').strip()
-        end = end.encode('utf-8').strip()
         url = 'https://www.vaelimatka.org/route.json?stops=' + start + '|' + end
-        response = urlopen(url).decode('utf-8')
+        response = urlopen(url).encode('utf-8')
         data_json = json.loads(response.read())
         bot.reply(data_json["distance"])
