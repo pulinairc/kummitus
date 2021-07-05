@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 rules.py
-Made by Roni Laukkarinen
+Made by rolle
 """
 import sopel.module
 

@@ -8,7 +8,6 @@ from urllib.request import urlopen
 from bs4 import BeautifulSoup
 from sopel.module import commands, example
 
-
 @commands('kuha')
 @example('.kuha 69')
 def lannistaja_kuha(bot, trigger):

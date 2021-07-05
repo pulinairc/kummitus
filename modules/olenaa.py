@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 olenaa.py
-Made by Roni Laukkarinen
+Made by rolle
 """
 import sopel.module
 

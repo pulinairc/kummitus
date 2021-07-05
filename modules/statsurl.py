@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 statsurl.py
-Made by Roni Laukkarinen
+Made by rolle
 """
 import sopel.module
 import random

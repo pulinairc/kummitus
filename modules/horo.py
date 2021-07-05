@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 horo.py
-Made by Roni Laukkarinen
+Made by rolle
 ja lapyo ;_;
 """
 import sopel.module
