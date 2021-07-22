@@ -178,7 +178,7 @@ Kirjoita satu
 Kerro muille irkkaajille vitsi. NYT
 Tsekkaa mitä muuta kivaa minä voin tehdä hyväksesi: http://pulina.fi/komennot
 Random-irkkikuvia: http://peikko.us/pics
-IRC-linkkejä: http://peikko.us/linkit
+IRC-linkkejä: https://botit.pulina.fi/pulinalinkit/
 Etkö muka oikeasti keksi mitään tekemistä? nyt vittu oikeesti. Mahtaa olla tylsä elämä
 Tee jotain uutta
 Repäise ja lähde vaikka maailmanympärimatkalle
