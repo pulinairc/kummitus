@@ -39,10 +39,10 @@ chatbot = ChatBot(
 )
 
 # Enable/disable these lines based on when you want to train new data
-trainer = ChatterBotCorpusTrainer(chatbot)
-from chatterbot.trainers import ListTrainer
+#trainer = ChatterBotCorpusTrainer(chatbot)
+#from chatterbot.trainers import ListTrainer
 
-trainer.train(
+#trainer.train(
 #      "./training/oraakkeli.yml"
 #      "./training/oraakkeli.json"
 #     "./training/pulina-2008-04.log.json",
@@ -110,7 +110,7 @@ trainer.train(
 #     "./training/pulina-2013-06.log.json",
 #     "./training/pulina-2013-07.log.json",
 #     "./training/pulina-2013-08.log.json",
-     "./training/pulina-2013-09.log.json"
+#     "./training/pulina-2013-09.log.json",
 #     "./training/pulina-2013-10.log.json",
 #     "./training/pulina-2013-11.log.json",
 #     "./training/pulina-2013-12.log.json",
@@ -203,7 +203,7 @@ trainer.train(
 #     "./training/pulina-2021-03.log.json",
 #     "./training/pulina-2021-04.log.json",
 #     "./training/pulina-2021-05.log.json"
-)
+#)
 
 import sopel.module
 
