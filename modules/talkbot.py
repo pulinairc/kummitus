@@ -39,10 +39,10 @@ chatbot = ChatBot(
 )
 
 # Enable/disable these lines based on when you want to train new data
-trainer = ChatterBotCorpusTrainer(chatbot)
-from chatterbot.trainers import ListTrainer
+#trainer = ChatterBotCorpusTrainer(chatbot)
+#from chatterbot.trainers import ListTrainer
 
-trainer.train(
+#trainer.train(
 #      "./training/oraakkeli.yml"
 #      "./training/oraakkeli.json"
 #     "./training/pulina-2008-04.log.json",
@@ -68,7 +68,7 @@ trainer.train(
 #     "./training/pulina-2009-12.log.json",
 #     "./training/pulina-2010-01.log.json",
 #     "./training/pulina-2010-02.log.json",
-     "./training/pulina-2010-03.log.json",
+#     "./training/pulina-2010-03.log.json",
 #     "./training/pulina-2010-04.log.json",
 #     "./training/pulina-2010-05.log.json",
 #     "./training/pulina-2010-06.log.json",
@@ -85,7 +85,7 @@ trainer.train(
 #     "./training/pulina-2011-05.log.json",
 #     "./training/pulina-2011-06.log.json",
 #     "./training/pulina-2011-07.log.json",
-     "./training/pulina-2011-08.log.json",
+#     "./training/pulina-2011-08.log.json",
 #     "./training/pulina-2011-09.log.json",
 #     "./training/pulina-2011-10.log.json",
 #     "./training/pulina-2011-11.log.json",
@@ -124,7 +124,7 @@ trainer.train(
 #     "./training/pulina-2014-08.log.json",
 #     "./training/pulina-2014-09.log.json",
 #     "./training/pulina-2014-10.log.json",
-     "./training/pulina-2014-11.log.json",
+#     "./training/pulina-2014-11.log.json",
 #     "./training/pulina-2014-12.log.json",
 #     "./training/pulina-2015-01.log.json",
 #     "./training/pulina-2015-02.log.json",
@@ -138,7 +138,7 @@ trainer.train(
 #     "./training/pulina-2015-10.log.json",
 #     "./training/pulina-2015-11.log.json",
 #     "./training/pulina-2015-12.log.json",
-     "./training/pulina-2016-01.log.json"
+#     "./training/pulina-2016-01.log.json",
 #     "./training/pulina-2016-02.log.json",
 #     "./training/pulina-2016-03.log.json",
 #     "./training/pulina-2016-04.log.json",
@@ -203,7 +203,7 @@ trainer.train(
 #     "./training/pulina-2021-03.log.json",
 #     "./training/pulina-2021-04.log.json",
 #     "./training/pulina-2021-05.log.json"
-)
+#)
 
 import sopel.module
 
