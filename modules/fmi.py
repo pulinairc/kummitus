@@ -5,6 +5,7 @@ Made by rolle
 """
 import sopel.module
 from urllib.request import urlopen
+from urllib.parse import quote, unquote
 import lxml.etree
 from lxml import etree
 import lxml.html
@@ -13,63 +14,38 @@ import datetime
 import os
 import json
 
-# paikkojen tiedosto
-places_file = '/home/rolle/.sopel/modules/paikat.json' 
-# nimimerkkien paikat muistissa
-places_cfg = {}
+def load_place(bot, nick):
+  place = bot.db.get_nick_value(nick, 'location')
+  if place:
+    return unquote(place)
 
-# Ladataan tiedostosta tallennetut paikat
-def load_cfg():
-  # NOTE: menis nätimmin class propertyillä tmv. toki
-  global places_file
-  global places_cfg 
-
-  if os.path.exists(places_file):
-    filehandle = open(places_file, 'r')
-    places_cfg = json.loads(filehandle.read())
-    filehandle.close()
-
-# Asetetaan paikka nimimerkille ja tallennetaan tiedostoon
-def set_place(nick, place):
-  # NOTE: menis nätimmin class propertyillä tmv. toki
-  global places_file
-  global places_cfg
-
-  # asetetaan paikka muistiin
-  places_cfg[nick] = place
-
-  # tallennetaan tiedostoon
-  filehandle = open(places_file, 'w+')
-  filehandle.write(json.dumps(places_cfg))
-  filehandle.close()
-
-# ladataan paikat heti muistiin
-load_cfg()
+def set_place(bot, nick, place):
+  bot.db.set_nick_value(nick, 'location', str(quote(place)))
 
 @sopel.module.commands('asetasää', 'asetakeli')
 def asetasaa(bot, trigger):
   if not trigger.group(2):
-    bot.say("!asetasää <kaupunki> - Esim. !asetasää Jyväskylä asettaa nimimerkillesi oletuspaikaksi Jyväskylän. Tämän jälkeen pelkkä !sää hakee asetetusta paikasta säätiedot.") #FIXME
+    bot.say("!asetasää <kaupunki> - Esim. !asetasää \x02Jyväskylä\x02 asettaa nimimerkillesi oletuspaikaksi Jyväskylän. Tämän jälkeen pelkkä !sää hakee asetetusta paikasta säätiedot.")
     return
 
-  set_place(trigger.nick, trigger.group(2).strip())
-  bot.say("Paikka '" + trigger.group(2).strip() + "' asetettu nimimerkin " + trigger.nick +
-    " oletuspaikaksi")
+  set_place(bot, trigger.nick, trigger.group(2))
+  bot.say('paikka \x02' + trigger.group(2) + '\x02 asetettu nimimerkin \x02' + trigger.nick + '\x02 oletuspaikaksi.')
 
 @sopel.module.commands('sää', 'keli')
 
 def saa(bot, trigger):
 
-  # vältetään konfliktit asettamalla muuttuja 'paikka' epätodeksi
-  place = False
+  # NOTE: päivitetään ensimmäisellä !sää -komennolla json-tiedosto tietokannaksi
+  update_to_database(bot) # NOTE: poista myöhemmin
+  print("update_to_database() ajettu, poista se!")
+
+  # alustetaan 'place'
+  place = None
 
   if not trigger.group(2):
-
-    # tarkistetaan löytyykö nickiltä asetettua paikkaa
-    if trigger.nick in places_cfg:
-      place = places_cfg[trigger.nick]
-
-    else:
+    # haetaan kannasta paikka jos löytyy
+    place = load_place(bot, trigger.nick)
+    if not place:
       bot.say("!sää <kaupunki> - Esim. !sää jyväskylä kertoo Jyväskylän sään. Hakee säätiedot Ilmatieteen laitokselta. !asetasää <kaupunki> asettaa oletuspaikan nimimerkillesi jonka jälkeen pelkkä !sää hakee asetetun paikan säätiedot.")
       return
 
@@ -77,14 +53,14 @@ def saa(bot, trigger):
     place = trigger.group(2).strip()
   api_key = '0218711b-a299-44b2-a0b0-a4efc34b6160'
   endtime_utc = datetime.datetime.utcnow().replace(microsecond=0)
-  starttime_utc = endtime_utc - datetime.timedelta(minutes=20) 
+  starttime_utc = endtime_utc - datetime.timedelta(minutes=20)
   request = 'getFeature'
   storedquery_id = 'fmi::observations::weather::simple'
   endtime = endtime_utc.isoformat() + 'Z'
   starttime = starttime_utc.isoformat() + 'Z'
   timezone = 'Europe/Helsinki'
 
-  url = "https://ilmatieteenlaitos.fi/saa/%s" % place    
+  url = "https://ilmatieteenlaitos.fi/saa/%s" % place
   api_call = "http://opendata.fmi.fi/wfs?request=%s&storedquery_id=%s&place=%s&timezone=%s&starttime=%s&endtime=%s" % (request, storedquery_id, place, timezone, starttime, endtime)
 
   # LXML Xpath based scraping
@@ -114,7 +90,7 @@ def saa(bot, trigger):
           # Sateen todennäköisyys ja määrä, ensimmäinen prosenttisarake (ei toimi kovin luotettavasti)
           # "Sateen todennäköisyys ja määrä" ekan palstan divin XPath, jossa jotain kuten "<10%"
           rain_probability_get = root.xpath('//*[@id="__BVID__157"]/tbody/tr[9]/td[1]/span')
-          
+
           # Lähipäivät, klo 15 sarakkeen kuva ja /@title perään
           nextday_text_get = root.xpath('//*[@id="__BVID__157"]/tbody/tr[1]/td[5]/img/@title')
 
@@ -174,7 +150,7 @@ def saa(bot, trigger):
           # Sateen todennäköisyys ja määrä, ensimmäinen prosenttisarake (ei toimi kovin luotettavasti)
           # "Sateen todennäköisyys ja määrä" ekan palstan divin XPath, jossa jotain kuten "<10%"
           #rain_probability_get = root.xpath('//*[@id="__BVID__157"]/tbody/tr[9]/td[1]/span')
-          
+
           # Lähipäivät, klo 15 sarakkeen kuva ja /@title perään
           #nextday_text_get = root.xpath('//*[@id="__BVID__157"]/tbody/tr[1]/td[5]/img/@title')
 
@@ -212,3 +188,19 @@ def saa(bot, trigger):
 
       except:
             bot.say('Koitapa uudestaan. Joko \x02' + place + '\x0F ei ole oikea paikka, Ilmatieteenlaitos on hetkellisesti alhaalla tai jokin on oleellisesti muuttunut ja sääscripti bugaa.')
+
+# NOTE: poista myöhemmin
+def update_to_database(bot):
+  old_data = '/home/rolle/.sopel/modules/paikat.json'
+  if os.path.exists(old_data):
+    filehandle = open(old_data, 'r')
+    old_cfg = json.loads(filehandle.read())
+    filehandle.close()
+
+    # tallennetaan wanhat paikat kantaan
+    for nick in old_cfg:
+      set_place(bot, nick, old_cfg[nick])
+
+    # poistetaan wanha tiedosto
+    os.remove(old_data)
+
