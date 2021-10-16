@@ -122,7 +122,7 @@ def saa(bot, trigger):
 
   elif place == 'rolle':
 
-    url_rolle = "https://ruuviraw.peikko.us/tags"
+    url_rolle = "https://ruuvirawdata.peikko.us/raw.php"
     temps = urlopen(url_rolle).read().decode("utf-8")
     bot.say('\x02Jyväskylä, Rollen ja mustikkasopan koti\x0F: ' + temps + '')
 
