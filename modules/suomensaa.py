@@ -14,9 +14,9 @@ import os
 import json
 from pprint import pprint
 
-# paikkojen tiedosto
+# Paikkojen tiedosto
 places_file = '/home/rolle/.sopel/modules/paikat.json'
-# nimimerkkien paikat muistissa
+# Nimimerkkien paikat muistissa
 places_cfg = {}
 
 # Ladataan tiedostosta tallennetut paikat
@@ -122,7 +122,7 @@ def saa(bot, trigger):
 
   elif place == 'rolle':
 
-    url_rolle = "https://ruuvirawdata.peikko.us/ruuvidata.txt"
+    url_rolle = "https://ruuviraw.peikko.us/tags"
     temps = urlopen(url_rolle).read().decode("utf-8")
     bot.say('\x02Jyväskylä, Rollen ja mustikkasopan koti\x0F: ' + temps + '')
 
