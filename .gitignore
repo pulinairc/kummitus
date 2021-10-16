@@ -1,3 +1,4 @@
+*.pid
 train*
 training
 pulina*.json
