@@ -3,6 +3,8 @@ kuha.py
 Lannistajakuha.com
 Sopel module made by rolle
 """
+import sopel.module
+import random
 
 @commands('kuha', 'lannistajakuha')
 
