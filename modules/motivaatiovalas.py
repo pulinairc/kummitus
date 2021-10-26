@@ -8,6 +8,6 @@ import random
 
 @sopel.module.commands('moti', 'motivaativalas', 'motivaatio')
 
-def vitsi(bot, trigger):
+def motidef(bot, trigger):
     moti = random.choice(list(open('/home/rolle/.sopel/modules/motit.txt')))
     bot.say(moti)
