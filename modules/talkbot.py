@@ -8,6 +8,7 @@ A module for the Sopel IRC Bots.
 from __future__ import unicode_literals, absolute_import, print_function, division
 
 import re
+import sopel.module
 from sopel import web
 from sopel.module import commands, example
 import requests
@@ -26,15 +27,6 @@ import chatterbot.response_selection
 chatbot = ChatBot(
     'kummitus',
     storage_adapter='chatterbot.storage.MongoDatabaseAdapter',
-    logic_adapters=[
-        {
-            'import_path': 'chatterbot.logic.BestMatch',
-            "statement_comparison_function": "chatterbot.comparisons.levenshtein_distance",
-            "response_selection_method": "chatterbot.response_selection.get_most_frequent_response",
-            'default_response': 'Pahoitteluni, mutta en osaa vastata.',
-            'maximum_similarity_threshold': 0.7
-        }
-    ],
     database_uri='mongodb://localhost:27017/chatterbot-database'
 )
 
@@ -205,11 +197,9 @@ chatbot = ChatBot(
 #     "./training/pulina-2021-05.log.json"
 #)
 
-import sopel.module
-
 # Learn everything (for some reason this regex causes problems when someone says ":(" for example):
 #@sopel.module.rule(".*")
-#
+
 #def talkbot_all(bot, trigger):
 #    only_message_all_check_only = trigger.split(": ", 1)
 #
@@ -218,30 +208,17 @@ import sopel.module
 #
 #      # Parrot mode:
 #      #bot.say(only_message_all)
-#      chatbot.get_response(only_message_all)
+#      #chatbot.get_response(only_message_all)
 #    else:
 #      only_message_all_no_colons = trigger
 #
 #      # Parrot mode:
 #      #bot.say(only_message_all_no_colons)
-#      chatbot.get_response(only_message_all_no_colons)
+#      #chatbot.get_response(only_message_all_no_colons)
 
 @sopel.module.nickname_commands(".*")
 
 def talkbot(bot, trigger):
-
-    ## Coin flip
-    #result = random.randrange(2)
-
-    #if result == 0:
-    #  # "Heads"
-    #  query = trigger.replace('!', '')
-    #  uri = 'http://www.lintukoto.net/viihde/oraakkeli/index.php?kysymys=%s&html' % query
-    #  answer = requests.get(uri, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36'}).text
-    #  bot.reply(answer)
-
-    #else:
-      # "Tails"
 
       only_message_check_only = trigger.split(": ", 1)
 
