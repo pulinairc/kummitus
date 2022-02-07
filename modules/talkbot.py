@@ -29,8 +29,8 @@ chatbot = ChatBot(
     logic_adapters=[
         {
             'import_path': 'chatterbot.logic.BestMatch',
-            "statement_comparison_function": chatterbot.comparisons.levenshtein_distance,
-            "response_selection_method": chatterbot.response_selection.get_most_frequent_response,
+            "statement_comparison_function": "chatterbot.comparisons.levenshtein_distance",
+            "response_selection_method": "chatterbot.response_selection.get_most_frequent_response",
             'default_response': 'Pahoitteluni, mutta en osaa vastata.',
             'maximum_similarity_threshold': 0.7
         }
