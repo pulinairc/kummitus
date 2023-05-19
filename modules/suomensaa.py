@@ -32,7 +32,6 @@ def load_cfg():
 
 # Asetetaan paikka nimimerkille ja tallennetaan tiedostoon
 def set_place(nick, place):
-  # NOTE: menis nätimmin class propertyillä tmv. toki
   global places_file
   global places_cfg
 
@@ -44,13 +43,14 @@ def set_place(nick, place):
   filehandle.write(json.dumps(places_cfg))
   filehandle.close()
 
-# ladataan paikat heti muistiin
+# Save places
 load_cfg()
 
 @sopel.module.commands('asetasää', 'asetakeli')
+
 def asetasaa(bot, trigger):
   if not trigger.group(2):
-    bot.say("!asetasää <kaupunki> - Esim. !asetasää Jyväskylä asettaa nimimerkillesi oletuspaikaksi Jyväskylän. Tämän jälkeen pelkkä !sää hakee asetetusta paikasta säätiedot.") #FIXME
+    bot.say("!asetasää <kaupunki> - Esim. !asetasää Jyväskylä asettaa nimimerkillesi oletuspaikaksi Jyväskylän. Tämän jälkeen pelkkä !sää hakee asetetusta paikasta säätiedot.")
     return
 
   set_place(trigger.nick, trigger.group(2).strip())
@@ -61,12 +61,12 @@ def asetasaa(bot, trigger):
 
 def saa(bot, trigger):
 
-  # vältetään konfliktit asettamalla muuttuja 'paikka' epätodeksi
+  # No conflicts mode (no place set for nick)
   place = False
 
   if not trigger.group(2):
 
-    # tarkistetaan löytyykö nickiltä asetettua paikkaa
+    # Checking if there is a place for the nick
     if trigger.nick in places_cfg:
       place = places_cfg[trigger.nick]
 
@@ -78,7 +78,7 @@ def saa(bot, trigger):
     place = trigger.group(2).strip()
 
   # Readable version of the place
-  place_readable = trigger.group(2).strip()
+  place_readable = place
 
   # Change ä to a and ö to o
   place = place.replace('ä', 'a')
