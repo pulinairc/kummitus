@@ -174,7 +174,7 @@ def saa(bot, trigger):
       temperature_nextday_min = temperature_nextday_min_get[0].text.strip().replace('Alin: ', '')
 
       # Say it all out loud
-      bot.say('\x02' + city.capitalize() + '\x0Fklo ' + time + ':00: \x02' + temperature + ', ' + text_weather_today.lower() + '\x0F (tuntuu kuin: ' + feelslike + '). Sadetta mahdollisesti\x02' + rain + '\x0F. Kuluvan päivän ylin lämpötila: \x02' + temperature_max + '\x0F, alin: \x02' + temperature_min + '\x0F. Aurinko nousee klo \x02' + sun_rises + '\x02 ja laskee klo \x02' + sun_sets + '\x02. Päivän pituus on \x02' + day_length + '\x02. Huomiseksi luvassa on \x02' + temperature_tomorrow + ', ' + text_tomorrow_today.lower() + ' (kylmin lämpötila huomenna: \x02' + temperature_nextday_min + '\x0F).')
+      bot.say('\x02' + city.capitalize() + '\x0Fklo ' + time + ':00: \x02' + temperature + ', ' + text_weather_today.lower() + '\x0F (tuntuu kuin: ' + feelslike + '). Sadetta mahdollisesti\x02' + rain + '\x0F. Kuluvan päivän ylin lämpötila: \x02' + temperature_max + '\x0F, alin: \x02' + temperature_min + '\x0F. Aurinko nousee klo \x02' + sun_rises + '\x02 ja laskee klo \x02' + sun_sets + '\x02. Päivän pituus on \x02' + day_length + '\x02. Huomiseksi luvassa on \x02' + temperature_tomorrow + ', ' + text_tomorrow_today.lower() + '\x02 (kylmin lämpötila huomenna: \x02' + temperature_nextday_min + '\x0F).')
 
     except:
       bot.say('Error, tilt, nyt bugaa! Sijainnin \x02' + place_readable.capitalize() + '\x0F säätä ei saatu haettua. Heitä ihmeessä pull requestia, jos tiedät miten tämä korjataan. Sään tarjoilee: https://github.com/pulinairc/kummitus/blob/master/modules/suomensaa.py')
