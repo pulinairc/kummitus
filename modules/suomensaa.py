@@ -177,82 +177,81 @@ def convert_timestamp(timestamp, tz):
 def get_geocoords(bot, trigger):
     target = trigger.group(2)
 
-    if target == 'rolle':
-        url_rolle = "https://c.rolle.wtf/raw.php"
-        temps = urlopen(url_rolle).read().decode("utf-8")
-        bot.say('\x02Jyväskylä, Rollen ja mustikkasopan koti\x0F: ' + temps + '')
-        return
-    else:
+    if not target:
+        latitude = bot.db.get_nick_value(trigger.nick, 'latitude')
+        longitude = bot.db.get_nick_value(trigger.nick, 'longitude')
+        location = bot.db.get_nick_value(trigger.nick, 'location')
 
-        if not target:
-            latitude = bot.db.get_nick_value(trigger.nick, 'latitude')
-            longitude = bot.db.get_nick_value(trigger.nick, 'longitude')
-            location = bot.db.get_nick_value(trigger.nick, 'location')
-
-            if latitude and longitude and location:
-                return latitude, longitude, location
-            else:
-                raise ValueError
-
-        if bot.config.weather.nick_lookup and ' ' not in target:
-            # Try to look up nickname in DB, if enabled
-            nick = Identifier(target)
-            latitude = bot.db.get_nick_value(nick, 'latitude')
-            longitude = bot.db.get_nick_value(nick, 'longitude')
-            location = bot.db.get_nick_value(nick, 'location')
-
-            if latitude and longitude and location:
-                return latitude, longitude, location
-
-        # geocode location if not a nick or not found in DB
-        url = GEOCOORDS_PROVIDERS[bot.config.weather.geocoords_provider]
-        data = {
-            'key': bot.config.weather.geocoords_api_key,
-            'q': trigger.group(2),
-            'format': 'json',
-            'addressdetails': 1,
-            'limit': 1
-        }
-
-        try:
-            r = requests.get(url, params=data)
-        except requests.exceptions.RequestException:
-            # requests likes to include the full URL in its exceptions, which would
-            # mean the API key gets printed to the channel
-            raise Exception("En saanut geolokaatiota. Katso lokit.")
-
-        if r.status_code != 200:
-            raise Exception(r.json()['error'])
-
-        latitude = r.json()[0]['lat']
-        longitude = r.json()[0]['lon']
-        address = r.json()[0]['address']
-
-        parts = []
-
-        # Zip codes give us town versus city
-        if 'city' in address:
-            parts.append(address['city'])
-        elif 'town' in address:
-            parts.append(address['town'])
-        elif 'county' in address:
-            parts.append(address['county'])
-        elif 'city_district' in address:
-            parts.append(address['city_district'])
-
-        if 'state' in address:
-            parts.append(address['state'])
-
-        if parts:
-            parts.append(address['country_code'].upper())
-            location = ', '.join(parts)
+        if latitude and longitude and location:
+            return latitude, longitude, location
         else:
-            location = 'Unknown'
+            raise ValueError
 
-        return latitude, longitude, location
+    if bot.config.weather.nick_lookup and ' ' not in target:
+        # Try to look up nickname in DB, if enabled
+        nick = Identifier(target)
+        latitude = bot.db.get_nick_value(nick, 'latitude')
+        longitude = bot.db.get_nick_value(nick, 'longitude')
+        location = bot.db.get_nick_value(nick, 'location')
+
+        if latitude and longitude and location:
+            return latitude, longitude, location
+
+    # geocode location if not a nick or not found in DB
+    url = GEOCOORDS_PROVIDERS[bot.config.weather.geocoords_provider]
+    data = {
+        'key': bot.config.weather.geocoords_api_key,
+        'q': trigger.group(2),
+        'format': 'json',
+        'addressdetails': 1,
+        'limit': 1
+    }
+
+    try:
+        r = requests.get(url, params=data)
+    except requests.exceptions.RequestException:
+        # requests likes to include the full URL in its exceptions, which would
+        # mean the API key gets printed to the channel
+        raise Exception("En saanut geolokaatiota. Katso lokit.")
+
+    if r.status_code != 200:
+        raise Exception(r.json()['error'])
+
+    latitude = r.json()[0]['lat']
+    longitude = r.json()[0]['lon']
+    address = r.json()[0]['address']
+
+    parts = []
+
+    # Zip codes give us town versus city
+    if 'city' in address:
+        parts.append(address['city'])
+    elif 'town' in address:
+        parts.append(address['town'])
+    elif 'county' in address:
+        parts.append(address['county'])
+    elif 'city_district' in address:
+        parts.append(address['city_district'])
+
+    if 'state' in address:
+        parts.append(address['state'])
+
+    if parts:
+        parts.append(address['country_code'].upper())
+        location = ', '.join(parts)
+    else:
+        location = 'Unknown'
+
+    return latitude, longitude, location
 
 
 def get_forecast(bot, trigger):
+
+    # If target is rolle, do nothing
+    target = trigger.group(2)
+    if target == 'rolle':
+        return
+
     try:
         latitude, longitude, location = get_geocoords(bot, trigger)
     except ValueError as e:
@@ -274,6 +273,11 @@ def get_forecast(bot, trigger):
 
 
 def get_weather(bot, trigger):
+    # If target is rolle, do nothing
+    target = trigger.group(2)
+    if target == 'rolle':
+        return
+
     try:
         latitude, longitude, location = get_geocoords(bot, trigger)
     except ValueError as e:
@@ -300,6 +304,15 @@ def get_weather(bot, trigger):
 @example('!sää Seattle, US')
 @example('!sää 90210')
 def weather_command(bot, trigger):
+
+    target = trigger.group(2)
+
+    if target == 'rolle':
+        url_rolle = "https://c.rolle.wtf/raw.php"
+        temps = urlopen(url_rolle).read().decode("utf-8")
+        bot.say('\x02Jyväskylä, Rollen ja mustikkasopan koti\x0F: ' + temps + '')
+        return
+
     """!sää sijainti - Näyttää säätiedot annetulle sijainnille."""
     if bot.config.weather.weather_api_key is None or bot.config.weather.weather_api_key == '':
         return bot.reply("Sään rajapinta-avain puuttuu. Konfiguroipas moduuli kunnolla.")
