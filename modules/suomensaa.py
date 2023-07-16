@@ -297,12 +297,21 @@ def get_weather(bot, trigger):
     else:
         raise Exception('Error: Unsupported Provider')
 
+@commands('omasää')
+
+def ownweather(bot, trigger):
+
+      url_rolle = "https://c.rolle.wtf/raw.php"
+      temps = urlopen(url_rolle).read().decode("utf-8")
+      bot.say('\x02Jyväskylä, Rollen ja mustikkasopan koti\x0F: ' + temps + '')
+      return
 
 @commands('saa', 'sää', 'keli')
 @example('!sää')
 @example('!sää London')
 @example('!sää Seattle, US')
 @example('!sää 90210')
+
 def weather_command(bot, trigger):
 
     target = trigger.group(2)
