@@ -9,14 +9,29 @@ import sopel.module
 # Define the words that will trigger the kick action
 trigger_words = ["transu", "neekeri", "mamu", "matu", "rättipää", "rumasana"]
 
+# Function to check if the message contains the trigger word as a whole word
 # Function to check if the message contains any of the trigger words
 def get_trigger_word(text):
-    return next((word for word in trigger_words if word in text.lower()), None)
+    for word in trigger_words:
+        pattern = rf"\b{re.escape(word)}\b"
+        if re.search(pattern, text, re.IGNORECASE):
+            return word
+    return None
 
 # The trigger function using the 'rule' decorator
 @sopel.module.rule('.*')  # This will trigger on any messageThis will trigger on any message
 def kick_on_trigger(bot, trigger):
     trigger_word = get_trigger_word(trigger.raw)
     if trigger_word:
-        kick_message = f"Sääntö #4, ei slurreja. Mainitsit sanan '{trigger_word}'."
+        kick_message = f"Sääntö nro 4: Ei slurreja. Mainitsit sanan '{trigger_word}'."
         bot.kick(trigger.nick, '#pulina', kick_message)
+
+# The on_join event to make the bot join channels and send a message to ops if not opped
+@sopel.module.event('JOIN')
+def on_join(bot, trigger):
+    channel = trigger.args[0]
+    bot_nick = bot.nick
+    bot_modes = bot.channels[channel].privileges.get(bot_nick, "")
+    if "o" not in bot_modes:  # Check if the bot is not an op in the channel
+        op_message = f"Hei, pistäkääs opit eli /op ({bot_nick}), jotta saadaan moderointitoiminnot käyttöön."
+        bot.notice(trigger.nick, op_message)
