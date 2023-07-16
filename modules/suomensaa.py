@@ -313,47 +313,48 @@ def weather_command(bot, trigger):
         bot.say('\x02Jyväskylä, Rollen ja mustikkasopan koti\x0F: ' + temps + '')
         return
 
-    """!sää sijainti - Näyttää säätiedot annetulle sijainnille."""
-    if bot.config.weather.weather_api_key is None or bot.config.weather.weather_api_key == '':
-        return bot.reply("Sään rajapinta-avain puuttuu. Konfiguroipas moduuli kunnolla.")
-    if bot.config.weather.geocoords_api_key is None or bot.config.weather.geocoords_api_key == '':
-        return bot.reply("GeoCoords-rajapinta-avain puuttuu. Konfiguroipas moduuli oikein.")
+    else:
+      """!sää sijainti - Näyttää säätiedot annetulle sijainnille."""
+      if bot.config.weather.weather_api_key is None or bot.config.weather.weather_api_key == '':
+          return bot.reply("Sään rajapinta-avain puuttuu. Konfiguroipas moduuli kunnolla.")
+      if bot.config.weather.geocoords_api_key is None or bot.config.weather.geocoords_api_key == '':
+          return bot.reply("GeoCoords-rajapinta-avain puuttuu. Konfiguroipas moduuli oikein.")
 
-    # Ensure we have a location for the user
-    location = trigger.group(2)
-    if not location:
-        latitude = bot.db.get_nick_value(trigger.nick, 'latitude')
-        longitude = bot.db.get_nick_value(trigger.nick, 'longitude')
-        if not latitude or not longitude:
-            return bot.say("En tiedä missä sinä asut. "
-                           "Annapas sijainti, esim. {pfx}{command} Helsinki, "
-                           "tai kerro minulle missä olet komennolla {pfx}asetasää "
-                           "Esimerkiksi Helsinki.".format(command=trigger.group(1),
-                                                         pfx=bot.config.core.help_prefix))
+      # Ensure we have a location for the user
+      location = trigger.group(2)
+      if not location:
+          latitude = bot.db.get_nick_value(trigger.nick, 'latitude')
+          longitude = bot.db.get_nick_value(trigger.nick, 'longitude')
+          if not latitude or not longitude:
+              return bot.say("En tiedä missä sinä asut. "
+                            "Annapas sijainti, esim. {pfx}{command} Helsinki, "
+                            "tai kerro minulle missä olet komennolla {pfx}asetasää "
+                            "Esimerkiksi Helsinki.".format(command=trigger.group(1),
+                                                          pfx=bot.config.core.help_prefix))
 
-    try:
-        data = get_weather(bot, trigger)
-    except Exception as err:
-        bot.reply("En saanut säätietoja: " + str(err))
-        return
+      try:
+          data = get_weather(bot, trigger)
+      except Exception as err:
+          bot.reply("En saanut säätietoja: " + str(err))
+          return
 
-    weather = u'{location}: {temp}, {condition}, {humidity}'.format(
-        location=data['location'],
-        temp=get_temp(data['temp']),
-        condition=data['condition'],
-        humidity=get_humidity(data['humidity'])
-    )
-    # Some providers don't give us UV Index
-    if 'uvindex' in data.keys():
-        weather += ', UV Index: {uvindex}'.format(uvindex=data['uvindex'])
-    # User wants sunrise/sunset information
-    if bot.config.weather.sunrise_sunset:
-        tz = data['timezone']
-        sr = convert_timestamp(data['sunrise'], tz)
-        ss = convert_timestamp(data['sunset'], tz)
-        weather += ', Auringonnousu: {sunrise} Auringonlasku: {sunset}'.format(sunrise=sr, sunset=ss)
-    weather += ', {wind}'.format(wind=get_wind(data['wind']['speed'], data['wind']['bearing']))
-    return bot.say(weather)
+      weather = u'{location}: {temp}, {condition}, {humidity}'.format(
+          location=data['location'],
+          temp=get_temp(data['temp']),
+          condition=data['condition'],
+          humidity=get_humidity(data['humidity'])
+      )
+      # Some providers don't give us UV Index
+      if 'uvindex' in data.keys():
+          weather += ', UV Index: {uvindex}'.format(uvindex=data['uvindex'])
+      # User wants sunrise/sunset information
+      if bot.config.weather.sunrise_sunset:
+          tz = data['timezone']
+          sr = convert_timestamp(data['sunrise'], tz)
+          ss = convert_timestamp(data['sunset'], tz)
+          weather += ', Auringonnousu: {sunrise} Auringonlasku: {sunset}'.format(sunrise=sr, sunset=ss)
+      weather += ', {wind}'.format(wind=get_wind(data['wind']['speed'], data['wind']['bearing']))
+      return bot.say(weather)
 
 
 @commands('saaennuste', 'sääennuste')
