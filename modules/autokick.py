@@ -27,8 +27,10 @@ def kick_on_trigger(bot, trigger):
         kick_message = f"Ei slurreja. Mainitsit sanan '{trigger_word}'."
         bot.kick(trigger.nick, '#pulina', kick_message)
 
-# A message to ops
-def on_load(bot, trigger):
-    channel = trigger.args[0]
-    op_message = f"Hei, pistäkääs opit (ping rolle, mustikkasoppa) eli /op kummitus, jotta saadaan moderointitoiminnot käyttöön."
-    bot.say(op_message, channel)
+# A message to ops when bot joins
+@sopel.module.event('JOIN')
+@sopel.module.rule('.*')
+def ops_message(bot, trigger):
+    # Check only for bot joins, not every user
+    if trigger.nick == bot.nick:
+      bot.say('Hei, pistäkääs opit (ping rolle, mustikkasoppa) eli /op kummitus, jotta saadaan moderointitoiminnot käyttöön.')
