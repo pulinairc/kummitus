@@ -34,4 +34,4 @@ def on_join(bot, trigger):
     bot_modes = bot.channels[channel].privileges.get(bot_nick, "")
     if "o" not in bot_modes:  # Check if the bot is not an op in the channel
         op_message = f"Hei, pistäkääs opit eli /op ({bot_nick}), jotta saadaan moderointitoiminnot käyttöön."
-        bot.notice(trigger.nick, op_message)
+        bot.say(op_message)
