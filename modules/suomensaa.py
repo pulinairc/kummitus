@@ -20,20 +20,20 @@ import datetime
 import os
 import json
 
+
 # Add /home/rolle/sopel-weather/build/lib/sopel_modules to path
 import sys
-sys.path.insert(0, '/home/rolle/sopel-weather/build/lib/sopel_modules/weather/providers/weather')
-
+sys.path.insert(0, '/home/rolle/sopel-weather/build/lib/sopel_modules')
+y
 from sopel.config.types import NO_DEFAULT, ChoiceAttribute, StaticSection, ValidatedAttribute
 from sopel.module import commands, example, NOLIMIT
 from sopel.modules.units import c_to_f
 from sopel.tools import Identifier
 from sopel.tools.time import format_time
 
-# Import our providers
-from .openmeteo import openmeteo_forecast, openmeteo_weather
-from .openweathermap import openweathermap_forecast, openweathermap_weather
-from .pirateweather import pirateweather_forecast, pirateweather_weather
+from weather.providers.openmeteo import openmeteo_forecast, openmeteo_weather
+from weather.providers.openweathermap import openweathermap_forecast, openweathermap_weather
+from weather.providers.pirateweather import pirateweather_forecast, pirateweather_weather
 
 WEATHER_PROVIDERS = [
     'openmeteo',
