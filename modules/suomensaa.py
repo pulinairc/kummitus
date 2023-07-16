@@ -24,7 +24,7 @@ import json
 # Add /home/rolle/sopel-weather/build/lib/sopel_modules to path
 import sys
 sys.path.insert(0, '/home/rolle/sopel-weather/build/lib/sopel_modules')
-y
+
 from sopel.config.types import NO_DEFAULT, ChoiceAttribute, StaticSection, ValidatedAttribute
 from sopel.module import commands, example, NOLIMIT
 from sopel.modules.units import c_to_f
