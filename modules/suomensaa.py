@@ -320,8 +320,12 @@ def weather_command(bot, trigger):
     try:
         data = get_weather(bot, trigger)
     except Exception as err:
-        bot.reply("En saanut säätietoja: " + str(err))
-        return
+
+        # If target is not rolle
+        target = trigger.group(2)
+        if target != 'rolle':
+          bot.reply("En saanut säätietoja: " + str(err))
+          return
 
     weather = u'{location}: {temp}, {condition}, {humidity}'.format(
         location=data['location'],
