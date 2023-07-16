@@ -7,7 +7,6 @@ http://sopel.chat/
 
 from sopel.module import commands, example, rate
 
-
 #@rate(60)
 @commands('bmi')
 @example('.bmi 60 1.90')
