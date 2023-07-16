@@ -181,6 +181,7 @@ def get_geocoords(bot, trigger):
         url_rolle = "https://c.rolle.wtf/raw.php"
         temps = urlopen(url_rolle).read().decode("utf-8")
         bot.say('\x02Jyväskylä, Rollen ja mustikkasopan koti\x0F: ' + temps + '')
+        return
     else:
 
         if not target:
@@ -320,12 +321,8 @@ def weather_command(bot, trigger):
     try:
         data = get_weather(bot, trigger)
     except Exception as err:
-
-        # If target is not rolle
-        target = trigger.group(2)
-        if target != 'rolle':
-          bot.reply("En saanut säätietoja: " + str(err))
-          return
+        bot.reply("En saanut säätietoja: " + str(err))
+        return
 
     weather = u'{location}: {temp}, {condition}, {humidity}'.format(
         location=data['location'],
