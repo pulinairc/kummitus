@@ -4,6 +4,7 @@ Copyright 2023, rolle [roni@dude.fi]"
 Licensed under the WTFPL. Do whatever the fuck you want with this. You just can't hold me responsible if it breaks something either.
 A module for the Sopel IRC Bots.
 """
+import re
 import sopel.module
 
 # Define the words that will trigger the kick action
