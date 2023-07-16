@@ -31,6 +31,9 @@ def kick_on_trigger(bot, trigger):
 @sopel.module.event('JOIN')
 @sopel.module.rule('.*')
 def ops_message(bot, trigger):
-    # Check only for bot joins, not every user
-    if trigger.nick == bot.nick:
-      bot.say('Hei, pistäkääs opit (ping rolle, mustikkasoppa) eli /op kummitus, jotta saadaan moderointitoiminnot käyttöön.')
+
+    bot.say('Hei, pistäkääs opit (ping rolle, mustikkasoppa) eli /op kummitus, jotta saadaan moderointitoiminnot käyttöön.')
+
+    # Don't say again
+    bot.disable_rule(ops_message)
+
