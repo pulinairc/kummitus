@@ -31,9 +31,9 @@ from sopel.modules.units import c_to_f
 from sopel.tools import Identifier
 from sopel.tools.time import format_time
 
-from .weather.providers.openmeteo import openmeteo_forecast, openmeteo_weather
-from .weather.providers.openweathermap import openweathermap_forecast, openweathermap_weather
-from .weather.providers.pirateweather import pirateweather_forecast, pirateweather_weather
+from sopel_modules.weather.providers.openmeteo import openmeteo_forecast, openmeteo_weather
+from sopel_modules.weather.providers.openweathermap import openweathermap_forecast, openweathermap_weather
+from sopel_modules.weather.providers.pirateweather import pirateweather_forecast, pirateweather_weather
 
 WEATHER_PROVIDERS = [
     'openmeteo',
