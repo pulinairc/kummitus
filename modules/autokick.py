@@ -7,7 +7,7 @@ A module for the Sopel IRC Bots.
 import sopel.module
 
 # Define the words that will trigger the kick action
-trigger_words = ["transu", "neekeri", "rumasana"]
+trigger_words = ["transu", "neekeri", "mamu", "matu", "rättipää", "rumasana"]
 
 # Function to check if the message contains any of the trigger words
 def get_trigger_word(text):
@@ -19,5 +19,4 @@ def kick_on_trigger(bot, trigger):
     trigger_word = get_trigger_word(trigger.raw)
     if trigger_word:
         kick_message = f"Sääntö #4, ei slurreja. Mainitsit sanan '{trigger_word}'."
-        for channel in bot.channels.get(trigger.sender):
-            bot.kick(channel, trigger.nick, kick_message)
+        bot.kick(trigger.nick, '#pulina', kick_message)
