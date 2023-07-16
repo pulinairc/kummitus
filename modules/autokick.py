@@ -14,7 +14,7 @@ def get_trigger_word(text):
     return next((word for word in trigger_words if word in text.lower()), None)
 
 # The trigger function using the 'rule' decorator
-@module.rule('.*')  # This will trigger on any message
+@sopel.module.rule('.*')  # This will trigger on any messageThis will trigger on any message
 def kick_on_trigger(bot, trigger):
     trigger_word = get_trigger_word(trigger.raw)
     if trigger_word:
