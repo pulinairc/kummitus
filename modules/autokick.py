@@ -24,7 +24,7 @@ def get_trigger_word(text):
 def kick_on_trigger(bot, trigger):
     trigger_word = get_trigger_word(trigger.raw)
     if trigger_word:
-        kick_message = f"Sääntö nro 4: Ei slurreja. Mainitsit sanan '{trigger_word}'."
+        kick_message = f"pulina.fi/saannot numero 4: Ei slurreja. Mainitsit sanan '{trigger_word}'."
         bot.kick(trigger.nick, '#pulina', kick_message)
 
 # The on_join event to make the bot join channels and send a message to ops if not opped
