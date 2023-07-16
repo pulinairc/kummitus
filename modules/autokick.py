@@ -18,6 +18,6 @@ def get_trigger_word(text):
 def kick_on_trigger(bot, trigger):
     trigger_word = get_trigger_word(trigger.raw)
     if trigger_word:
-        # Replace 'YourMessageHere' with the message you want to send when kicking the user
         kick_message = f"Sääntö #4, ei slurreja. Mainitsit sanan '{trigger_word}'."
-        bot.kick(trigger.sender, trigger.nick, kick_message)
+        for channel in bot.channels.get(trigger.sender):
+            bot.kick(channel, trigger.nick, kick_message)
