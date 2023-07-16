@@ -32,8 +32,5 @@ def kick_on_trigger(bot, trigger):
 @sopel.module.rule('.*')
 def ops_message(bot, trigger):
 
-    bot.say('Hei, pistäkääs opit (ping rolle, mustikkasoppa) eli /op kummitus, jotta saadaan moderointitoiminnot käyttöön.')
-
-    # Don't say again
-    bot.disable_rule(ops_message)
-
+    if trigger.nick == bot.nick:
+      bot.say('Hei, pistäkääs opit (ping rolle, mustikkasoppa) eli /op kummitus, jotta saadaan moderointitoiminnot käyttöön.')
