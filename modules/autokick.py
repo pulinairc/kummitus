@@ -29,9 +29,5 @@ def kick_on_trigger(bot, trigger):
 # The on_join event to make the bot join channels and send a message to ops if not opped
 @sopel.module.event('JOIN')
 def on_join(bot, trigger):
-    channel = trigger.args[0]
-    bot_nick = bot.nick
-    bot_modes = bot.channels[channel].privileges.get(bot_nick, "")
-    if "o" not in bot_modes:  # Check if the bot is not an op in the channel
-        op_message = f"Hei, pistäkääs opit eli /op ({bot_nick}), jotta saadaan moderointitoiminnot käyttöön."
-        bot.say(op_message)
+    op_message = f"Hei, pistäkääs opit eli /op kummitus, jotta saadaan moderointitoiminnot käyttöön."
+    bot.say(op_message)
