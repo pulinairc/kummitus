@@ -1,7 +1,7 @@
 """
 suomensaa.py
 Made by rolle
-Updated 2023-05-19
+Updated 2023-07-18
 """
 import sopel.module
 from urllib.request import urlopen
