@@ -103,7 +103,7 @@ def saa(bot, trigger):
   r_sunsetsunrise.encoding == 'ISO-8859-1' and not 'ISO-8859-1' in r_sunsetsunrise.headers.get('Content-Type', '')
   moisio = lxml.html.fromstring(r_sunsetsunrise.content)
 
-  if place == 'rolle':
+  if place == 'koti':
 
     url_rolle = "https://c.rolle.wtf/raw.php"
     temps = urlopen(url_rolle).read().decode("utf-8")
@@ -122,55 +122,68 @@ def saa(bot, trigger):
       city = city_get[0].text.strip().split('|')[0].replace('Sää ', '')
 
       # In the "Klo" column, first number, weather-time class, custom built XPath for reliability
+      # https://www.ampparit.com/saa/helsinki
       time_get = ampparit.xpath('//*[@class="weather-hour"]/div[@class="weather-time"]/time')
       time = time_get[0].text.strip()
 
-      # Temperature, class weather-temperature under the symbol
-      temperature_get = ampparit.xpath('//*[@id="content"]/div[2]/div[2]/div/div/div[1]/div[2]')
+      # "Lämpö (Tuntuu)" column, temperature, class weather-temperature under the symbol and <span> under it
+      # https://www.ampparit.com/saa/helsinki
+      temperature_get = ampparit.xpath('//*[@id="content"]/div[3]/div[1]/div/div/div[2]/div[3]/span[1]')
       temperature = temperature_get[0].text.strip()
 
-      # Max temperature, red number under "Ylin:"
+      # Max temperature, red abbr number under "Ylin:"
+      # https://www.foreca.fi/Finland/helsinki
       temperature_max_get = foreca.xpath('//*[@id="dailybox"]/div[1]/a/div/p[2]/abbr')
       temperature_max = temperature_max_get[0].text.strip()
 
-      # Min temperature, class weather-min-temperature under the symbol
-      temperature_min_get = ampparit.xpath('//*[@id="content"]/div[2]/div[2]/div/div/div[1]/div[3]')
+      # "Tänään", min temperature, class weather-min-temperature under the symbol (not visible!)
+      # https://www.ampparit.com/saa/helsinki
+      temperature_min_get = ampparit.xpath('//*[@id="content"]/div[2]/div/div/ol/li[1]/div[3]')
       temperature_min = temperature_min_get[0].text.strip().replace('Alin: ', '')
 
-      # Text version of the weather today
+      # Text version of the weather today, text under "Sää tänään tiistaina"
+      # https://www.foreca.fi/Finland/helsinki
       text_weather_today_get = foreca.xpath('//*[@class="txt"]')
       text_weather_today = text_weather_today_get[0].text.strip().split('.')[0]
 
       # Feels like, class weather-temperature-feelslike in the "Lämpö (Tuntuu)" column, first row
+      # https://www.ampparit.com/saa/helsinki
       feelslike_get = ampparit.xpath('//*[@id="content"]/div[3]/div[1]/div/div/div[2]/div[3]/span[2]')
       feelslike = feelslike_get[0].text.strip().replace('(', '').replace(')', '')
 
-      # Rain
-      rain_get = ampparit.xpath('//*[@id="content"]/div[2]/div[2]/div/div/div[1]/div[4]/text()')
+      # Rain, weather-min-max-rain-change class, the black drop symbol with text, note, add /text() in the end of XPath to get the text only
+      # https://www.ampparit.com/saa/helsinki
+      rain_get = ampparit.xpath('//*[@id="content"]/div[2]/div/div/ol/li[1]/div[4]/text()')
       rain = rain_get[0]
 
-      # Sun rises
+      # Sun rises, "Lasku" column, first row, rarely changes!
+      # http://www.moisio.fi/taivas/aurinko.php?paikka=helsinki
       sun_rises_get = moisio.xpath('//td[@class="tbl0"][4]')
       sun_rises = sun_rises_get[0].text.strip()
 
-      # Sun sets
+      # Sun sets, "Nousu" column, first row, rarely changes!
+      # http://www.moisio.fi/taivas/aurinko.php?paikka=helsinki
       sun_sets_get = moisio.xpath('//td[@class="tbl0"][5]')
       sun_sets = sun_sets_get[0].text.strip()
 
-      # Day lenght
+      # Day length, "Päivän pituus" column, first row, rarely changes!
+      # http://www.moisio.fi/taivas/aurinko.php?paikka=helsinki
       day_length_get = moisio.xpath('//td[@class="tbl0"][6]')
       day_length = day_length_get[0].text.strip()
 
-      # Text version of the weather today
+      # Text version of the weather today, text under "Sää huomenna keskiviikkona"
+      # https://www.foreca.fi/Finland/helsinki
       text_weather_tomorrow_title_get = foreca.xpath('//*[@class="txt"]')
       text_tomorrow_today = text_weather_tomorrow_title_get[1].text.strip().split('.')[0]
 
       # Temperature for tomorrow
+      # https://www.ampparit.com/saa/helsinki
       temperature_tomorrow_get = ampparit.xpath('//*[@class="weather-temperature"]')
       temperature_tomorrow = temperature_tomorrow_get[1].text.strip()
 
-      # Min temperature in the "Huomenna" column, celsius under the symbol
-      temperature_nextday_min_get = ampparit.xpath('//*[@id="content"]/div[2]/div[2]/div/div/div[2]/div[3]')
+      # Min temperature in the "Huomenna" column, celsius with weather-min-temperature class under the symbol
+      # https://www.ampparit.com/saa/helsinki
+      temperature_nextday_min_get = ampparit.xpath('//*[@id="content"]/div[2]/div/div/ol/li[2]/div[3]')
       temperature_nextday_min = temperature_nextday_min_get[0].text.strip().replace('Alin: ', '')
 
       # Say it all out loud
