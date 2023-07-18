@@ -1,16 +1,9 @@
-# coding=utf-8
-# Copyright 2008, Sean B. Palmer, inamidst.com
-# Copyright 2012, Elsie Powell, embolalia.com
-# Copyright 2018, Rusty Bower, rustybower.com
-# Licensed under the Eiffel Forum License 2.
-from __future__ import unicode_literals, absolute_import, print_function, division
-
-import requests
-
-from datetime import datetime
-
-import pytz
-
+"""
+suomensaa.py
+Made by rolle
+Updated 2023-05-19
+"""
+import sopel.module
 from urllib.request import urlopen
 import lxml.etree
 from lxml import etree
@@ -19,420 +12,169 @@ import requests
 import datetime
 import os
 import json
+from pprint import pprint
 
+# Paikkojen tiedosto
+places_file = '/home/rolle/.sopel/modules/paikat.json'
+# Nimimerkkien paikat muistissa
+places_cfg = {}
 
-# Add /home/rolle/sopel-weather/build/lib/sopel_modules to path
-import sys
-sys.path.insert(0, '/home/rolle/sopel-weather/build/lib/sopel_modules')
+# Ladataan tiedostosta tallennetut paikat
+def load_cfg():
+  # NOTE: menis nätimmin class propertyillä tmv. toki
+  global places_file
+  global places_cfg
 
-from sopel.config.types import NO_DEFAULT, ChoiceAttribute, StaticSection, ValidatedAttribute
-from sopel.module import commands, example, NOLIMIT
-from sopel.modules.units import c_to_f
-from sopel.tools import Identifier
-from sopel.tools.time import format_time
+  if os.path.exists(places_file):
+    filehandle = open(places_file, 'r')
+    places_cfg = json.loads(filehandle.read())
+    filehandle.close()
 
-from weather.providers.weather.openmeteo import openmeteo_forecast, openmeteo_weather
-from weather.providers.weather.openweathermap import openweathermap_forecast, openweathermap_weather
-from weather.providers.weather.pirateweather import pirateweather_forecast, pirateweather_weather
+# Asetetaan paikka nimimerkille ja tallennetaan tiedostoon
+def set_place(nick, place):
+  global places_file
+  global places_cfg
 
-WEATHER_PROVIDERS = [
-    'openmeteo',
-    'openweathermap',
-    'pirateweather',
-]
+  # asetetaan paikka muistiin
+  places_cfg[nick] = place
 
-GEOCOORDS_PROVIDERS = {
-    'locationiq_eu': 'https://eu1.locationiq.com/v1/search.php',
-    'locationiq_us': 'https://us1.locationiq.com/v1/search.php',
-    # for backward compatibility with previous `geocoords_provider` default value
-    'locationiq': 'https://us1.locationiq.com/v1/search.php',
-}
+  # tallennetaan tiedostoon
+  filehandle = open(places_file, 'w+')
+  filehandle.write(json.dumps(places_cfg))
+  filehandle.close()
 
+# Save places
+load_cfg()
 
-# Define our sopel weather configuration
-class WeatherSection(StaticSection):
-    geocoords_provider = ChoiceAttribute('geocoords_provider', GEOCOORDS_PROVIDERS.keys(), default='locationiq_us')
-    geocoords_api_key = ValidatedAttribute('geocoords_api_key', str, default='')
-    weather_provider = ChoiceAttribute('weather_provider', WEATHER_PROVIDERS, default=NO_DEFAULT)
-    weather_api_key = ValidatedAttribute('weather_api_key', str, default='')
-    sunrise_sunset = ValidatedAttribute('sunrise_sunset', bool, default=False)
-    nick_lookup = ValidatedAttribute('nick_lookup', bool, default=True)
+@sopel.module.commands('asetasää', 'asetakeli')
 
+def asetasaa(bot, trigger):
+  if not trigger.group(2):
+    bot.say("!asetasää <kaupunki> - Esim. !asetasää Jyväskylä asettaa nimimerkillesi oletuspaikaksi Jyväskylän. Tämän jälkeen pelkkä !sää hakee asetetusta paikasta säätiedot.")
+    return
 
-def setup(bot):
-    bot.config.define_section('weather', WeatherSection)
+  set_place(trigger.nick, trigger.group(2).strip())
+  bot.say("Paikka '" + trigger.group(2).strip() + "' asetettu nimimerkin " + trigger.nick +
+    " oletuspaikaksi")
 
+@sopel.module.commands('sää', 'keli')
 
-# Walk the user through defining variables required
-def configure(config):
-    config.define_section('weather', WeatherSection, validate=False)
-    config.weather.configure_setting(
-        'geocoords_provider',
-        'Anna GeoCoords API Provider:',
-        default=NO_DEFAULT
-    )
-    config.weather.configure_setting(
-        'geocoords_api_key',
-        'Anna GeoCoords rajapinta-avain:',
-        default=NO_DEFAULT
-    )
-    config.weather.configure_setting(
-        'weather_provider',
-        'Anna Weather API Provider: ({}):'.format(', '.join(WEATHER_PROVIDERS)),
-        default=NO_DEFAULT
-    )
-    config.weather.configure_setting(
-        'weather_api_key',
-        'Anna Weather rajapinta-avain:',
-        default=NO_DEFAULT
-    )
-    config.weather.configure_setting(
-        'sunrise_sunset',
-        'Otetaanko käyttöön auringonnousu/auringonlasku:',
-        default=False
-    )
-    config.weather.configure_setting(
-        'nick_lookup',
-        'Otetaanko käyttöön henkilön sijainnin kaivelu:',
-        default=True
-    )
+def saa(bot, trigger):
 
+  # No conflicts mode (no place set for nick)
+  place = False
 
-def get_temp(temp):
-    try:
-        temp = float(temp)
-    except (KeyError, TypeError, ValueError):
-        return 'unknown'
-    return u'%d\u00B0C (%d\u00B0F)' % (round(temp), round(c_to_f(temp)))
+  if not trigger.group(2):
 
+    # Checking if there is a place for the nick
+    if trigger.nick in places_cfg:
+      place = places_cfg[trigger.nick]
 
-def get_humidity(humidity):
-    try:
-        humidity = int(humidity * 100)
-    except (KeyError, TypeError, ValueError):
-        return 'unknown'
-    return "Humidity: %s%%" % humidity
-
-
-def get_wind(speed, bearing):
-    m_s = float(round(speed, 1))
-    kph = int(round(speed * 3.6))
-    mph = int(round(speed * 2.236936))
-    speed = int(round(m_s * 1.94384))
-    bearing = int(bearing)
-
-    if speed < 1:
-        description = 'Calm'
-    elif speed < 4:
-        description = 'Light air'
-    elif speed < 7:
-        description = 'Light breeze'
-    elif speed < 11:
-        description = 'Gentle breeze'
-    elif speed < 16:
-        description = 'Moderate breeze'
-    elif speed < 22:
-        description = 'Fresh breeze'
-    elif speed < 28:
-        description = 'Strong breeze'
-    elif speed < 34:
-        description = 'Near gale'
-    elif speed < 41:
-        description = 'Gale'
-    elif speed < 48:
-        description = 'Strong gale'
-    elif speed < 56:
-        description = 'Storm'
-    elif speed < 64:
-        description = 'Violent storm'
     else:
-        description = 'Hurricane'
-
-    if (bearing <= 22.5) or (bearing > 337.5):
-        bearing = u'\u2193'
-    elif (bearing > 22.5) and (bearing <= 67.5):
-        bearing = u'\u2199'
-    elif (bearing > 67.5) and (bearing <= 112.5):
-        bearing = u'\u2190'
-    elif (bearing > 112.5) and (bearing <= 157.5):
-        bearing = u'\u2196'
-    elif (bearing > 157.5) and (bearing <= 202.5):
-        bearing = u'\u2191'
-    elif (bearing > 202.5) and (bearing <= 247.5):
-        bearing = u'\u2197'
-    elif (bearing > 247.5) and (bearing <= 292.5):
-        bearing = u'\u2192'
-    elif (bearing > 292.5) and (bearing <= 337.5):
-        bearing = u'\u2198'
-
-    return description + ': ' + str(kph) + 'km/h ' + '(' + str(mph) + 'mph) ' + '(' + bearing + ')'
-
-def convert_timestamp(timestamp, tz):
-    # Partial logic from sopel/tools/time.format_time
-    time = datetime.fromtimestamp(timestamp, pytz.timezone('UTC'))
-    # We only return the time, without a date or timezone.
-    tz = pytz.timezone(tz)
-    return time.astimezone(tz).strftime('%H:%M')
-
-def get_geocoords(bot, trigger):
-    target = trigger.group(2)
-
-    if not target:
-        latitude = bot.db.get_nick_value(trigger.nick, 'latitude')
-        longitude = bot.db.get_nick_value(trigger.nick, 'longitude')
-        location = bot.db.get_nick_value(trigger.nick, 'location')
-
-        if latitude and longitude and location:
-            return latitude, longitude, location
-        else:
-            raise ValueError
-
-    if bot.config.weather.nick_lookup and ' ' not in target:
-        # Try to look up nickname in DB, if enabled
-        nick = Identifier(target)
-        latitude = bot.db.get_nick_value(nick, 'latitude')
-        longitude = bot.db.get_nick_value(nick, 'longitude')
-        location = bot.db.get_nick_value(nick, 'location')
-
-        if latitude and longitude and location:
-            return latitude, longitude, location
-
-    # geocode location if not a nick or not found in DB
-    url = GEOCOORDS_PROVIDERS[bot.config.weather.geocoords_provider]
-    data = {
-        'key': bot.config.weather.geocoords_api_key,
-        'q': trigger.group(2),
-        'format': 'json',
-        'addressdetails': 1,
-        'limit': 1
-    }
-
-    try:
-        r = requests.get(url, params=data)
-    except requests.exceptions.RequestException:
-        # requests likes to include the full URL in its exceptions, which would
-        # mean the API key gets printed to the channel
-        raise Exception("En saanut geolokaatiota. Katso lokit.")
-
-    if r.status_code != 200:
-        raise Exception(r.json()['error'])
-
-    latitude = r.json()[0]['lat']
-    longitude = r.json()[0]['lon']
-    address = r.json()[0]['address']
-
-    parts = []
-
-    # Zip codes give us town versus city
-    if 'city' in address:
-        parts.append(address['city'])
-    elif 'town' in address:
-        parts.append(address['town'])
-    elif 'county' in address:
-        parts.append(address['county'])
-    elif 'city_district' in address:
-        parts.append(address['city_district'])
-
-    if 'state' in address:
-        parts.append(address['state'])
-
-    if parts:
-        parts.append(address['country_code'].upper())
-        location = ', '.join(parts)
-    else:
-        location = 'Unknown'
-
-    return latitude, longitude, location
-
-
-def get_forecast(bot, trigger):
-
-    # If target is rolle, do nothing
-    target = trigger.group(2)
-    if target == 'koti':
-        return
-
-    try:
-        latitude, longitude, location = get_geocoords(bot, trigger)
-    except ValueError as e:
-        bot.reply(str(e))
-        return NOLIMIT
-
-    # Open-Meteo
-    if bot.config.weather.weather_provider == 'openmeteo':
-        return openmeteo_forecast(bot, latitude, longitude, location)
-    # OpenWeatherMap
-    elif bot.config.weather.weather_provider == 'openweathermap':
-        return openweathermap_forecast(bot, latitude, longitude, location)
-    # Pirate Weather
-    elif bot.config.weather.weather_provider == 'pirateweather':
-        return pirateweather_forecast(bot, latitude, longitude, location)
-    # Unsupported Provider
-    else:
-        raise Exception('Error: Unsupported Provider')
-
-
-def get_weather(bot, trigger):
-    # If target is rolle, do nothing
-    target = trigger.group(2)
-    if target == 'koti':
-        return
-
-    try:
-        latitude, longitude, location = get_geocoords(bot, trigger)
-    except ValueError as e:
-        bot.reply(str(e))
-        return NOLIMIT
-
-    # Open-Meteo
-    if bot.config.weather.weather_provider == 'openmeteo':
-        return openmeteo_weather(bot, latitude, longitude, location)
-    # OpenWeatherMap
-    elif bot.config.weather.weather_provider == 'openweathermap':
-        return openweathermap_weather(bot, latitude, longitude, location)
-    # Pirate Weather
-    elif bot.config.weather.weather_provider == 'pirateweather':
-        return pirateweather_weather(bot, latitude, longitude, location)
-    # Unsupported Provider
-    else:
-        raise Exception('Error: Unsupported Provider')
-
-@commands('omasää')
-
-def ownweather(bot, trigger):
-
-      url_rolle = "https://c.rolle.wtf/raw.php"
-      temps = urlopen(url_rolle).read().decode("utf-8")
-      bot.say('\x02Jyväskylä, Rollen ja mustikkasopan koti\x0F: ' + temps + '')
+      bot.say("!sää <kaupunki> - Esim. !sää jyväskylä kertoo Jyväskylän sään. Hakee säätiedot Forecalta. !asetasää <kaupunki> asettaa oletuspaikan nimimerkillesi jonka jälkeen pelkkä !sää hakee asetetun paikan säätiedot.")
       return
 
-@commands('saa', 'sää', 'keli')
-@example('!sää')
-@example('!sää London')
-@example('!sää Seattle, US')
-@example('!sää 90210')
+  if not place:
+    place = trigger.group(2).strip()
 
-def weather_command(bot, trigger):
+  # Readable version of the place
+  place_readable = place
 
-    target = trigger.group(2)
+  # Change ä to a and ö to o
+  place = place.replace('ä', 'a')
+  place = place.replace('ö', 'o')
 
-    if target == 'koti':
-        url_rolle = "https://c.rolle.wtf/raw.php"
-        temps = urlopen(url_rolle).read().decode("utf-8")
-        bot.say('\x02Jyväskylä, Rollen ja mustikkasopan koti\x0F: ' + temps + '')
-        return
+  url_ampparit = "https://www.ampparit.com/saa/%s" % place
+  url_foreca = "https://www.foreca.fi/Finland/%s" % place
+  url_moisio = "http://www.moisio.fi/taivas/aurinko.php?paikka=%s" % place
 
-    else:
-      """!sää sijainti - Näyttää säätiedot annetulle sijainnille."""
-      if bot.config.weather.weather_api_key is None or bot.config.weather.weather_api_key == '':
-          return bot.reply("Sään rajapinta-avain puuttuu. Konfiguroipas moduuli kunnolla.")
-      if bot.config.weather.geocoords_api_key is None or bot.config.weather.geocoords_api_key == '':
-          return bot.reply("GeoCoords-rajapinta-avain puuttuu. Konfiguroipas moduuli oikein.")
+  # LXML Xpath based scraping
+  r = requests.get(url_ampparit, headers={'Accept-Language': 'fi-FI', 'Content-type': 'text/html;charset=UTF-8', "accept-encoding": "gzip, deflate"})
+  r.encoding == 'ISO-8859-1' and not 'ISO-8859-1' in r.headers.get('Content-Type', '')
+  ampparit = lxml.html.fromstring(r.content)
 
-      # Ensure we have a location for the user
-      location = trigger.group(2)
-      if not location:
-          latitude = bot.db.get_nick_value(trigger.nick, 'latitude')
-          longitude = bot.db.get_nick_value(trigger.nick, 'longitude')
-          if not latitude or not longitude:
-              return bot.say("En tiedä missä sinä asut. "
-                            "Annapas sijainti, esim. {pfx}{command} Helsinki, "
-                            "tai kerro minulle missä olet komennolla {pfx}asetasää "
-                            "Esimerkiksi Helsinki.".format(command=trigger.group(1),
-                                                          pfx=bot.config.core.help_prefix))
+  # Get for textdata
+  r_textdata = requests.get(url_foreca, headers={'Accept-Language': 'fi-FI', 'Content-type': 'text/html;charset=UTF-8', "accept-encoding": "gzip, deflate"})
+  r_textdata.encoding == 'ISO-8859-1' and not 'ISO-8859-1' in r_textdata.headers.get('Content-Type', '')
+  foreca = lxml.html.fromstring(r_textdata.content)
 
-      try:
-          data = get_weather(bot, trigger)
-      except Exception as err:
-          bot.reply("En saanut säätietoja: " + str(err))
-          return
+  # Get for sunsetsunrise
+  r_sunsetsunrise = requests.get(url_moisio, headers={'Accept-Language': 'fi-FI', 'Content-type': 'text/html;charset=UTF-8', "accept-encoding": "gzip, deflate"})
+  r_sunsetsunrise.encoding == 'ISO-8859-1' and not 'ISO-8859-1' in r_sunsetsunrise.headers.get('Content-Type', '')
+  moisio = lxml.html.fromstring(r_sunsetsunrise.content)
 
-      weather = u'{location}: {temp}, {condition}, {humidity}'.format(
-          location=data['location'],
-          temp=get_temp(data['temp']),
-          condition=data['condition'],
-          humidity=get_humidity(data['humidity'])
-      )
-      # Some providers don't give us UV Index
-      if 'uvindex' in data.keys():
-          weather += ', UV Index: {uvindex}'.format(uvindex=data['uvindex'])
-      # User wants sunrise/sunset information
-      if bot.config.weather.sunrise_sunset:
-          tz = data['timezone']
-          sr = convert_timestamp(data['sunrise'], tz)
-          ss = convert_timestamp(data['sunset'], tz)
-          weather += ', Auringonnousu: {sunrise} Auringonlasku: {sunset}'.format(sunrise=sr, sunset=ss)
-      weather += ', {wind}'.format(wind=get_wind(data['wind']['speed'], data['wind']['bearing']))
-      return bot.say(weather)
+  if place == 'rolle':
 
+    url_rolle = "https://c.rolle.wtf/raw.php"
+    temps = urlopen(url_rolle).read().decode("utf-8")
+    bot.say('\x02Jyväskylä, Rollen ja mustikkasopan koti\x0F: ' + temps + '')
 
-@commands('saaennuste', 'sääennuste')
-@example('!sääennuste')
-@example('!sääennuste London')
-@example('!sääennuste Seattle, US')
-@example('!sääennuste 90210')
-def forecast_command(bot, trigger):
-    """!sääennuste sijainti - Näyttää annetulle sijainnille neljän päivän sääennusteen."""
-    if bot.config.weather.weather_api_key is None or bot.config.weather.weather_api_key == '':
-        return bot.reply("Sään rajapinta-avain puuttuu. Konfiguroipas moduuli oikein.")
-    if bot.config.weather.geocoords_api_key is None or bot.config.weather.geocoords_api_key == '':
-        return bot.reply("GeoCoords-rajapinta-avain puuttuu. Konfiguroipas moduuli oikein.")
-
-    # Ensure we have a location for the user
-    location = trigger.group(2)
-    if not location:
-        latitude = bot.db.get_nick_value(trigger.nick, 'latitude')
-        longitude = bot.db.get_nick_value(trigger.nick, 'longitude')
-        if not latitude or not longitude:
-            return bot.say("En tiedä missä sinä asut. "
-                           "Annapas sijainti, esim. {pfx}{command} Helsinki, "
-                           "tai kerro missä asut komennolla {pfx}asetasää "
-                           "Esimerkiksi Helsinki.".format(command=trigger.group(1),
-                                                         pfx=bot.config.core.help_prefix))
+  else:
 
     try:
-        data = get_forecast(bot, trigger)
-    except Exception as err:
-        bot.reply("En saanut sääennustetta: " + str(err))
-        return
+      # NB! First, disable JS
+      # If JS is disabled and nothing is found, they have changed it and it won't work. You'll have to find another page.
 
-    forecast = '{location}'.format(location=data['location'])
-    for day in data['data']:
-        forecast += ' :: {dow} - {summary} - {high_temp} / {low_temp}'.format(
-            dow=day.get('dow'),
-            summary=day.get('summary'),
-            high_temp=get_temp(day.get('high_temp')),
-            low_temp=get_temp(day.get('low_temp'))
-        )
-    return bot.say(forecast)
+      # Main title: "Sää Helsinki | 10 vrk sää"
+      city_get = ampparit.xpath('//*[@id="content"]/div[1]/h1')
 
+      # Split the city name from title
+      city = city_get[0].text.strip().split('|')[0].replace('Sää ', '')
 
-@commands('asetasää', 'asetasaa')
-@example('!asetasää Helsinki')
-@example('!asetasää Seattle, US')
-@example('!asetasää 90210')
-@example('!asetasää w7174408')
-def update_location(bot, trigger):
-    """Aseta sijaintisi säätä varten."""
-    if bot.config.weather.geocoords_api_key is None or bot.config.weather.geocoords_api_key == '':
-        return bot.reply("GeoCoords-rajapinta-avain puuttuu. Konfiguroipas moduuli oikein.")
+      # In the "Klo" column, first number, weather-time class, custom built XPath for reliability
+      time_get = ampparit.xpath('//*[@class="weather-hour"]/div[@class="weather-time"]/time')
+      time = time_get[0].text.strip()
 
-    # Return an error if no location is provided
-    if not trigger.group(2):
-        bot.reply('Annapas sijainti, esim. "Helsinki" tai "00100".')
-        return NOLIMIT
+      # Temperature, class weather-temperature under the symbol
+      temperature_get = ampparit.xpath('//*[@id="content"]/div[2]/div[2]/div/div/div[1]/div[2]')
+      temperature = temperature_get[0].text.strip()
 
-    # Get GeoCoords
-    try:
-        latitude, longitude, location = get_geocoords(bot, trigger)
-    except Exception as err:
-        # Reply with the error message if geocoding fails
-        bot.reply("En löytänyt sijaintitietoja tälle: " + str(err))
-        return
+      # Max temperature, red number under "Ylin:"
+      temperature_max_get = foreca.xpath('//*[@id="dailybox"]/div[1]/a/div/p[2]/abbr')
+      temperature_max = temperature_max_get[0].text.strip()
 
-    # Assign Latitude & Longitude to user
-    bot.db.set_nick_value(trigger.nick, 'latitude', latitude)
-    bot.db.set_nick_value(trigger.nick, 'longitude', longitude)
-    bot.db.set_nick_value(trigger.nick, 'location', location)
+      # Min temperature, class weather-min-temperature under the symbol
+      temperature_min_get = ampparit.xpath('//*[@id="content"]/div[2]/div[2]/div/div/div[1]/div[3]')
+      temperature_min = temperature_min_get[0].text.strip().replace('Alin: ', '')
 
-    return bot.reply('Sinä olet nyt sijainnissa {}'.format(location))
+      # Text version of the weather today
+      text_weather_today_get = foreca.xpath('//*[@class="txt"]')
+      text_weather_today = text_weather_today_get[0].text.strip().split('.')[0]
+
+      # Feels like, class weather-temperature-feelslike in the "Lämpö (Tuntuu)" column, first row
+      feelslike_get = ampparit.xpath('//*[@id="content"]/div[3]/div[1]/div/div/div[2]/div[3]/span[2]')
+      feelslike = feelslike_get[0].text.strip().replace('(', '').replace(')', '')
+
+      # Rain
+      rain_get = ampparit.xpath('//*[@id="content"]/div[2]/div[2]/div/div/div[1]/div[4]/text()')
+      rain = rain_get[0]
+
+      # Sun rises
+      sun_rises_get = moisio.xpath('//td[@class="tbl0"][4]')
+      sun_rises = sun_rises_get[0].text.strip()
+
+      # Sun sets
+      sun_sets_get = moisio.xpath('//td[@class="tbl0"][5]')
+      sun_sets = sun_sets_get[0].text.strip()
+
+      # Day lenght
+      day_length_get = moisio.xpath('//td[@class="tbl0"][6]')
+      day_length = day_length_get[0].text.strip()
+
+      # Text version of the weather today
+      text_weather_tomorrow_title_get = foreca.xpath('//*[@class="txt"]')
+      text_tomorrow_today = text_weather_tomorrow_title_get[1].text.strip().split('.')[0]
+
+      # Temperature for tomorrow
+      temperature_tomorrow_get = ampparit.xpath('//*[@class="weather-temperature"]')
+      temperature_tomorrow = temperature_tomorrow_get[1].text.strip()
+
+      # Min temperature in the "Huomenna" column, celsius under the symbol
+      temperature_nextday_min_get = ampparit.xpath('//*[@id="content"]/div[2]/div[2]/div/div/div[2]/div[3]')
+      temperature_nextday_min = temperature_nextday_min_get[0].text.strip().replace('Alin: ', '')
+
+      # Say it all out loud
+      bot.say('\x02' + city.capitalize() + '\x0Fklo ' + time + ':00: \x02' + temperature + ', ' + text_weather_today.lower() + '\x0F (tuntuu kuin: ' + feelslike + '). Sadetta mahdollisesti\x02' + rain + '\x0F. Kuluvan päivän ylin lämpötila: \x02' + temperature_max + '\x0F, alin: \x02' + temperature_min + '\x0F. Aurinko nousee klo \x02' + sun_rises + '\x02 ja laskee klo \x02' + sun_sets + '\x02. Päivän pituus on \x02' + day_length + '\x02. Huomiseksi luvassa on \x02' + temperature_tomorrow + ', ' + text_tomorrow_today.lower() + '\x02 (kylmin lämpötila huomenna: \x02' + temperature_nextday_min + '\x0F).')
+
+    except:
+      bot.say('Error, tilt, nyt bugaa! Sijainnin \x02' + place_readable.capitalize() + '\x0F säätä ei saatu haettua. Heitä ihmeessä pull requestia, jos tiedät miten tämä korjataan. Sään tarjoilee: https://github.com/pulinairc/kummitus/blob/master/modules/suomensaa.py')
