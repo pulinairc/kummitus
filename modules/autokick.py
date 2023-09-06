@@ -8,7 +8,7 @@ import re
 import sopel.module
 
 # Define the words that will trigger the kick action
-trigger_words = ["transu", "neekerit", "nigger", "neekeripoika", "neekeri", "neekerin", "mamujen", "matujen", "mamu", "matu", "rättipää", "rättipäät", "rumasana", "hurri", "karvakäsi", "karvakäden", "karvakäsien", "kumihuuli", "kumihuulien", "kumihuulet", "kanukki", "kanukit", "japsi", "jutku", "jutkut", "jutkujen", "jutkuista", "jutkuille", "polakki", "polakit", "polakkien", "lakupekka", "lakupekat", "lakupekkojen", "niggers", "rullahuuli", "ryssä", "ryssät", "mokkakikkeli", "mokkakikkelit", "inkkari", "inkkarit", "japsit", "hurrit", "vammanen", "vammainen", "vammaiset", "kehari", "keharit", "kehareiden", "vinosilmä", "vinosilmät", "vinosilmien", "vinosilmäinen", "yön Timo", "yöntimo"]
+trigger_words = ["transu", "neekerit", "nigger", "neekeripoika", "neekeri", "neekerin", "mamujen", "matujen", "mamu", "matu", "rättipää", "rättipäät", "rumasana", "hurri", "karvakäsi", "karvakäden", "karvakäsien", "kumihuuli", "kumihuulien", "kumihuulet", "kanukki", "kanukit", "japsi", "jutku", "jutkut", "jutkujen", "jutkuista", "jutkuille", "polakki", "polakit", "polakkien", "lakupekka", "lakupekat", "lakupekkojen", "niggers", "rullahuuli", "ryssä", "ryssät", "mokkakikkeli", "mokkakikkelit", "inkkari", "inkkarit", "japsit", "hurrit", "kehari", "keharit", "kehareiden", "vinosilmä", "vinosilmät", "vinosilmien", "vinosilmäinen", "yön Timo", "yöntimo"]
 
 # Function to check if the message contains the trigger word as a whole word
 # Function to check if the message contains any of the trigger words
