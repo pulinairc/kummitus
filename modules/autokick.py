@@ -28,9 +28,9 @@ def kick_on_trigger(bot, trigger):
         bot.kick(trigger.nick, '#pulina', kick_message)
 
 # A message to ops when bot joins
-@sopel.module.event('JOIN')
-@sopel.module.rule('.*')
-def ops_message(bot, trigger):
+#@sopel.module.event('JOIN')
+#@sopel.module.rule('.*')
+#def ops_message(bot, trigger):
 
-    if trigger.nick == bot.nick:
-      bot.say('Hei, pistäkääs opit (ping rolle, mustikkasoppa) eli /op kummitus, jotta saadaan moderointitoiminnot käyttöön.')
+#    if trigger.nick == bot.nick:
+#      bot.say('Hei, pistäkääs opit (ping rolle, mustikkasoppa) eli /op kummitus, jotta saadaan moderointitoiminnot käyttöön.')
