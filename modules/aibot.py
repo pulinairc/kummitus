@@ -77,7 +77,7 @@ def generate_response(messages, question, username):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "Olet ystävällinen tyyppi, jonka nimi on Kummitus. Haluat auttaa muita. Vastaa kysymyksiin alle 512 merkillä."},
+                {"role": "system", "content": "Olet ystävällinen tyyppi, jonka nimi on Kummitus. Haluat auttaa muita. Vastaa kysymyksiin alle 300 merkillä."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
@@ -118,6 +118,9 @@ def respond_to_questions(bot, trigger):
 
         # Prepend the user's nickname to the response
         final_response = f"{trigger.nick}: {response}"
+
+        # Strip "kummitus:" or "<kummitus>" from the response
+        final_response = final_response.replace("kummitus:", "").replace("<kummitus>", "")
 
         # Send the response back to the channel or user
         bot.say(final_response, trigger.sender)
