@@ -142,9 +142,9 @@ def respond_to_questions(bot, trigger):
         # Send the response back to the channel or user
         bot.say(final_response, trigger.sender)
 
-        # Log your own messages to the log file
-        with open(LOG_FILE, 'a') as f:
-            f.write(f'<{trigger.nick}> {trigger.group(0)}\n')
+        # Log bot messages to the log file
+        with open(LOG_FILE, "a", encoding='utf-8') as f:
+            f.write(f"<{bot.nick}> {response}\n")
 
         # Store a note from the user's question
         store_user_notes(trigger.nick, user_message)
