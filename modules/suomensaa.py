@@ -46,14 +46,14 @@ def asetasaa(bot, trigger):
 # Command to get the weather
 @sopel.module.commands('sää', 'keli')
 def saa(bot, trigger):
-    # Check if the user provided a location or use saved location
-    place = trigger.group(2).strip() if trigger.group(2) else places_cfg.get(trigger.nick)
+    # Check if the user provided a location; take only the first word as the location
+    place = trigger.group(2).strip().split(' ')[0] if trigger.group(2) else places_cfg.get(trigger.nick)
 
     if not place:
         bot.say("!sää <kaupunki> - Esim. !sää Jyväskylä kertoo Jyväskylän sään. !asetasää <kaupunki> asettaa oletuspaikan.")
         return
 
-    # Format place name for API (lowercase and replace special characters)
+    # Format the place name for API (convert to lowercase and replace special characters)
     place_formatted = place.lower().replace('ä', 'a').replace('ö', 'o')
 
     # Special case: if location is "koti"
@@ -69,45 +69,6 @@ def saa(bot, trigger):
         return
 
     try:
-        # FMI API query to fetch weather data
-        fmi_url = (
-            f"https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0&request=GetFeature"
-            f"&storedquery_id=fmi::observations::weather::cities::simple&place={place_formatted}"
-        )
-        response = requests.get(fmi_url)
-        response.raise_for_status()
-
-        root = etree.fromstring(response.content)
-
-        # Define necessary namespace prefixes, including BsWfs
-        namespaces = {
-            'wfs': 'http://www.opengis.net/wfs/2.0',
-            'gml': 'http://www.opengis.net/gml/3.2',
-            'BsWfs': 'http://xml.fmi.fi/schema/wfs/2.0'
-        }
-
-        # Initialize temperature and wind speed variables
-        temperature = None
-        wind_speed = None
-
-        # Iterate through all member elements to find temperature and wind speed
-        for member in root.findall('.//wfs:member', namespaces):
-            parameter_name = member.find(".//BsWfs:ParameterName", namespaces)
-            parameter_value = member.find(".//BsWfs:ParameterValue", namespaces)
-
-            if parameter_name is not None and parameter_value is not None:
-                pname = parameter_name.text
-                pvalue = parameter_value.text
-
-                if pname == "T":
-                    temperature = pvalue
-                elif pname == "WS_10MIN":
-                    wind_speed = pvalue
-
-        if temperature is None or wind_speed is None:
-            bot.say(f"Säätietoja ei löytynyt paikkakunnalle {place.capitalize()}.")
-            return
-
         # Fetch weather description using OpenWeatherMap API
         if not owm_api_key:
             bot.say("Virhe: OpenWeatherMap API-avain puuttuu. Lisää avain .env-tiedostoon.")
@@ -115,12 +76,25 @@ def saa(bot, trigger):
 
         owm_url = f"http://api.openweathermap.org/data/2.5/weather?q={place}&appid={owm_api_key}&lang=fi&units=metric"
         owm_response = requests.get(owm_url)
+
+        if owm_response.status_code == 404:
+            bot.say(f"Paikkakuntaa {place.capitalize()} ei löytynyt.")
+            return
+
+        owm_data = owm_response.json()
         weather_description = "ei saatavilla"
 
-        if owm_response.status_code == 200:
-            owm_data = owm_response.json()
-            if "weather" in owm_data and len(owm_data["weather"]) > 0:
-                weather_description = owm_data["weather"][0]["description"].capitalize()
+        if owm_response.status_code == 200 and "weather" in owm_data and len(owm_data["weather"]) > 0:
+            weather_description = owm_data["weather"][0]["description"].capitalize()
+
+        # If OpenWeatherMap does not return valid weather data, abort
+        if weather_description == "ei saatavilla":
+            bot.say(f"Säätietoja ei voitu hakea paikkakunnalle {place.capitalize()}.")
+            return
+
+        # Get temperature and wind speed from OpenWeatherMap data
+        temperature = owm_data["main"]["temp"]
+        wind_speed = owm_data["wind"]["speed"]
 
         # Fetch sunrise and sunset times from Sunrise-Sunset API
         sunrise_sunset_url = f"https://api.sunrise-sunset.org/json?lat=60.1699&lng=24.9384&formatted=0"
