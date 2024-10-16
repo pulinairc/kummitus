@@ -102,6 +102,10 @@ def respond_to_questions(bot, trigger):
         return
 
     if bot.nick in trigger.group(0) or trigger.is_privmsg:
+        # Do not reply if the private message is !reload or !restart
+        if trigger.is_privmsg and trigger.group(0).startswith("!"):
+            return
+
         # Get the last 100 lines from pulina.log, excluding bot's own messages
         last_100_lines = get_last_100_lines()
 
