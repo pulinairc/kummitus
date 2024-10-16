@@ -83,8 +83,8 @@ def find_mentioned_user(message):
             return user
     return None
 
-# Function to retrieve the last 100 lines from pulina.log, excluding bot's own messages
-def get_last_100_lines():
+# Function to retrieve the last x number of lines from pulina.log, excluding bot's own messages
+def get_last_lines():
     if not os.path.exists(LOG_FILE):
         return ""
 
@@ -95,14 +95,14 @@ def get_last_100_lines():
             # Do not include "kummitus:" lines in the response
             lines = [line for line in lines if not line.lower().startswith("kummitus:")]
 
-            # Get the last 100 lines, or all if fewer
-            last_100 = lines[-100:] if len(lines) >= 100 else lines
+            # Get the last lines, or all if fewer
+            lastlines = lines[-200:] if len(lines) >= 200 else lines
 
             # Strip newline characters and join
-            last_100 = [line.strip() for line in last_100]
+            lastlines = [line.strip() for line in lastlines]
 
             # Exclude lines from 'kummitus'
-            filtered_lines = [line for line in last_100 if not line.lower().startswith('kummitus:')]
+            filtered_lines = [line for line in lastlines if not line.lower().startswith('kummitus:')]
             return "\n".join(filtered_lines)
     except Exception as e:
         print(f"Error reading log file: {e}")
@@ -126,7 +126,7 @@ def generate_response(messages, question, username):
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=100,
+            max_tokens=300,
         )
 
         # Extract the actual text response
@@ -151,8 +151,8 @@ def respond_to_questions(bot, trigger):
         if trigger.is_privmsg and trigger.group(0).startswith("!"):
             return
 
-        # Get the last 100 lines from pulina.log, excluding bot's own messages
-        last_100_lines = get_last_100_lines()
+        # Get the last lines from pulina.log, excluding bot's own messages
+        lastlines_lines = get_last_lines()
 
         # The user's message is the entire matched pattern
         user_message = trigger.group(0)
@@ -166,7 +166,7 @@ def respond_to_questions(bot, trigger):
         add_mentioned_user(trigger.nick)
 
         # Generate a response based on the log and the user's message
-        response = generate_response(last_100_lines, user_message, trigger.nick)
+        response = generate_response(lastlines_lines, user_message, trigger.nick)
 
         # If trigger nick is bot's nickname, remove it from the response
         if trigger.nick.lower() == bot.nick.lower():
