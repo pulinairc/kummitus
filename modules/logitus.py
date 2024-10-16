@@ -4,13 +4,15 @@ Made by rolle
 """
 from sopel import module
 import os
+from datetime import datetime
 
 LOG_FILE = 'pulina.log'
 CHANNEL = '#pulina'
 
 def log_message(nick, message):
+    timestamp = datetime.now().strftime('%H:%M')  # Hakee nykyisen ajan muodossa HH:MM
     with open(LOG_FILE, 'a') as f:
-        f.write(f'<{nick}> {message}\n')
+        f.write(f'{timestamp} <{nick}> {message}\n')
 
 @module.rule('.*')
 def log_channel_message(bot, trigger):

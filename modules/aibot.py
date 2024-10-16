@@ -7,6 +7,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import json
 import os
+from datetime import datetime
 
 # Log file
 LOG_FILE = 'pulina.log'
@@ -143,8 +144,9 @@ def respond_to_questions(bot, trigger):
         bot.say(final_response, trigger.sender)
 
         # Log bot messages to the log file
+        timestamp = datetime.now().strftime('%H:%M')
         with open(LOG_FILE, "a", encoding='utf-8') as f:
-            f.write(f"<{bot.nick}> {response}\n")
+            f.write(f"{timestamp} <{bot.nick}> {response}\n")
 
         # Store a note from the user's question
         store_user_notes(trigger.nick, user_message)
