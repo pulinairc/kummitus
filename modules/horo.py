@@ -2,7 +2,6 @@
 """
 horo.py
 Made by rolle
-ja lapyo ;_;
 """
 import sopel.module
 from urllib.request import urlopen, Request
@@ -12,6 +11,8 @@ from bs4 import BeautifulSoup
 
 HOROT = ['oinas', 'harka', 'kaksoset', 'rapu', 'leijona', 'neitsyt',
          'vaaka', 'skorpioni', 'jousimies', 'kauris', 'vesimies', 'kalat']
+
+MAX_MESSAGE_LENGTH = 400
 
 def get_horo_matches(short_query):
     return list(map(lambda x: x[:len(short_query)], HOROT))
@@ -25,13 +26,11 @@ def get_horo(bot, nick):
         return unquote(horo)
 
 def convert_umlauts(query):
-    # Voit laajentaa tätä tarpeen mukaan
     return query.lower().translate(str.maketrans('äöå', 'aoa'))
 
 def fetch_horo(horo):
     url = f"https://www.horoskooppi.co/horoskooppi/{horo}/"
     try:
-        # Lisää User-Agent header
         req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         response = urlopen(req)
     except HTTPError as e:
@@ -41,7 +40,6 @@ def fetch_horo(horo):
 
     try:
         soup = BeautifulSoup(response.read(), "html.parser")
-        # Etsi kaikki 'div' elementit, joissa on luokka 'cat_holder'
         cat_holders = soup.find_all("div", class_="cat_holder")
         if not cat_holders:
             return "Horoskooppia ei löytynyt tai sivuston rakenne on muuttunut."
@@ -55,9 +53,13 @@ def fetch_horo(horo):
                 if title_tag and description_tag:
                     title = title_tag.get_text(strip=True)
                     description = description_tag.get_text(strip=True)
-                    horoskooppi += f"{title}: {description}\n"
+                    horoskooppi += f"{title}: {description} \n"
 
-        return horoskooppi.strip() if horoskooppi else "Horoskooppia ei löytynyt."
+        horoskooppi = horoskooppi.strip()
+        if len(horoskooppi) > (MAX_MESSAGE_LENGTH - len(url) - 5):
+            horoskooppi = horoskooppi[:MAX_MESSAGE_LENGTH - len(url) - 5] + "..."
+
+        return f"{horoskooppi} {url}"
 
     except Exception as e:
         return f"Virhe horoskoopin käsittelyssä: {e}"
