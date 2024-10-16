@@ -5,107 +5,106 @@ Made by rolle
 ja lapyo ;_;
 """
 import sopel.module
-from urllib.request import urlopen
+from urllib.request import urlopen, Request
 from urllib.parse import quote, unquote
-from urllib.error import HTTPError
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from bs4 import BeautifulSoup
 
 HOROT = ['oinas', 'harka', 'kaksoset', 'rapu', 'leijona', 'neitsyt',
-    'vaaka', 'skorpioni', 'jousimies', 'kauris', 'vesimies', 'kalat']
+         'vaaka', 'skorpioni', 'jousimies', 'kauris', 'vesimies', 'kalat']
 
 def get_horo_matches(short_query):
-  # tehdään lista horoskoopeista ottamalla kustakin horosta hakusanan pituinen substring
-  return list(map(lambda x: x[:len(short_query)], HOROT))
+    return list(map(lambda x: x[:len(short_query)], HOROT))
 
 def set_horo(bot, nick, horo):
-  bot.db.set_nick_value(nick, 'horo', str(quote(horo)))
+    bot.db.set_nick_value(nick, 'horo', str(quote(horo)))
 
 def get_horo(bot, nick):
-  horo = bot.db.get_nick_value(nick, 'horo')
-  if horo:
-    return unquote(horo)
+    horo = bot.db.get_nick_value(nick, 'horo')
+    if horo:
+        return unquote(horo)
 
-# muutetaan ä:t a:ksi (härkä -> harka)
 def convert_umlauts(query):
-  return query.lower().translate(str.maketrans('ä', 'a'))
+    # Voit laajentaa tätä tarpeen mukaan
+    return query.lower().translate(str.maketrans('äöå', 'aoa'))
+
+def fetch_horo(horo):
+    url = f"https://www.horoskooppi.co/horoskooppi/{horo}/"
+    try:
+        # Lisää User-Agent header
+        req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        response = urlopen(req)
+    except HTTPError as e:
+        return f"Virhe horoskoopin hakemisessa: {e}"
+    except URLError:
+        return "Palvelin on alhaalla tai verkkotunnus on virheellinen"
+
+    try:
+        soup = BeautifulSoup(response.read(), "html.parser")
+        # Etsi kaikki 'div' elementit, joissa on luokka 'cat_holder'
+        cat_holders = soup.find_all("div", class_="cat_holder")
+        if not cat_holders:
+            return "Horoskooppia ei löytynyt tai sivuston rakenne on muuttunut."
+
+        horoskooppi = ""
+        for holder in cat_holders:
+            cat_text = holder.find("div", class_="cat_text")
+            if cat_text:
+                title_tag = cat_text.find("h5")
+                description_tag = cat_text.find("p")
+                if title_tag and description_tag:
+                    title = title_tag.get_text(strip=True)
+                    description = description_tag.get_text(strip=True)
+                    horoskooppi += f"{title}: {description}\n"
+
+        return horoskooppi.strip() if horoskooppi else "Horoskooppia ei löytynyt."
+
+    except Exception as e:
+        return f"Virhe horoskoopin käsittelyssä: {e}"
 
 @sopel.module.commands('asetahoro', 'asetahoroskooppi')
 def asetahoro(bot, trigger):
-  if not trigger.group(2):
-    bot.say("!asetahoro <horoskooppi> - Esim. !asetahoro \x02skorpioni\x02 kertoo skorpionin horoskoopin. Toimii myös lyhenteillä, esim. oi, skor, här, kak, jne.")
-    return
+    if not trigger.group(2):
+        bot.say("!asetahoro <horoskooppi> - Esim. !asetahoro skorpioni kertoo skorpionin horoskoopin. Toimii myös lyhenteillä, esim. oi, skor, här, kak, jne.")
+        return
 
-  # hakusana
-  original_query = trigger.group(2).strip()
+    original_query = trigger.group(2).strip()
+    query = convert_umlauts(original_query)
 
-  query = convert_umlauts(original_query)
+    horo_prefix = get_horo_matches(query)
+    match_count = horo_prefix.count(query)
 
-  # haetaan osumalista
-  horo_prefix = get_horo_matches(query)
-
-  # katsotaan montako osumaa hakusanalla löytyy
-  match_count = horo_prefix.count(query)
-
-  # asetetaan horo jos haulla löytyy vain yksi osuma
-  if match_count == 1:
-    horo = HOROT[horo_prefix.index(query)]
-    set_horo(bot, trigger.nick, horo)
-    bot.say('horo \x02' + horo + '\x02 asetettu nimimerkin \x02' + trigger.nick + '\x02 oletushuoraksi.')
-    return
-
-  if match_count >= 2:
-    bot.say("Tarkenna hakuasi, hakusanalla \"" + original_query + "\" löytyy " + str(match_count) + " horoskooppimerkkiä")
-    return
-
-  bot.say('Ime säkkiäs, typotit, EVO!! Ei ole sellaista kuin "' + original_query + '"')
+    if match_count == 1:
+        horo = HOROT[horo_prefix.index(query)]
+        set_horo(bot, trigger.nick, horo)
+        bot.say(f'horo \x02{horo}\x02 asetettu nimimerkin \x02{trigger.nick}\x02 oletushoroskoopiksi.')
+    elif match_count >= 2:
+        bot.say(f"Tarkenna hakuasi, hakusanalla \"{original_query}\" löytyy {match_count} horoskooppimerkkiä.")
+    else:
+        bot.say(f'Ei ole sellaista horoskooppimerkkiä kuin "{original_query}".')
 
 @sopel.module.commands('horo', 'horoskooppi')
 def horo(bot, trigger):
+    horo = None
+    if not trigger.group(2):
+        horo = get_horo(bot, trigger.nick)
+        if not horo:
+            bot.say("!horo <horoskooppi> - Esim. !horo skorpioni kertoo skorpionin horoskoopin. Toimii myös lyhenteillä, esim. oi, skor, här, kak, jne. !asetahoro <horoskooppi> asettaa oletushoron nimimerkillesi.")
+            return
+    else:
+        original_query = trigger.group(2).strip()
+        query = convert_umlauts(original_query)
+        horo_prefix = get_horo_matches(query)
+        match_count = horo_prefix.count(query)
 
-  # alustetaan horo
-  horo = None
+        if match_count == 1:
+            horo = HOROT[horo_prefix.index(query)]
+        elif match_count >= 2:
+            bot.say(f"Tarkenna hakuasi, hakusanalla \"{original_query}\" löytyy {match_count} horoskooppimerkkiä.")
+            return
+        else:
+            bot.say(f'Ei ole sellaista horoskooppimerkkiä kuin "{original_query}".')
+            return
 
-  if not trigger.group(2):
-    horo = get_horo(bot, trigger.nick)
-    if not horo:
-      bot.say("!horo <horoskooppi> - Esim. !horo skorpioni kertoo skorpionin horoskoopin. Toimii myös lyhenteillä, esim. oi, skor, här, kak, jne. !asetahoro <horoskooppi> asettaa oletushoron nimimerkillesi jonka jälkeen pelkkä !horo hakee horoskoopin.")
-      return
-
-  if not horo:
-    # hakusana
-    original_query = trigger.group(2).strip()
-    # muutetaan ä:t a:ksi (härkä -> harka)
-    query = convert_umlauts(original_query)
-
-    # haetaan osumalista
-    horo_prefix = get_horo_matches(query)
-
-    # katsotaan montako osumaa hakusanalla löytyy
-    match_count = horo_prefix.count(query)
-
-    if match_count >= 2:
-      bot.say("Tarkenna hakuasi, hakusanalla \"" + original_query + "\" löytyy " + str(match_count) + " horoskooppimerkkiä")
-      return
-
-    if match_count != 1:
-      bot.say('Ime säkkiäs, typotit, EVO!! Ei ole sellaista kuin "' + original_query + '"')
-      return
-
-    # haetaan vain jos 1 osuma
-    horo = HOROT[horo_prefix.index(query)]
-
-  try:
-    html = urlopen("https://www.iltalehti.fi/horoskooppi")
-  except HTTPError as e:
-    print(e)
-    return
-  except URLError:
-    print("Server down or incorrect domain")
-    return
-  res = BeautifulSoup(html.read(), "html5lib")
-
-  bot.say(res.find("div", {"class": "article-body"}).select("p")[HOROT.index(horo)].getText())
-
-  return
-
+    result = fetch_horo(horo)
+    bot.say(result)
