@@ -44,10 +44,9 @@ def asetasaa(bot, trigger):
     bot.say(f"Paikka '{trigger.group(2).strip()}' asetettu nimimerkin {trigger.nick} oletuspaikaksi.")
 
 # Command to get the weather
-@sopel.module.commands('sää', 'keli')
+@sopel.module.commands('sää', 'keli', 'saa')
 def saa(bot, trigger):
-    # Check for the user's saved location or use the given parameter
-    place = places_cfg.get(trigger.nick, trigger.group(2).strip()) if trigger.group(2) else places_cfg.get(trigger.nick)
+    place = trigger.group(2).strip() if trigger.group(2) else places_cfg.get(trigger.nick)
 
     if not place:
         bot.say("!sää <kaupunki> - Esim. !sää Jyväskylä kertoo Jyväskylän sään. !asetasää <kaupunki> asettaa oletuspaikan.")
@@ -76,7 +75,12 @@ def saa(bot, trigger):
         response.raise_for_status()
 
         root = etree.fromstring(response.content)
-        namespaces = {'wfs': 'http://www.opengis.net/wfs/2.0'}
+        namespaces = {
+            'wfs': 'http://www.opengis.net/wfs/2.0',
+            'om': 'http://www.opengis.net/om/2.0',
+            'ompr': 'http://inspire.ec.europa.eu/schemas/ompr/3.0',
+            'target': 'http://xml.fmi.fi/namespace/om/atmosphericfeatures/1.1'
+        }
 
         # Retrieve temperature and wind speed based on ParameterName
         temperature = None
