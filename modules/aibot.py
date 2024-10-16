@@ -83,7 +83,7 @@ def generate_response(messages, question, username):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "Olet ystävällinen tyyppi, jonka nimi on Kummitus. Vastaa kysymyksiin alle 300 merkillä."},
+                {"role": "system", "content": 'Olet ystävällinen tyyppi, jonka nimi on Kummitus. Vastaa kysymyksiin alle 300 merkillä. Älä koskaan sisällytä vastaukseesi "kummitus:"-merkintää.'},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
