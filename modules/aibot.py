@@ -81,7 +81,7 @@ def generate_response(messages, question, username):
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=200,
+            max_tokens=100,
         )
 
         # Extract the actual text response
