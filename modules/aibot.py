@@ -104,12 +104,21 @@ def respond_to_questions(bot, trigger):
     if bot.nick in trigger.group(0) or trigger.is_privmsg:
         # Get the last 100 lines from pulina.log, excluding bot's own messages
         last_100_lines = get_last_100_lines()
+
         # The user's message is the entire matched pattern
         user_message = trigger.group(0)
+
+        # Check if message is appointed to a bot
+        if user_message.lower().startswith(bot.nick.lower()):
+            # Remove the bot's nickname from the message
+            user_message = user_message[len(bot.nick):].strip()
+
         # Generate a response based on the log and the user's message
         response = generate_response(last_100_lines, user_message, trigger.nick)
+
         # Prepend the user's nickname to the response
         final_response = f"{trigger.nick}: {response}"
+
         # Send the response back to the channel or user
         bot.say(final_response, trigger.sender)
 
