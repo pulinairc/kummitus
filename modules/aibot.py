@@ -116,10 +116,14 @@ def respond_to_questions(bot, trigger):
         # Generate a response based on the log and the user's message
         response = generate_response(last_100_lines, user_message, trigger.nick)
 
+        # If trigger nick is bot's nickname, remove it from the response
+        if trigger.nick.lower() == bot.nick.lower():
+            response = response.replace(f"{bot.nick}:", "").strip()
+
         # Prepend the user's nickname to the response
         final_response = f"{trigger.nick}: {response}"
 
-        # Strip "kummitus:" or "<kummitus>" from the response
+        # Strip "kummitus:" or "<kummitus>" from the response, if in any part of it
         final_response = final_response.replace("kummitus:", "").replace("<kummitus>", "")
 
         # Send the response back to the channel or user
