@@ -11,6 +11,7 @@ from datetime import datetime
 
 # Log file
 LOG_FILE = 'pulina.log'
+MENTIONED_USERS_FILE = "mentioned_users.json"
 
 # Load environment variables from .env file
 load_dotenv()
@@ -47,6 +48,40 @@ def save_user_notes():
 
 # Initialize user_notes from file
 user_notes = load_user_notes()
+
+# Load or create mentioned users list
+def load_mentioned_users():
+    if not os.path.exists(MENTIONED_USERS_FILE):
+        with open(MENTIONED_USERS_FILE, "w", encoding='utf-8') as f:
+            json.dump([], f, ensure_ascii=False, indent=4)
+        return []
+
+    with open(MENTIONED_USERS_FILE, "r", encoding='utf-8') as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            return []
+
+# Save mentioned users to a file
+def save_mentioned_users(mentioned_users):
+    with open(MENTIONED_USERS_FILE, "w", encoding='utf-8') as f:
+        json.dump(mentioned_users, f, ensure_ascii=False, indent=4)
+
+# Initialize mentioned users from file
+mentioned_users = load_mentioned_users()
+
+# Function to add a user to mentioned users list
+def add_mentioned_user(nick):
+    if nick not in mentioned_users:
+        mentioned_users.append(nick)
+        save_mentioned_users(mentioned_users)
+
+# Function to check if the user is mentioned in the message
+def find_mentioned_user(message):
+    for user in mentioned_users:
+        if user.lower() in message.lower():
+            return user
+    return None
 
 # Function to retrieve the last 100 lines from pulina.log, excluding bot's own messages
 def get_last_100_lines():
@@ -127,6 +162,9 @@ def respond_to_questions(bot, trigger):
             # Remove the bot's nickname from the message
             user_message = user_message[len(bot.nick):].strip()
 
+        # If no recognized user was mentioned, add the original user to mentioned list
+        add_mentioned_user(trigger.nick)
+
         # Generate a response based on the log and the user's message
         response = generate_response(last_100_lines, user_message, trigger.nick)
 
@@ -140,9 +178,6 @@ def respond_to_questions(bot, trigger):
         # Strip "kummitus:" or "<kummitus>" from the response, if in any part of it
         final_response = final_response.replace("kummitus:", "").replace("<kummitus>", "")
 
-        # Send the response back to the channel or user
-        bot.say(final_response, trigger.sender)
-
         # Log bot messages to the log file
         timestamp = datetime.now().strftime('%H:%M')
         with open(LOG_FILE, "a", encoding='utf-8') as f:
@@ -150,3 +185,13 @@ def respond_to_questions(bot, trigger):
 
         # Store a note from the user's question
         store_user_notes(trigger.nick, user_message)
+
+        # Find if any mentioned user is in the message
+        mentioned_user = find_mentioned_user(user_message)
+
+        if mentioned_user:
+            # If the user is recognized, strip out the trigger.nick from the response
+            final_response = final_response.replace(f"{trigger.nick}:", "").strip()
+
+        # Send the response back to the channel or user
+        bot.say(final_response, trigger.sender)
