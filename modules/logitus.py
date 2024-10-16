@@ -21,6 +21,10 @@ def log_channel_message(bot, trigger):
     if channel == CHANNEL and message.strip():
         log_message(nick, message)
 
+    # Also write your own messages
+    if channel == CHANNEL and message.strip() and nick == bot.nick:
+        log_message(bot.nick, message)
+
 def setup(bot):
     if not os.path.isfile(LOG_FILE):
         with open(LOG_FILE, 'w') as f:
