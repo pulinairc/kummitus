@@ -44,57 +44,65 @@ def asetasaa(bot, trigger):
     bot.say(f"Paikka '{trigger.group(2).strip()}' asetettu nimimerkin {trigger.nick} oletuspaikaksi.")
 
 # Command to get the weather
-@sopel.module.commands('sää', 'keli', 'saa')
+@sopel.module.commands('sää', 'keli')
 def saa(bot, trigger):
+    # Check if the user provided a location or use saved location
     place = trigger.group(2).strip() if trigger.group(2) else places_cfg.get(trigger.nick)
 
     if not place:
         bot.say("!sää <kaupunki> - Esim. !sää Jyväskylä kertoo Jyväskylän sään. !asetasää <kaupunki> asettaa oletuspaikan.")
         return
 
-    # Format the place name for the API
-    place = place.lower().replace('ä', 'a').replace('ö', 'o')
+    # Format place name for API (lowercase and replace special characters)
+    place_formatted = place.lower().replace('ä', 'a').replace('ö', 'o')
 
-    # Special case: if the location is "koti"
-    if place == "koti":
+    # Special case: if location is "koti"
+    if place_formatted == "koti":
         try:
             # Fetch weather data from custom URL
             response = requests.get("https://c.rolle.wtf/raw.php")
             response.raise_for_status()
             # Print weather for "koti"
-            bot.say(f"Jyväskylä, Rollen koti: {response.text.strip()}")
+            bot.say(f"Rollen koti: {response.text.strip()}")
         except Exception as e:
             bot.say(f"Virhe: Säädataa ei voitu hakea kodille. ({str(e)})")
         return
 
     try:
-        # FMI API query for weather data
-        fmi_url = (f"https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0&request=GetFeature"
-                   f"&storedquery_id=fmi::observations::weather::cities::simple&place={place}")
+        # FMI API query to fetch weather data
+        fmi_url = (
+            f"https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0&request=GetFeature"
+            f"&storedquery_id=fmi::observations::weather::cities::simple&place={place_formatted}"
+        )
         response = requests.get(fmi_url)
         response.raise_for_status()
 
         root = etree.fromstring(response.content)
+
+        # Define necessary namespace prefixes, including BsWfs
         namespaces = {
             'wfs': 'http://www.opengis.net/wfs/2.0',
-            'om': 'http://www.opengis.net/om/2.0',
-            'ompr': 'http://inspire.ec.europa.eu/schemas/ompr/3.0',
-            'target': 'http://xml.fmi.fi/namespace/om/atmosphericfeatures/1.1'
+            'gml': 'http://www.opengis.net/gml/3.2',
+            'BsWfs': 'http://xml.fmi.fi/schema/wfs/2.0'
         }
 
-        # Retrieve temperature and wind speed based on ParameterName
+        # Initialize temperature and wind speed variables
         temperature = None
         wind_speed = None
 
-        # Iterate through all elements to find temperature (T) and wind speed (WS_10MIN)
-        for element in root.xpath(".//wfs:member//BsWfs:BsWfsElement", namespaces={"BsWfs": "http://xml.fmi.fi/schema/wfs/2.0"}):
-            parameter_name = element.find(".//BsWfs:ParameterName", namespaces={"BsWfs": "http://xml.fmi.fi/schema/wfs/2.0"}).text
-            parameter_value = element.find(".//BsWfs:ParameterValue", namespaces={"BsWfs": "http://xml.fmi.fi/schema/wfs/2.0"}).text
+        # Iterate through all member elements to find temperature and wind speed
+        for member in root.findall('.//wfs:member', namespaces):
+            parameter_name = member.find(".//BsWfs:ParameterName", namespaces)
+            parameter_value = member.find(".//BsWfs:ParameterValue", namespaces)
 
-            if parameter_name == "T":
-                temperature = parameter_value
-            elif parameter_name == "WS_10MIN":
-                wind_speed = parameter_value
+            if parameter_name is not None and parameter_value is not None:
+                pname = parameter_name.text
+                pvalue = parameter_value.text
+
+                if pname == "T":
+                    temperature = pvalue
+                elif pname == "WS_10MIN":
+                    wind_speed = pvalue
 
         if temperature is None or wind_speed is None:
             bot.say(f"Säätietoja ei löytynyt paikkakunnalle {place.capitalize()}.")
@@ -105,16 +113,16 @@ def saa(bot, trigger):
             bot.say("Virhe: OpenWeatherMap API-avain puuttuu. Lisää avain .env-tiedostoon.")
             return
 
-        owm_url = f"http://api.openweathermap.org/data/2.5/weather?q={place}&appid={owm_api_key}&lang=fi"
+        owm_url = f"http://api.openweathermap.org/data/2.5/weather?q={place}&appid={owm_api_key}&lang=fi&units=metric"
         owm_response = requests.get(owm_url)
         weather_description = "ei saatavilla"
 
         if owm_response.status_code == 200:
             owm_data = owm_response.json()
-            if "weather" in owm_data:
+            if "weather" in owm_data and len(owm_data["weather"]) > 0:
                 weather_description = owm_data["weather"][0]["description"].capitalize()
 
-        # Fetch sunrise and sunset times from Sunrise-Sunset.org API
+        # Fetch sunrise and sunset times from Sunrise-Sunset API
         sunrise_sunset_url = f"https://api.sunrise-sunset.org/json?lat=60.1699&lng=24.9384&formatted=0"
         ss_response = requests.get(sunrise_sunset_url)
         sunrise = sunset = "ei saatavilla"
@@ -125,7 +133,11 @@ def saa(bot, trigger):
                 sunrise = ss_data["results"]["sunrise"].split('T')[1].split('+')[0]
                 sunset = ss_data["results"]["sunset"].split('T')[1].split('+')[0]
 
-        # Build the final message in Finnish
-        bot.say(f"Sää {place.capitalize()}: {weather_description}. Lämpötila on {temperature} °C ja tuulen nopeus on {wind_speed} m/s. Aurinko laskee tänään klo {sunset} ja nousee huomenna klo {sunrise}.")
+        # Build final weather message in Finnish
+        bot.say(
+            f"Sää {place.capitalize()}: {weather_description}. "
+            f"Lämpötila on {temperature} °C ja tuulen nopeus on {wind_speed} m/s. "
+            f"Aurinko laskee tänään klo {sunset} ja nousee huomenna klo {sunrise}."
+        )
     except Exception as e:
         bot.say(f"Virhe: Säätietoja ei voitu hakea paikkakunnalle {place.capitalize()}. ({str(e)})")
