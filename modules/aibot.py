@@ -97,6 +97,10 @@ def store_user_notes(username, message):
 # Sopel trigger function to respond to questions when bot's name is mentioned or in private messages
 @sopel.module.rule(r'(.*)')
 def respond_to_questions(bot, trigger):
+    # Check if the nickname is "Orvokki" and ignore the message if it is
+    if trigger.nick == "Orvokki":
+        return
+
     if bot.nick in trigger.group(0) or trigger.is_privmsg:
         # Get the last 100 lines from pulina.log, excluding bot's own messages
         last_100_lines = get_last_100_lines()
