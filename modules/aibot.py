@@ -52,10 +52,16 @@ def get_last_100_lines():
     try:
         with open(LOG_FILE, "r", encoding='utf-8') as f:
             lines = f.readlines()
+
+            # Do not include "kummitus:" lines in the response
+            lines = [line for line in lines if not line.lower().startswith("kummitus:")]
+
             # Get the last 100 lines, or all if fewer
             last_100 = lines[-100:] if len(lines) >= 100 else lines
+
             # Strip newline characters and join
             last_100 = [line.strip() for line in last_100]
+
             # Exclude lines from 'kummitus'
             filtered_lines = [line for line in last_100 if not line.lower().startswith('kummitus:')]
             return "\n".join(filtered_lines)
