@@ -1,193 +1,127 @@
 """
 suomensaa.py
 Made by rolle
-Updated 2023-07-18
 """
 import sopel.module
-from urllib.request import urlopen
-import lxml.etree
-from lxml import etree
-import lxml.html
 import requests
-import datetime
-import os
 import json
-from pprint import pprint
+import os
+from lxml import etree
+from dotenv import load_dotenv
 
-# Paikkojen tiedosto
+# Load environment variables from .env file
+load_dotenv()
 places_file = '/home/rolle/.sopel/modules/paikat.json'
-# Nimimerkkien paikat muistissa
 places_cfg = {}
 
-# Ladataan tiedostosta tallennetut paikat
+# Read OpenWeatherMap API key from environment variables
+owm_api_key = os.getenv("OWM_API_KEY")
+
+# Load saved places from the file
 def load_cfg():
-  # NOTE: menis nätimmin class propertyillä tmv. toki
-  global places_file
-  global places_cfg
+    global places_file, places_cfg
+    if os.path.exists(places_file):
+        with open(places_file, 'r') as filehandle:
+            places_cfg = json.loads(filehandle.read())
 
-  if os.path.exists(places_file):
-    filehandle = open(places_file, 'r')
-    places_cfg = json.loads(filehandle.read())
-    filehandle.close()
-
-# Asetetaan paikka nimimerkille ja tallennetaan tiedostoon
+# Save the place for the nickname
 def set_place(nick, place):
-  global places_file
-  global places_cfg
+    global places_file, places_cfg
+    places_cfg[nick] = place
+    with open(places_file, 'w+') as filehandle:
+        filehandle.write(json.dumps(places_cfg))
 
-  # asetetaan paikka muistiin
-  places_cfg[nick] = place
-
-  # tallennetaan tiedostoon
-  filehandle = open(places_file, 'w+')
-  filehandle.write(json.dumps(places_cfg))
-  filehandle.close()
-
-# Save places
+# Load places configuration
 load_cfg()
 
+# Command to set the location
 @sopel.module.commands('asetasää', 'asetakeli')
-
 def asetasaa(bot, trigger):
-  if not trigger.group(2):
-    bot.say("!asetasää <kaupunki> - Esim. !asetasää Jyväskylä asettaa nimimerkillesi oletuspaikaksi Jyväskylän. Tämän jälkeen pelkkä !sää hakee asetetusta paikasta säätiedot.")
-    return
+    if not trigger.group(2):
+        bot.say("!asetasää <kaupunki> - Esim. !asetasää Jyväskylä asettaa nimimerkillesi oletuspaikaksi Jyväskylän.")
+        return
+    set_place(trigger.nick, trigger.group(2).strip())
+    bot.say(f"Paikka '{trigger.group(2).strip()}' asetettu nimimerkin {trigger.nick} oletuspaikaksi.")
 
-  set_place(trigger.nick, trigger.group(2).strip())
-  bot.say("Paikka '" + trigger.group(2).strip() + "' asetettu nimimerkin " + trigger.nick +
-    " oletuspaikaksi")
-
+# Command to get the weather
 @sopel.module.commands('sää', 'keli')
-
 def saa(bot, trigger):
+    # Check for the user's saved location or use the given parameter
+    place = places_cfg.get(trigger.nick, trigger.group(2).strip()) if trigger.group(2) else places_cfg.get(trigger.nick)
 
-  # No conflicts mode (no place set for nick)
-  place = False
+    if not place:
+        bot.say("!sää <kaupunki> - Esim. !sää Jyväskylä kertoo Jyväskylän sään. !asetasää <kaupunki> asettaa oletuspaikan.")
+        return
 
-  if not trigger.group(2):
+    # Format the place name for the API
+    place = place.lower().replace('ä', 'a').replace('ö', 'o')
 
-    # Checking if there is a place for the nick
-    if trigger.nick in places_cfg:
-      place = places_cfg[trigger.nick]
-
-    else:
-      bot.say("!sää <kaupunki> - Esim. !sää jyväskylä kertoo Jyväskylän sään. Hakee säätiedot Forecalta. !asetasää <kaupunki> asettaa oletuspaikan nimimerkillesi jonka jälkeen pelkkä !sää hakee asetetun paikan säätiedot.")
-      return
-
-  if not place:
-    place = trigger.group(2).strip()
-
-  # Readable version of the place
-  place_readable = place
-
-  # Change ä to a and ö to o
-  place = place.replace('ä', 'a')
-  place = place.replace('ö', 'o')
-
-  url_ampparit = "https://www.ampparit.com/saa/%s" % place
-  url_foreca = "https://www.foreca.fi/Finland/%s" % place
-  url_moisio = "http://www.moisio.fi/taivas/aurinko.php?paikka=%s" % place
-
-  # LXML Xpath based scraping
-  r = requests.get(url_ampparit, headers={'Accept-Language': 'fi-FI', 'Content-type': 'text/html;charset=UTF-8', "accept-encoding": "gzip, deflate"})
-  r.encoding == 'ISO-8859-1' and not 'ISO-8859-1' in r.headers.get('Content-Type', '')
-  ampparit = lxml.html.fromstring(r.content)
-
-  # Get for textdata
-  r_textdata = requests.get(url_foreca, headers={'Accept-Language': 'fi-FI', 'Content-type': 'text/html;charset=UTF-8', "accept-encoding": "gzip, deflate"})
-  r_textdata.encoding == 'ISO-8859-1' and not 'ISO-8859-1' in r_textdata.headers.get('Content-Type', '')
-  foreca = lxml.html.fromstring(r_textdata.content)
-
-  # Get for sunsetsunrise
-  r_sunsetsunrise = requests.get(url_moisio, headers={'Accept-Language': 'fi-FI', 'Content-type': 'text/html;charset=UTF-8', "accept-encoding": "gzip, deflate"})
-  r_sunsetsunrise.encoding == 'ISO-8859-1' and not 'ISO-8859-1' in r_sunsetsunrise.headers.get('Content-Type', '')
-  moisio = lxml.html.fromstring(r_sunsetsunrise.content)
-
-  if place == 'koti':
-
-    url_rolle = "https://c.rolle.wtf/raw.php"
-    temps = urlopen(url_rolle).read().decode("utf-8")
-    bot.say('\x02Jyväskylä, Rollen ja mustikkasopan koti\x0F: ' + temps + '')
-
-  else:
+    # Special case: if the location is "koti"
+    if place == "koti":
+        try:
+            # Fetch weather data from custom URL
+            response = requests.get("https://c.rolle.wtf/raw.php")
+            response.raise_for_status()
+            # Print weather for "koti"
+            bot.say(f"Jyväskylä, Rollen koti: {response.text.strip()}")
+        except Exception as e:
+            bot.say(f"Virhe: Säädataa ei voitu hakea kodille. ({str(e)})")
+        return
 
     try:
-      # NB! First, disable JS
-      # If JS is disabled and nothing is found, they have changed it and it won't work. You'll have to find another page.
+        # FMI API query for weather data
+        fmi_url = (f"https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0&request=GetFeature"
+                   f"&storedquery_id=fmi::observations::weather::cities::simple&place={place}")
+        response = requests.get(fmi_url)
+        response.raise_for_status()
 
-      # Main title: "Sää Helsinki | 10 vrk sää"
-      city_get = ampparit.xpath('//*[@id="content"]/div[1]/h1')
+        root = etree.fromstring(response.content)
+        namespaces = {'wfs': 'http://www.opengis.net/wfs/2.0'}
 
-      # Split the city name from title
-      city = city_get[0].text.strip().split('|')[0].replace('Sää ', '')
+        # Retrieve temperature and wind speed based on ParameterName
+        temperature = None
+        wind_speed = None
 
-      # In the "Klo" column, first number, weather-time class, custom built XPath for reliability
-      # https://www.ampparit.com/saa/helsinki
-      time_get = ampparit.xpath('//*[@class="weather-hour"]/div[@class="weather-time"]/time')
-      time = time_get[0].text.strip()
+        # Iterate through all elements to find temperature (T) and wind speed (WS_10MIN)
+        for element in root.xpath(".//wfs:member//BsWfs:BsWfsElement", namespaces={"BsWfs": "http://xml.fmi.fi/schema/wfs/2.0"}):
+            parameter_name = element.find(".//BsWfs:ParameterName", namespaces={"BsWfs": "http://xml.fmi.fi/schema/wfs/2.0"}).text
+            parameter_value = element.find(".//BsWfs:ParameterValue", namespaces={"BsWfs": "http://xml.fmi.fi/schema/wfs/2.0"}).text
 
-      # "Lämpö (Tuntuu)" column, temperature, class weather-temperature under the symbol and <span> under it
-      # https://www.ampparit.com/saa/helsinki
-      temperature_get = ampparit.xpath('//*[@id="content"]/div[3]/div[1]/div/div/div[2]/div[3]/span[1]')
-      temperature = temperature_get[0].text.strip()
+            if parameter_name == "T":
+                temperature = parameter_value
+            elif parameter_name == "WS_10MIN":
+                wind_speed = parameter_value
 
-      # Max temperature, red abbr number under "Ylin:"
-      # https://www.foreca.fi/Finland/helsinki
-      temperature_max_get = foreca.xpath('//*[@id="dailybox"]/div[1]/a/div/p[2]/abbr')
-      temperature_max = temperature_max_get[0].text.strip()
+        if temperature is None or wind_speed is None:
+            bot.say(f"Säätietoja ei löytynyt paikkakunnalle {place.capitalize()}.")
+            return
 
-      # "Tänään", min temperature, class weather-min-temperature under the symbol (not visible!)
-      # https://www.ampparit.com/saa/helsinki
-      temperature_min_get = ampparit.xpath('//*[@id="content"]/div[2]/div/div/ol/li[1]/div[3]')
-      temperature_min = temperature_min_get[0].text.strip().replace('Alin: ', '')
+        # Fetch weather description using OpenWeatherMap API
+        if not owm_api_key:
+            bot.say("Virhe: OpenWeatherMap API-avain puuttuu. Lisää avain .env-tiedostoon.")
+            return
 
-      # Text version of the weather today, text under "Sää tänään tiistaina"
-      # https://www.foreca.fi/Finland/helsinki
-      text_weather_today_get = foreca.xpath('//*[@class="txt"]')
-      text_weather_today = text_weather_today_get[0].text.strip().split('.')[0]
+        owm_url = f"http://api.openweathermap.org/data/2.5/weather?q={place}&appid={owm_api_key}&lang=fi"
+        owm_response = requests.get(owm_url)
+        weather_description = "ei saatavilla"
 
-      # Feels like, class weather-temperature-feelslike in the "Lämpö (Tuntuu)" column, first row
-      # https://www.ampparit.com/saa/helsinki
-      feelslike_get = ampparit.xpath('//*[@id="content"]/div[3]/div[1]/div/div/div[2]/div[3]/span[2]')
-      feelslike = feelslike_get[0].text.strip().replace('(', '').replace(')', '')
+        if owm_response.status_code == 200:
+            owm_data = owm_response.json()
+            if "weather" in owm_data:
+                weather_description = owm_data["weather"][0]["description"].capitalize()
 
-      # Rain, weather-min-max-rain-change class, the black drop symbol with text, note, add /text() in the end of XPath to get the text only
-      # https://www.ampparit.com/saa/helsinki
-      rain_get = ampparit.xpath('//*[@id="content"]/div[2]/div/div/ol/li[1]/div[4]/text()')
-      rain = rain_get[0]
+        # Fetch sunrise and sunset times from Sunrise-Sunset.org API
+        sunrise_sunset_url = f"https://api.sunrise-sunset.org/json?lat=60.1699&lng=24.9384&formatted=0"
+        ss_response = requests.get(sunrise_sunset_url)
+        sunrise = sunset = "ei saatavilla"
 
-      # Sun rises, "Lasku" column, first row, rarely changes!
-      # http://www.moisio.fi/taivas/aurinko.php?paikka=helsinki
-      sun_rises_get = moisio.xpath('//td[@class="tbl0"][4]')
-      sun_rises = sun_rises_get[0].text.strip()
+        if ss_response.status_code == 200:
+            ss_data = ss_response.json()
+            if "results" in ss_data:
+                sunrise = ss_data["results"]["sunrise"].split('T')[1].split('+')[0]
+                sunset = ss_data["results"]["sunset"].split('T')[1].split('+')[0]
 
-      # Sun sets, "Nousu" column, first row, rarely changes!
-      # http://www.moisio.fi/taivas/aurinko.php?paikka=helsinki
-      sun_sets_get = moisio.xpath('//td[@class="tbl0"][5]')
-      sun_sets = sun_sets_get[0].text.strip()
-
-      # Day length, "Päivän pituus" column, first row, rarely changes!
-      # http://www.moisio.fi/taivas/aurinko.php?paikka=helsinki
-      day_length_get = moisio.xpath('//td[@class="tbl0"][6]')
-      day_length = day_length_get[0].text.strip()
-
-      # Text version of the weather today, text under "Sää huomenna keskiviikkona"
-      # https://www.foreca.fi/Finland/helsinki
-      text_weather_tomorrow_title_get = foreca.xpath('//*[@class="txt"]')
-      text_tomorrow_today = text_weather_tomorrow_title_get[1].text.strip().split('.')[0]
-
-      # Temperature for tomorrow
-      # https://www.ampparit.com/saa/helsinki
-      temperature_tomorrow_get = ampparit.xpath('//*[@class="weather-temperature"]')
-      temperature_tomorrow = temperature_tomorrow_get[1].text.strip()
-
-      # Min temperature in the "Huomenna" column, celsius with weather-min-temperature class under the symbol
-      # https://www.ampparit.com/saa/helsinki
-      temperature_nextday_min_get = ampparit.xpath('//*[@id="content"]/div[2]/div/div/ol/li[2]/div[3]')
-      temperature_nextday_min = temperature_nextday_min_get[0].text.strip().replace('Alin: ', '')
-
-      # Say it all out loud
-      bot.say('\x02' + city.capitalize() + '\x0Fklo ' + time + ':00: \x02' + temperature + ', ' + text_weather_today.lower() + '\x0F (tuntuu kuin: ' + feelslike + '). Sadetta mahdollisesti\x02' + rain + '\x0F. Kuluvan päivän ylin lämpötila: \x02' + temperature_max + '\x0F, alin: \x02' + temperature_min + '\x0F. Aurinko nousee klo \x02' + sun_rises + '\x02 ja laskee klo \x02' + sun_sets + '\x02. Päivän pituus on \x02' + day_length + '\x02. Huomiseksi luvassa on \x02' + temperature_tomorrow + ', ' + text_tomorrow_today.lower() + '\x02 (kylmin lämpötila huomenna: \x02' + temperature_nextday_min + '\x0F).')
-
-    except:
-      bot.say('Error, tilt, nyt bugaa! Sijainnin \x02' + place_readable.capitalize() + '\x0F säätä ei saatu haettua. Heitä ihmeessä pull requestia, jos tiedät miten tämä korjataan. Sään tarjoilee: https://github.com/pulinairc/kummitus/blob/master/modules/suomensaa.py')
+        # Build the final message in Finnish
+        bot.say(f"Sää {place.capitalize()}: {weather_description}. Lämpötila on {temperature} °C ja tuulen nopeus on {wind_speed} m/s. Aurinko laskee tänään klo {sunset} ja nousee huomenna klo {sunrise}.")
+    except Exception as e:
+        bot.say(f"Virhe: Säätietoja ei voitu hakea paikkakunnalle {place.capitalize()}. ({str(e)})")
