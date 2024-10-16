@@ -55,7 +55,7 @@ def log_quit(bot, trigger):
     nick = trigger.nick
     reason = trigger.args[0] if trigger.args else 'ei syytä'
 
-    log_message(f'{nick} lopetti IRC-yhteyden: {reason}')
+    log_message(f'{nick} poistui paikalta koska {reason}')
 
 # Log kicks
 @module.event('kick')
