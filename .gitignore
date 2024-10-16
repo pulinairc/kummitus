@@ -1,4 +1,8 @@
 modules/.env
+pulina.log
+modules/pulina.log
+modules/.env
+user_notes.json
 *.pid
 train*
 training
