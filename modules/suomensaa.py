@@ -8,6 +8,7 @@ import json
 import os
 from lxml import etree
 from dotenv import load_dotenv
+from datetime import datetime
 
 # Load environment variables from .env file
 load_dotenv()
@@ -69,7 +70,7 @@ def saa(bot, trigger):
         return
 
     try:
-        # Fetch weather description using OpenWeatherMap API
+        # Fetch weather description and coordinates using OpenWeatherMap API
         if not owm_api_key:
             bot.say("Virhe: OpenWeatherMap API-avain puuttuu. Lisää avain .env-tiedostoon.")
             return
@@ -96,10 +97,15 @@ def saa(bot, trigger):
         temperature = owm_data["main"]["temp"]
         wind_speed = owm_data["wind"]["speed"]
 
-        # Fetch sunrise and sunset times from Sunrise-Sunset API
-        sunrise_sunset_url = f"https://api.sunrise-sunset.org/json?lat=60.1699&lng=24.9384&formatted=0"
+        # Get latitude and longitude from OpenWeatherMap data
+        lat = owm_data["coord"]["lat"]
+        lon = owm_data["coord"]["lon"]
+
+        # Fetch sunrise and sunset times from Sunrise-Sunset API using the coordinates
+        sunrise_sunset_url = f"https://api.sunrise-sunset.org/json?lat={lat}&lng={lon}&formatted=0"
         ss_response = requests.get(sunrise_sunset_url)
         sunrise = sunset = "ei saatavilla"
+        day_length = "ei saatavilla"
 
         if ss_response.status_code == 200:
             ss_data = ss_response.json()
@@ -107,11 +113,22 @@ def saa(bot, trigger):
                 sunrise = ss_data["results"]["sunrise"].split('T')[1].split('+')[0]
                 sunset = ss_data["results"]["sunset"].split('T')[1].split('+')[0]
 
+                # Convert sunrise and sunset to datetime objects
+                sunrise_time = datetime.strptime(sunrise, "%H:%M:%S")
+                sunset_time = datetime.strptime(sunset, "%H:%M:%S")
+
+                # Calculate the length of the day
+                day_length_timedelta = sunset_time - sunrise_time
+                hours, remainder = divmod(day_length_timedelta.seconds, 3600)
+                minutes = remainder // 60
+                day_length = f"{hours} tuntia ja {minutes} minuuttia"
+
         # Build final weather message in Finnish
         bot.say(
             f"Sää {place.capitalize()}: {weather_description}. "
             f"Lämpötila on {temperature} °C ja tuulen nopeus on {wind_speed} m/s. "
-            f"Aurinko laskee tänään klo {sunset} ja nousee huomenna klo {sunrise}."
+            f"Aurinko laskee tänään klo {sunset} ja nousee huomenna klo {sunrise}. "
+            f"Päivän pituus on {day_length}."
         )
     except Exception as e:
         bot.say(f"Virhe: Säätietoja ei voitu hakea paikkakunnalle {place.capitalize()}. ({str(e)})")
