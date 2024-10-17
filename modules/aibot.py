@@ -252,16 +252,8 @@ def extract_sender_from_line(line):
 # Function to call OpenAI GPT-4o-mini API and generate a response
 def generate_response(messages, question, username):
     try:
-        # Ensure that these variables are not None
+        # Build the prompt from messages and the question
         prompt = (messages if messages else "") + "\nKysymys: " + (question if question else "")
-
-        if messages:
-            prompt = messages + "\nKysymys: " + question
-        else:
-            prompt = question
-
-        #if username in user_notes:
-        #    prompt += f"\nMuistan, että viimeksi kerroit: {user_notes[username]}"
 
         # Debug prompt
         LOGGER.debug(f"Prompt: {prompt}")
@@ -269,7 +261,7 @@ def generate_response(messages, question, username):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": 'Olet ystävällinen tyyppi, jonka nimi on Kummitus. Vastaa kysymyksiin alle 300 merkillä. Älä koskaan sisällytä vastaukseesi "kummitus:"-merkintää. Vältä turhien "Onko jotain muuta, mistä haluaisit jutella?" kysymysten kyselemistä.'},
+                {"role": "system", "content": 'Olet ystävällinen tyyppi, jonka nimi on Kummitus. Vastaa kysymyksiin alle 300 merkillä. Älä koskaan sisällytä vastaukseesi "kummitus:"-merkintää. Vältä turhien "Onko jotain muuta, mistä haluaisit jutella?" kysymysten kyselemistä. Sinun ei tarvitse joka kerta sanoa, että olet täällä tai että muistat kaikki sinulle kerrotut asiat.'},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
