@@ -11,6 +11,7 @@ from datetime import datetime
 from sopel import logger
 import random
 import time
+import re
 
 # Sopel logger
 LOGGER = logger.get_logger(__name__)
@@ -204,7 +205,7 @@ def get_last_lines():
             lines = f.readlines()
 
             # Get the last x lines to check for bot mentions
-            last_lines = lines[-200:] if len(lines) >= 200 else lines
+            last_lines = lines[-10:] if len(lines) >= 10 else lines
 
             # Initialize variables to track bot mentions
             last_bot_mention = None
@@ -240,6 +241,13 @@ def get_last_lines():
     except Exception as e:
         LOGGER.debug(f"Error reading log file: {e}")
         return ""
+
+# Funktio noutaa lähettäjän nimen satunnaiselta riviltä
+def extract_sender_from_line(line):
+    match = re.search(r'<([^>]+)>', line)
+    if match:
+        return match.group(1)
+    return None
 
 # Function to call OpenAI GPT-4o-mini API and generate a response
 def generate_response(messages, question, username):
@@ -423,6 +431,9 @@ def respond_to_questions(bot, trigger):
     if random_line:
         LOGGER.debug(f"Selected line for response: {random_line}")
 
+        # Extracting sender
+        sender = extract_sender_from_line(random_line)
+
         # Create a prompt for OpenAI based on the selected line
         prompt = f"Vastaa luonnollisesti seuraavaan viestiin: {random_line}"
 
@@ -434,5 +445,6 @@ def respond_to_questions(bot, trigger):
             # Log last response time
             last_response_time = time.time()
 
-            bot.say(response, trigger.sender)
+            # Send the response to the channel
+            bot.say(f"{sender}: {response}", trigger.sender)
 
