@@ -338,7 +338,7 @@ def respond_to_questions(bot, trigger):
 
         # Include the memory in the prompt
         if memory:
-            memory_prompt = "Ota huomioon vastauksessa seuraavat tärkeät muistettavat asiat: " + " ".join(memory)
+            memory_prompt = "Muista seuraavat tärkeät asiat, mutta tuo näitä esiin vain tarvittaessa: " + " ".join(memory)
         else:
             memory_prompt = ""
 
