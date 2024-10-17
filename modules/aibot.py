@@ -9,9 +9,14 @@ import json
 import os
 from datetime import datetime
 
-# Log file
+# Files
 LOG_FILE = 'pulina.log'
 MENTIONED_USERS_FILE = "mentioned_users.json"
+MEMORY_FILE = 'memory.json'
+NOTES_FILE = 'user_notes.json'
+LOG_FILE = 'pulina.log'
+OUTPUT_FILE_DIR = "/var/www/botit.pulina.fi/public_html/"
+OUTPUT_FILE_PATH = os.path.join(OUTPUT_FILE_DIR, "muisti.txt")
 
 # Load environment variables from .env file
 load_dotenv()
@@ -23,8 +28,65 @@ client = OpenAI()
 OpenAI.api_key = os.getenv("OPENAI_API_KEY")
 
 # File paths
-NOTES_FILE = "user_notes.json"
-LOG_FILE = "pulina.log"  # Path to pulina.log, adjust as necessary
+MEMORY_FILE = "memory.json"
+
+# Load or create memory list
+def load_memory():
+    if not os.path.exists(MEMORY_FILE):
+        with open(MEMORY_FILE, "w", encoding='utf-8') as f:
+            json.dump([], f, ensure_ascii=False, indent=4)
+        return []
+
+    with open(MEMORY_FILE, "r", encoding='utf-8') as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            return []
+
+# Save memory to a file
+def save_memory(memory):
+    with open(MEMORY_FILE, "w", encoding='utf-8') as f:
+        json.dump(memory, f, ensure_ascii=False, indent=4)
+
+# Initialize memory from file
+memory = load_memory()
+
+# Function to add something to memory
+def add_to_memory(item):
+    memory.append(item)
+    save_memory(memory)
+
+# Function to remove something from memory
+def remove_from_memory(item):
+    memory[:] = [m for m in memory if item.lower() not in m.lower()]
+    save_memory(memory)
+
+# Function to list everything in memory
+def list_memory():
+    if memory:
+        return "\n".join(memory)
+    return "Muisti on tyhjä."
+
+# Function to write memory to a text file
+def write_memory_to_file():
+    try:
+        # Make sure the directory exists
+        os.makedirs(OUTPUT_FILE_DIR, exist_ok=True)
+
+        # Define file path
+        output_file_path = os.path.join(OUTPUT_FILE_DIR, "muisti.txt")
+
+        # Write the memory to the file
+        with open(output_file_path, "w", encoding='utf-8') as f:
+            if memory:
+                f.write("\n".join(memory))
+            else:
+                f.write("Muisti on tyhjä.")
+
+        return output_file_path
+
+    except Exception as e:
+        return f"Virhe tiedoston luomisessa: {e}"
 
 # Load existing notes from file (if any)
 def load_user_notes():
@@ -101,9 +163,8 @@ def get_last_lines():
             # Strip newline characters and join
             lastlines = [line.strip() for line in lastlines]
 
-            # Exclude lines from 'kummitus'
-            filtered_lines = [line for line in lastlines if not line.lower().startswith('kummitus:')]
-            return "\n".join(filtered_lines)
+            # Exclude all lines that contain word kummitus
+            lastlines = [line for line in lastlines if "kummitus" not in line.lower()]
     except Exception as e:
         print(f"Error reading log file: {e}")
         return ""
@@ -152,10 +213,35 @@ def respond_to_questions(bot, trigger):
             return
 
         # Get the last lines from pulina.log, excluding bot's own messages
-        lastlines_lines = get_last_lines()
+        lastlines = get_last_lines()
 
         # The user's message is the entire matched pattern
         user_message = trigger.group(0)
+
+        # Include the memory in the prompt
+        if memory:
+            memory_prompt = "Muistan seuraavat asiat: " + " ".join(memory)
+        else:
+            memory_prompt = ""
+
+        # Long-term-memory functionality
+        if user_message.lower().startswith("muista"):
+            item_to_remember = user_message[len("muista"):].strip()
+            add_to_memory(item_to_remember)
+            bot.say(f"Muistan tästä {item_to_remember}", trigger.sender)
+            return
+
+        # Forgetting functionality
+        if user_message.lower().startswith("unohda"):
+            item_to_forget = user_message[len("unohda"):].strip()
+            remove_from_memory(item_to_forget)
+            bot.say(f"Unohdin: {item_to_forget}", trigger.sender)
+            return
+
+        # List memory and inform about the file location
+        if user_message.lower() == "mitä muistat":
+            bot.say(f"Muistan seuraavat asiat. Ne on tallennettu myös tiedostoon: {OUTPUT_FILE_PATH}", trigger.sender)
+            return
 
         # Check if message is appointed to a bot
         if user_message.lower().startswith(bot.nick.lower()):
@@ -166,7 +252,8 @@ def respond_to_questions(bot, trigger):
         add_mentioned_user(trigger.nick)
 
         # Generate a response based on the log and the user's message
-        response = generate_response(lastlines_lines, user_message, trigger.nick)
+        prompt = (lastlines if lastlines else "") + "\n" + (memory_prompt if memory_prompt else "") + "\n" + (user_message if user_message else "")
+        response = generate_response(lastlines, prompt, trigger.nick)
 
         # If trigger nick is bot's nickname, remove it from the response
         if trigger.nick.lower() == bot.nick.lower():
