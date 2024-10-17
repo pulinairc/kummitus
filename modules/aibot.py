@@ -188,33 +188,34 @@ def find_mentioned_user(message):
             return user
     return None
 
-# Function to retrieve the last x number of lines from pulina.log, excluding bot's own messages
-def get_last_lines():
-    if not os.path.exists(LOG_FILE):
-        return ""
+# Function to retrieve the last 'num_lines' from pulina.log, excluding bot's own messages and checking mentions
+def get_last_lines(num_lines=400, bot_name="kummitus", log_file=LOG_FILE):
+    """Fetch the last 'num_lines' from the log file, check if the bot was mentioned, and exclude bot's own messages."""
+    if not os.path.exists(log_file):
+        return "", False
 
     try:
-        with open(LOG_FILE, "r", encoding='utf-8') as f:
+        with open(log_file, "r", encoding='utf-8') as f:
             lines = f.readlines()
 
-            # Do not include "kummitus:" lines in the response
-            lines = [line for line in lines if not line.lower().startswith("kummitus:")]
+            # Check if the bot was mentioned in any of the last lines
+            bot_was_mentioned = any(bot_name.lower() in line.lower() for line in lines[-num_lines:])
 
-            # Get the last lines, or all if fewer
-            lastlines = lines[-400:] if len(lines) >= 400 else lines
+            # Exclude bot's own lines (starting with bot's name)
+            lines = [line for line in lines if not line.lower().startswith(f"{bot_name.lower()}:")]
 
-            # Strip newline characters and join
-            lastlines = [line.strip() for line in lastlines]
+            # Get the last 'num_lines' or all lines if fewer
+            last_lines = lines[-num_lines:] if len(lines) >= num_lines else lines
 
-            # Exclude all lines that contain word kummitus
-            lastlines = [line for line in lastlines if "kummitus" not in line.lower()]
+            # Strip newline characters
+            last_lines = [line.strip() for line in last_lines]
 
-            # Return the processed lines
-            return "\n".join(lastlines)
+            # Return the processed lines and whether the bot was mentioned
+            return "\n".join(last_lines), bot_was_mentioned
 
     except Exception as e:
         LOGGER.debug(f"Error reading log file: {e}")
-        return ""
+        return "", False
 
 # General function to check if the bot was mentioned
 def bot_was_mentioned(lines, bot_name="kummitus"):
