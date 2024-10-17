@@ -181,7 +181,7 @@ def get_last_lines():
             lines = [line for line in lines if not line.lower().startswith("kummitus:")]
 
             # Get the last lines, or all if fewer
-            lastlines = lines[-200:] if len(lines) >= 200 else lines
+            lastlines = lines[-400:] if len(lines) >= 400 else lines
 
             # Strip newline characters and join
             lastlines = [line.strip() for line in lastlines]
