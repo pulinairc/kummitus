@@ -15,8 +15,8 @@ import time
 # Sopel logger
 LOGGER = logger.get_logger(__name__)
 
-# Define a cooldown period (e.g., 5 minutes) in seconds
-COOLDOWN_PERIOD = 300
+# Define a cooldown period in seconds
+COOLDOWN_PERIOD = 1800
 last_response_time = None
 
 # Files
@@ -194,13 +194,8 @@ def find_mentioned_user(message):
             return user
     return None
 
-# Function to retrieve the last 20 lines from pulina.log if the bot hasn't been mentioned in the last 400 lines
+# Function to retrieve the last 20 lines from pulina.log if the bot hasn't been mentioned in the last x lines
 def get_last_lines():
-    global last_response_time
-
-    # Check the current time
-    current_time = time.time()
-
     if not os.path.exists(LOG_FILE):
         return ""
 
@@ -208,8 +203,8 @@ def get_last_lines():
         with open(LOG_FILE, "r", encoding='utf-8') as f:
             lines = f.readlines()
 
-            # Get the last 400 lines to check for bot mentions
-            last_lines = lines[-5:] if len(lines) >= 5 else lines
+            # Get the last x lines to check for bot mentions
+            last_lines = lines[-200:] if len(lines) >= 200 else lines
 
             # Initialize variables to track bot mentions
             last_bot_mention = None
@@ -238,12 +233,7 @@ def get_last_lines():
             non_bot_lines = [line for line in last_short_lines if "kummitus" not in line.lower()]
 
             if non_bot_lines:
-                # If bot has responded recently, skip responding
-                if last_response_time and (current_time - last_response_time) < COOLDOWN_PERIOD:
-                    LOGGER.debug("Cooldown active, bot will not respond.")
-                    return
-                else:
-                    return random.choice(non_bot_lines)
+                return random.choice(non_bot_lines)
             else:
                 return "\n".join(non_bot_lines)
 
@@ -314,20 +304,7 @@ def generate_natural_response(prompt):
 # Sopel trigger function to respond to questions when bot's name is mentioned or in private messages
 @sopel.module.rule(r'(.*)')
 def respond_to_questions(bot, trigger):
-    # Get a random line from the last 20 lines if bot hasn't been mentioned in the last 400 lines
-    random_line = get_last_lines()
-
-    if random_line:
-        LOGGER.debug(f"Selected line for response: {random_line}")
-
-        # Create a prompt for OpenAI based on the selected line
-        prompt = f"Vastaa luonnollisesti seuraavaan viestiin: {random_line}"
-
-        # Generate a response using OpenAI
-        response = generate_natural_response(prompt)
-
-        if response:
-            bot.say(response, trigger.sender)
+    global last_response_time
 
     # Check if the nickname is "Orvokki" and ignore the message if it is
     if trigger.nick == "Orvokki":
@@ -432,3 +409,30 @@ def respond_to_questions(bot, trigger):
 
         # Send the response back to the channel or user
         bot.say(final_response, trigger.sender)
+
+        return
+
+    # Add cooldown for random responses
+    if last_response_time and (time.time() - last_response_time) < COOLDOWN_PERIOD:
+      LOGGER.debug("Cooldown active, bot will not respond randomly.")
+      return
+
+    # Get a random line from the last 20 lines if bot hasn't been mentioned in the last 400 lines
+    random_line = get_last_lines()
+
+    if random_line:
+        LOGGER.debug(f"Selected line for response: {random_line}")
+
+        # Create a prompt for OpenAI based on the selected line
+        prompt = f"Vastaa luonnollisesti seuraavaan viestiin: {random_line}"
+
+        # Generate a response using OpenAI
+        response = generate_natural_response(prompt)
+
+        if response:
+
+            # Log last response time
+            last_response_time = time.time()
+
+            bot.say(response, trigger.sender)
+
