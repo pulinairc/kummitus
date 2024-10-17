@@ -10,8 +10,14 @@ import os
 from datetime import datetime
 from sopel import logger
 import random
+import time
 
+# Sopel logger
 LOGGER = logger.get_logger(__name__)
+
+# Define a cooldown period (e.g., 5 minutes) in seconds
+COOLDOWN_PERIOD = 300  # 5 minutes
+last_response_time = None  # Track the last time the bot responded
 
 # Files
 LOG_FILE = 'pulina.log'
@@ -285,11 +291,21 @@ def generate_natural_response(prompt):
 # Sopel trigger function to respond to questions when bot's name is mentioned or in private messages
 @sopel.module.rule(r'(.*)')
 def respond_to_questions(bot, trigger):
+    global last_response_time
+
+    # Check the current time
+    current_time = time.time()
+
     # Get a random line from the last 20 lines if bot hasn't been mentioned in the last 400 lines
     random_line = get_last_lines()
 
     if random_line:
         LOGGER.debug(f"Selected line for response: {random_line}")
+
+        # If bot has responded recently, skip responding
+        if last_response_time and (current_time - last_response_time) < COOLDOWN_PERIOD:
+            LOGGER.debug("Cooldown active, bot will not respond.")
+            return
 
         # Create a prompt for OpenAI based on the selected line
         prompt = f"Vastaa luonnollisesti seuraavaan viestiin: {random_line}"
