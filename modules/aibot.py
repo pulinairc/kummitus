@@ -205,7 +205,7 @@ def get_last_lines():
             lines = f.readlines()
 
             # Get the last x lines to check for bot mentions
-            last_lines = lines[-10:] if len(lines) >= 10 else lines
+            last_lines = lines[-200:] if len(lines) >= 200 else lines
 
             # Initialize variables to track bot mentions
             last_bot_mention = None
@@ -308,6 +308,9 @@ def generate_natural_response(prompt):
         LOGGER.debug(f"Error using OpenAI API: {e}")
         return None
 
+def format_cooldown_time(seconds):
+    minutes, seconds = divmod(seconds, 60)
+    return f"{int(minutes)} minutes {int(seconds)} seconds"
 
 # Sopel trigger function to respond to questions when bot's name is mentioned or in private messages
 @sopel.module.rule(r'(.*)')
@@ -422,8 +425,9 @@ def respond_to_questions(bot, trigger):
 
     # Add cooldown for random responses
     if last_response_time and (time.time() - last_response_time) < COOLDOWN_PERIOD:
-      LOGGER.debug("Cooldown active, bot will not respond randomly.")
-      return
+        remaining_time = COOLDOWN_PERIOD - (time.time() - last_response_time)
+        LOGGER.debug(f"Cooldown active, bot will not respond randomly. Cooldown ends in {format_cooldown_time(remaining_time)}.")
+        return
 
     # Get a random line from the last 20 lines if bot hasn't been mentioned in the last 400 lines
     random_line = get_last_lines()
