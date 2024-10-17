@@ -220,23 +220,26 @@ def get_last_lines():
                 # Calculate how many lines ago the bot was mentioned
                 lines_since_mention = last_bot_mention
                 LOGGER.debug(f"Bot was last mentioned {lines_since_mention} lines ago. No need to respond.")
-                return None
+
+                # Filter out lines that mention the bot
+                non_bot_lines_full = [line for line in last_lines if "kummitus" not in line.lower()]
+                return "\n".join(non_bot_lines_full)
             else:
-                # If the bot wasn't mentioned in the last 400 lines
-                LOGGER.debug("Bot hasn't been mentioned in the last 400 lines.")
+                # If the bot wasn't mentioned in the last x lines
+                LOGGER.debug("Bot hasn't been mentioned in the last 200 lines.")
                 lines_since_mention = total_lines
 
-            # Answer to random line from the last 10 lines
-            last_short_lines = lines[-10:] if len(lines) >= 10 else lines
-            last_short_lines = [line.strip() for line in last_short_lines]
+                # Answer to random line from the last 10 lines
+                last_short_lines = lines[-10:] if len(lines) >= 10 else lines
+                last_short_lines = [line.strip() for line in last_short_lines]
 
-            # Filter out lines that mention the bot
-            non_bot_lines = [line for line in last_short_lines if "kummitus" not in line.lower()]
+                # Filter out lines that mention the bot
+                non_bot_lines_short = [line for line in last_short_lines if "kummitus" not in line.lower()]
 
-            if non_bot_lines:
-                return random.choice(non_bot_lines)
-            else:
-                return "\n".join(non_bot_lines)
+                if non_bot_lines_short:
+                    return random.choice(non_bot_lines_short)
+                else:
+                    return "\n".join(non_bot_lines_full)
 
     except Exception as e:
         LOGGER.debug(f"Error reading log file: {e}")
