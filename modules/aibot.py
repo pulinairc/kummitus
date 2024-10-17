@@ -18,7 +18,6 @@ LOGGER = logger.get_logger(__name__)
 # Define a cooldown period (e.g., 5 minutes) in seconds
 COOLDOWN_PERIOD = 300
 last_response_time = None
-last_responded_user = None
 
 # Files
 LOG_FILE = 'pulina.log'
@@ -210,13 +209,26 @@ def get_last_lines():
             lines = f.readlines()
 
             # Get the last 400 lines to check for bot mentions
-            last_lines = lines[-400:] if len(lines) >= 400 else lines
+            last_lines = lines[-5:] if len(lines) >= 5 else lines
 
-            # Check if the bot has been mentioned in the last 400 lines
-            bot_mentioned = any("kummitus" in line.lower() for line in last_lines)
-            if bot_mentioned:
-                LOGGER.debug("Bot has been mentioned in the last 400 lines. No need to respond.")
+            # Initialize variables to track bot mentions
+            last_bot_mention = None
+            total_lines = len(last_lines)
+
+            for i, line in enumerate(reversed(last_lines), 1):
+                if "kummitus" in line.lower():
+                    last_bot_mention = i
+                    break
+
+            if last_bot_mention is not None:
+                # Calculate how many lines ago the bot was mentioned
+                lines_since_mention = last_bot_mention
+                LOGGER.debug(f"Bot was last mentioned {lines_since_mention} lines ago. No need to respond.")
                 return None
+            else:
+                # If the bot wasn't mentioned in the last 400 lines
+                LOGGER.debug("Bot hasn't been mentioned in the last 400 lines.")
+                lines_since_mention = total_lines
 
             # Answer to random line from the last 10 lines
             last_short_lines = lines[-10:] if len(lines) >= 10 else lines
