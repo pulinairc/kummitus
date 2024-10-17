@@ -16,8 +16,9 @@ import time
 LOGGER = logger.get_logger(__name__)
 
 # Define a cooldown period (e.g., 5 minutes) in seconds
-COOLDOWN_PERIOD = 300  # 5 minutes
-last_response_time = None  # Track the last time the bot responded
+COOLDOWN_PERIOD = 300
+last_response_time = None
+last_responded_user = None
 
 # Files
 LOG_FILE = 'pulina.log'
@@ -196,6 +197,11 @@ def find_mentioned_user(message):
 
 # Function to retrieve the last 20 lines from pulina.log if the bot hasn't been mentioned in the last 400 lines
 def get_last_lines():
+    global last_response_time
+
+    # Check the current time
+    current_time = time.time()
+
     if not os.path.exists(LOG_FILE):
         return ""
 
@@ -212,15 +218,20 @@ def get_last_lines():
                 LOGGER.debug("Bot has been mentioned in the last 400 lines. No need to respond.")
                 return None
 
-            # Get the last 20 lines for random selection
-            last_short_lines = lines[-20:] if len(lines) >= 20 else lines
+            # Answer to random line from the last 10 lines
+            last_short_lines = lines[-10:] if len(lines) >= 10 else lines
             last_short_lines = [line.strip() for line in last_short_lines]
 
             # Filter out lines that mention the bot
             non_bot_lines = [line for line in last_short_lines if "kummitus" not in line.lower()]
 
             if non_bot_lines:
-                return random.choice(non_bot_lines)
+                # If bot has responded recently, skip responding
+                if last_response_time and (current_time - last_response_time) < COOLDOWN_PERIOD:
+                    LOGGER.debug("Cooldown active, bot will not respond.")
+                    return
+                else:
+                    return random.choice(non_bot_lines)
             else:
                 return "\n".join(non_bot_lines)
 
@@ -251,7 +262,7 @@ def generate_response(messages, question, username):
                 {"role": "system", "content": 'Olet ystävällinen tyyppi, jonka nimi on Kummitus. Vastaa kysymyksiin alle 300 merkillä. Älä koskaan sisällytä vastaukseesi "kummitus:"-merkintää. Vältä turhien "Onko jotain muuta, mistä haluaisit jutella?" kysymysten kyselemistä.'},
                 {"role": "user", "content": prompt}
             ],
-            temperature=1,
+            temperature=0.7,
             max_tokens=300,
         )
 
@@ -276,7 +287,7 @@ def generate_natural_response(prompt):
                 {"role": "system", "content": 'Olet ystävällinen tyyppi, jonka nimi on Kummitus. Kirjoita kommentti asiaan alle 300 merkillä. Älä koskaan sisällytä vastaukseesi "kummitus:"-merkintää. Vältä turhien "Onko jotain muuta, mistä haluaisit jutella?" kysymysten kyselemistä.'},
                 {"role": "user", "content": prompt}
             ],
-            temperature=1,
+            temperature=0.7,
             max_tokens=300,
         )
 
@@ -291,21 +302,11 @@ def generate_natural_response(prompt):
 # Sopel trigger function to respond to questions when bot's name is mentioned or in private messages
 @sopel.module.rule(r'(.*)')
 def respond_to_questions(bot, trigger):
-    global last_response_time
-
-    # Check the current time
-    current_time = time.time()
-
     # Get a random line from the last 20 lines if bot hasn't been mentioned in the last 400 lines
     random_line = get_last_lines()
 
     if random_line:
         LOGGER.debug(f"Selected line for response: {random_line}")
-
-        # If bot has responded recently, skip responding
-        if last_response_time and (current_time - last_response_time) < COOLDOWN_PERIOD:
-            LOGGER.debug("Cooldown active, bot will not respond.")
-            return
 
         # Create a prompt for OpenAI based on the selected line
         prompt = f"Vastaa luonnollisesti seuraavaan viestiin: {random_line}"
