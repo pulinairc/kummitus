@@ -9,6 +9,7 @@ import json
 import os
 from datetime import datetime
 from sopel import logger
+import random
 
 LOGGER = logger.get_logger(__name__)
 
@@ -187,7 +188,7 @@ def find_mentioned_user(message):
             return user
     return None
 
-# Function to retrieve the last x number of lines from pulina.log, excluding bot's own messages
+# Function to retrieve the last 20 lines from pulina.log if the bot hasn't been mentioned in the last 400 lines
 def get_last_lines():
     if not os.path.exists(LOG_FILE):
         return ""
@@ -196,25 +197,30 @@ def get_last_lines():
         with open(LOG_FILE, "r", encoding='utf-8') as f:
             lines = f.readlines()
 
-            # Do not include "kummitus:" lines in the response
-            lines = [line for line in lines if not line.lower().startswith("kummitus:")]
+            # Get the last 400 lines to check for bot mentions
+            last_lines = lines[-400:] if len(lines) >= 400 else lines
 
-            # Get the last lines, or all if fewer
-            lastlines = lines[-400:] if len(lines) >= 400 else lines
+            # Check if the bot has been mentioned in the last 400 lines
+            bot_mentioned = any("kummitus" in line.lower() for line in last_lines)
+            if bot_mentioned:
+                LOGGER.debug("Bot has been mentioned in the last 400 lines. No need to respond.")
+                return None
 
-            # Strip newline characters and join
-            lastlines = [line.strip() for line in lastlines]
+            # Get the last 20 lines for random selection
+            last_short_lines = lines[-20:] if len(lines) >= 20 else lines
+            last_short_lines = [line.strip() for line in last_short_lines]
 
-            # Exclude all lines that contain word kummitus
-            lastlines = [line for line in lastlines if "kummitus" not in line.lower()]
+            # Filter out lines that mention the bot
+            non_bot_lines = [line for line in last_short_lines if "kummitus" not in line.lower()]
 
-            # Return the processed lines
-            return "\n".join(lastlines)
+            if non_bot_lines:
+                return random.choice(non_bot_lines)
+            else:
+                return "\n".join(non_bot_lines)
 
     except Exception as e:
         LOGGER.debug(f"Error reading log file: {e}")
         return ""
-
 
 # Function to call OpenAI GPT-4o-mini API and generate a response
 def generate_response(messages, question, username):
@@ -255,9 +261,45 @@ def store_user_notes(username, message):
     save_user_notes()
     LOGGER.debug(f"User note saved: {username} -> {message}")
 
+# Function to generate a natural response using OpenAI API
+def generate_natural_response(prompt):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": 'Olet ystävällinen tyyppi, jonka nimi on Kummitus. Kirjoita kommentti asiaan alle 300 merkillä. Älä koskaan sisällytä vastaukseesi "kummitus:"-merkintää. Vältä turhien "Onko jotain muuta, mistä haluaisit jutella?" kysymysten kyselemistä.'},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=1,
+            max_tokens=300,
+        )
+
+        # Extract the actual text response from the API call
+        return response.choices[0].message.content.strip()
+
+    except Exception as e:
+        LOGGER.debug(f"Error using OpenAI API: {e}")
+        return None
+
+
 # Sopel trigger function to respond to questions when bot's name is mentioned or in private messages
 @sopel.module.rule(r'(.*)')
 def respond_to_questions(bot, trigger):
+    # Get a random line from the last 20 lines if bot hasn't been mentioned in the last 400 lines
+    random_line = get_last_lines()
+
+    if random_line:
+        LOGGER.debug(f"Selected line for response: {random_line}")
+
+        # Create a prompt for OpenAI based on the selected line
+        prompt = f"Vastaa luonnollisesti seuraavaan viestiin: {random_line}"
+
+        # Generate a response using OpenAI
+        response = generate_natural_response(prompt)
+
+        if response:
+            bot.say(response, trigger.sender)
+
     # Check if the nickname is "Orvokki" and ignore the message if it is
     if trigger.nick == "Orvokki":
         return
