@@ -1,3 +1,5 @@
+memory.json
+memory*.json
 modules/.env
 pulina.log
 modules/pulina.log

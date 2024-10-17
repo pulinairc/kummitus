@@ -8,6 +8,9 @@ from dotenv import load_dotenv
 import json
 import os
 from datetime import datetime
+from sopel import logger
+
+LOGGER = logger.get_logger(__name__)
 
 # Files
 LOG_FILE = 'pulina.log'
@@ -43,23 +46,41 @@ def load_memory():
         except json.JSONDecodeError:
             return []
 
-# Save memory to a file
+# Save memory to a file and update the text file
 def save_memory(memory):
     with open(MEMORY_FILE, "w", encoding='utf-8') as f:
         json.dump(memory, f, ensure_ascii=False, indent=4)
+
+    # Update the text file every time memory is saved
+    write_memory_to_file(memory)
+    LOGGER.debug(f"Memory saved: {MEMORY_FILE} and {OUTPUT_FILE_PATH}")
 
 # Initialize memory from file
 memory = load_memory()
 
 # Function to add something to memory
 def add_to_memory(item):
+    global memory
+    LOGGER.debug(f"Adding something to remember: {item}")
     memory.append(item)
+    LOGGER.debug(f"Memory before saving: {memory}")
     save_memory(memory)
 
 # Function to remove something from memory
 def remove_from_memory(item):
-    memory[:] = [m for m in memory if item.lower() not in m.lower()]
-    save_memory(memory)
+    global memory
+    LOGGER.debug(f"Trying to forget: {item}")
+
+    original_memory = memory[:]
+    memory = [m for m in memory if item.lower() not in m.lower()]
+
+    if len(memory) < len(original_memory):
+        LOGGER.debug(f"Removed memory item(s) containing: {item}")
+        save_memory(memory)
+        return True
+    else:
+        LOGGER.debug(f"Could not find any memory containing: {item}")
+        return False
 
 # Function to list everything in memory
 def list_memory():
@@ -68,25 +89,23 @@ def list_memory():
     return "Muisti on tyhjä."
 
 # Function to write memory to a text file
-def write_memory_to_file():
+def write_memory_to_file(memory):
+    LOGGER.debug(f"Saving memory to text file: {OUTPUT_FILE_PATH}")
+
     try:
         # Make sure the directory exists
         os.makedirs(OUTPUT_FILE_DIR, exist_ok=True)
 
-        # Define file path
-        output_file_path = os.path.join(OUTPUT_FILE_DIR, "muisti.txt")
-
         # Write the memory to the file
-        with open(output_file_path, "w", encoding='utf-8') as f:
+        with open(OUTPUT_FILE_PATH, "w", encoding='utf-8') as f:
             if memory:
                 f.write("\n".join(memory))
             else:
                 f.write("Muisti on tyhjä.")
 
-        return output_file_path
-
+        LOGGER.debug(f"Memory saved to text file: {OUTPUT_FILE_PATH}")
     except Exception as e:
-        return f"Virhe tiedoston luomisessa: {e}"
+        LOGGER.debug(f"Error writing memory to file: {e}")
 
 # Load existing notes from file (if any)
 def load_user_notes():
@@ -165,13 +184,21 @@ def get_last_lines():
 
             # Exclude all lines that contain word kummitus
             lastlines = [line for line in lastlines if "kummitus" not in line.lower()]
+
+            # Return the processed lines
+            return "\n".join(lastlines)
+
     except Exception as e:
-        print(f"Error reading log file: {e}")
+        LOGGER.debug(f"Error reading log file: {e}")
         return ""
+
 
 # Function to call OpenAI GPT-4o-mini API and generate a response
 def generate_response(messages, question, username):
     try:
+        # Ensure that these variables are not None
+        prompt = (messages if messages else "") + "\nKysymys: " + (question if question else "")
+
         if messages:
             prompt = messages + "\nKysymys: " + question
         else:
@@ -193,12 +220,14 @@ def generate_response(messages, question, username):
         # Extract the actual text response
         return response.choices[0].message.content.strip()
     except Exception as e:
+        LOGGER.debug(f"Error in using OpenAI API: {e}")
         return f"Virhe OpenAI API:n käytössä: {e}"
 
 # Function to store user notes
 def store_user_notes(username, message):
     user_notes[username] = message
     save_user_notes()
+    LOGGER.debug(f"User note saved: {username} -> {message}")
 
 # Sopel trigger function to respond to questions when bot's name is mentioned or in private messages
 @sopel.module.rule(r'(.*)')
@@ -218,29 +247,48 @@ def respond_to_questions(bot, trigger):
         # The user's message is the entire matched pattern
         user_message = trigger.group(0)
 
+        # Remove the bot's nickname from the message
+        if user_message.lower().startswith(f"{bot.nick.lower()}:"):
+          user_message = user_message[len(f"{bot.nick}:"):].strip()
+
         # Include the memory in the prompt
         if memory:
             memory_prompt = "Muistan seuraavat asiat: " + " ".join(memory)
         else:
             memory_prompt = ""
 
-        # Long-term-memory functionality
-        if user_message.lower().startswith("muista"):
-            item_to_remember = user_message[len("muista"):].strip()
+        # Debug log the message
+        LOGGER.debug(f"User message: {user_message}")
+
+        # Long-term-memory functionality, if message contains 'voisitko jatkossa' or 'muista'
+        if user_message.lower().startswith("voisitko jatkossa") or user_message.lower().startswith("muista") or user_message.lower().startswith("jatkossa"):
+            # Tallennetaan koko viesti sellaisenaan muistiin
+            item_to_remember = user_message.strip()
+
             add_to_memory(item_to_remember)
-            bot.say(f"Muistan tästä {item_to_remember}", trigger.sender)
+            bot.say(f"Tallennettu muistiin: {item_to_remember}", trigger.sender)
             return
 
-        # Forgetting functionality
-        if user_message.lower().startswith("unohda"):
-            item_to_forget = user_message[len("unohda"):].strip()
-            remove_from_memory(item_to_forget)
-            bot.say(f"Unohdin: {item_to_forget}", trigger.sender)
+        # Handle "unohda" functionality with multiple phrases
+        if user_message.lower().startswith("unohda") or user_message.lower().startswith("voisitko unohtaa") or user_message.lower().startswith("älä tästä eteenpäin muista"):
+            if user_message.lower().startswith("unohda"):
+                item_to_forget = user_message[len("unohda"):].strip()
+            elif user_message.lower().startswith("voisitko unohtaa"):
+                item_to_forget = user_message[len("voisitko unohtaa"):].strip()
+            elif user_message.lower().startswith("älä tästä eteenpäin muista"):
+                item_to_forget = user_message[len("älä tästä eteenpäin muista"):].strip()
+
+            if remove_from_memory(item_to_forget):
+                bot.say(f"Tästä eteenpäin en enää pidä tätä muistissa: {item_to_forget}", trigger.sender)
+            else:
+                bot.say(f"En löytänyt mitään muistettavaa, jossa mainittaisiin: {item_to_forget}", trigger.sender)
             return
 
-        # List memory and inform about the file location
         if user_message.lower() == "mitä muistat":
-            bot.say(f"Muistan seuraavat asiat. Ne on tallennettu myös tiedostoon: {OUTPUT_FILE_PATH}", trigger.sender)
+            # Ensure memory.json and muisti.txt are in sync
+            write_memory_to_file(memory)
+            bot.say(f"Muistan seuraavat asiat: {OUTPUT_FILE_PATH}", trigger.sender)
+            LOGGER.debug(f"Memory saved: {OUTPUT_FILE_PATH}")
             return
 
         # Check if message is appointed to a bot
