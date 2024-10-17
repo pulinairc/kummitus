@@ -35,6 +35,8 @@ MEMORY_FILE = "memory.json"
 
 # Load or create memory list
 def load_memory():
+    # Debug
+    LOGGER.debug(f"Loading memory from file: {MEMORY_FILE}")
     if not os.path.exists(MEMORY_FILE):
         with open(MEMORY_FILE, "w", encoding='utf-8') as f:
             json.dump([], f, ensure_ascii=False, indent=4)
@@ -42,6 +44,8 @@ def load_memory():
 
     with open(MEMORY_FILE, "r", encoding='utf-8') as f:
         try:
+            # Debug
+            LOGGER.debug(f"Memory loaded from file: {MEMORY_FILE}")
             return json.load(f)
         except json.JSONDecodeError:
             return []
@@ -86,7 +90,7 @@ def remove_from_memory(item):
 def list_memory():
     if memory:
         return "\n".join(memory)
-    return "Muisti on tyhjä."
+    return ""
 
 # Function to write memory to a text file
 def write_memory_to_file(memory):
@@ -204,8 +208,11 @@ def generate_response(messages, question, username):
         else:
             prompt = question
 
-        if username in user_notes:
-            prompt += f"\nMuistan, että viimeksi kerroit: {user_notes[username]}"
+        #if username in user_notes:
+        #    prompt += f"\nMuistan, että viimeksi kerroit: {user_notes[username]}"
+
+        # Debug prompt
+        LOGGER.debug(f"Prompt: {prompt}")
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -253,7 +260,7 @@ def respond_to_questions(bot, trigger):
 
         # Include the memory in the prompt
         if memory:
-            memory_prompt = "Muistan seuraavat asiat: " + " ".join(memory)
+            memory_prompt = "Ota huomioon vastauksessa seuraavat tärkeät muistettavat asiat: " + " ".join(memory)
         else:
             memory_prompt = ""
 
@@ -261,8 +268,10 @@ def respond_to_questions(bot, trigger):
         LOGGER.debug(f"User message: {user_message}")
 
         # Long-term-memory functionality, if message contains 'voisitko jatkossa' or 'muista'
-        if user_message.lower().startswith("voisitko jatkossa") or user_message.lower().startswith("muista") or user_message.lower().startswith("jatkossa"):
-            # Tallennetaan koko viesti sellaisenaan muistiin
+        if (user_message.lower().startswith("voisitko jatkossa") or
+            user_message.lower().startswith("muista") or
+            user_message.lower().startswith("jatkossa")) and "muistatko" not in user_message.lower():
+
             item_to_remember = user_message.strip()
 
             add_to_memory(item_to_remember)
@@ -284,10 +293,10 @@ def respond_to_questions(bot, trigger):
                 bot.say(f"En löytänyt mitään muistettavaa, jossa mainittaisiin: {item_to_forget}", trigger.sender)
             return
 
-        if user_message.lower() == "mitä muistat":
+        if user_message.lower().startswith("mitä muistat"):
             # Ensure memory.json and muisti.txt are in sync
             write_memory_to_file(memory)
-            bot.say(f"Muistan seuraavat asiat: {OUTPUT_FILE_PATH}", trigger.sender)
+            bot.say(f"Muistan seuraavat asiat: https://botit.pulina.fi/muisti.txt", trigger.sender)
             LOGGER.debug(f"Memory saved: {OUTPUT_FILE_PATH}")
             return
 
@@ -298,6 +307,9 @@ def respond_to_questions(bot, trigger):
 
         # If no recognized user was mentioned, add the original user to mentioned list
         add_mentioned_user(trigger.nick)
+
+        # Debug log memory prompt
+        LOGGER.debug(f"Memory prompt: {memory_prompt}")
 
         # Generate a response based on the log and the user's message
         prompt = (lastlines if lastlines else "") + "\n" + (memory_prompt if memory_prompt else "") + "\n" + (user_message if user_message else "")
