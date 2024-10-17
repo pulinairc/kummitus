@@ -16,6 +16,7 @@ LOGGER = logger.get_logger(__name__)
 LOG_FILE = 'pulina.log'
 MENTIONED_USERS_FILE = "mentioned_users.json"
 MEMORY_FILE = 'memory.json'
+MEMORY_BACKUP_FILE = "memory-backup.json"
 NOTES_FILE = 'user_notes.json'
 LOG_FILE = 'pulina.log'
 OUTPUT_FILE_DIR = "/var/www/botit.pulina.fi/public_html/"
@@ -50,14 +51,17 @@ def load_memory():
         except json.JSONDecodeError:
             return []
 
-# Save memory to a file and update the text file
+# Function to save memory and append to a backup file
 def save_memory(memory):
-    with open(MEMORY_FILE, "w", encoding='utf-8') as f:
-        json.dump(memory, f, ensure_ascii=False, indent=4)
-
-    # Update the text file every time memory is saved
-    write_memory_to_file(memory)
-    LOGGER.debug(f"Memory saved: {MEMORY_FILE} and {OUTPUT_FILE_PATH}")
+    LOGGER.debug(f"Saving memory to file: {MEMORY_FILE}")
+    try:
+        with open(MEMORY_FILE, "w", encoding='utf-8') as f:
+            json.dump(memory, f, ensure_ascii=False, indent=4)
+        LOGGER.debug(f"Memory saved: {memory}")
+        backup_memory(memory)
+        write_memory_to_file(memory)
+    except Exception as e:
+        LOGGER.debug(f"Error saving memory: {e}")
 
 # Initialize memory from file
 memory = load_memory()
@@ -91,6 +95,21 @@ def list_memory():
     if memory:
         return "\n".join(memory)
     return ""
+
+# Function to append memory to a backup file
+def backup_memory(memory):
+    LOGGER.debug(f"Appending memory to backup file: {MEMORY_BACKUP_FILE}")
+    try:
+        with open(MEMORY_BACKUP_FILE, "a", encoding='utf-8') as backup_file:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            backup_data = {
+                "timestamp": timestamp,
+                "memory": memory
+            }
+            backup_file.write(json.dumps(backup_data, ensure_ascii=False, indent=4) + "\n")
+        LOGGER.debug("Memory appended to backup file.")
+    except Exception as e:
+        LOGGER.debug(f"Error appending memory to backup: {e}")
 
 # Function to write memory to a text file
 def write_memory_to_file(memory):
