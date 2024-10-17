@@ -9,6 +9,7 @@ import json
 import os
 from datetime import datetime
 from sopel import logger
+import random
 
 LOGGER = logger.get_logger(__name__)
 
@@ -215,6 +216,37 @@ def get_last_lines():
         LOGGER.debug(f"Error reading log file: {e}")
         return ""
 
+# General function to check if the bot was mentioned
+def bot_was_mentioned(lines, bot_name="kummitus"):
+    return any(bot_name.lower() in line.lower() for line in lines)
+
+# General function to generate a natural response using OpenAI
+def generate_natural_response(prompt, model="gpt-4o-mini", max_tokens=500, temperature=1):
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            prompt=prompt,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return response.choices[0].text.strip()
+    except Exception as e:
+        LOGGER.debug(f"Error using OpenAI API: {e}")
+        return None
+
+# General function to decide whether to participate randomly
+def random_participation(chance=0.2, min_lines=300):
+    # Fetch last 'min_lines' lines
+    last_lines = get_last_lines(min_lines)
+
+    # Do nothing if the bot was mentioned recently
+    if bot_was_mentioned(last_lines):
+        return
+
+    # Generate a random chance to participate
+    if random.random() < chance:
+        prompt = "\n".join(last_lines)  # Combine lines into a single prompt
+        return generate_natural_response(prompt)
 
 # Function to call OpenAI GPT-4o-mini API and generate a response
 def generate_response(messages, question, username):
@@ -258,6 +290,11 @@ def store_user_notes(username, message):
 # Sopel trigger function to respond to questions when bot's name is mentioned or in private messages
 @sopel.module.rule(r'(.*)')
 def respond_to_questions(bot, trigger):
+    # Attempt random participation
+    response = random_participation()
+    if response:
+        bot.say(response, trigger.sender)
+
     # Check if the nickname is "Orvokki" and ignore the message if it is
     if trigger.nick == "Orvokki":
         return
