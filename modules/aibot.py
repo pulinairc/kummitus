@@ -381,6 +381,9 @@ def respond_to_questions(bot, trigger):
         # Debug log memory prompt
         LOGGER.debug(f"Memory prompt: {memory_prompt}")
 
+        # Debug last lines
+        LOGGER.debug(f"Last lines: {lastlines}")
+
         # Generate a response based on the log and the user's message
         prompt = (lastlines if lastlines else "") + "\n" + (memory_prompt if memory_prompt else "") + "\n" + (user_message if user_message else "")
         response = generate_response(lastlines, prompt, trigger.nick)
