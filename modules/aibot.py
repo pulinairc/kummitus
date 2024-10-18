@@ -230,6 +230,7 @@ def get_last_lines():
             # If bot wasnt mentioned, return the last 5 lines excluding bot's own messages
             else:
                 LOGGER.debug("Bot hasn't been mentioned in the last 500 lines.")
+                last_lines = lines[-5:] if len(lines) >= 5 else lines
                 last_short_lines = lines[-5:] if len(lines) >= 5 else lines
                 last_short_lines = [line.strip() for line in last_short_lines]
 
