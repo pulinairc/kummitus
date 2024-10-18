@@ -212,22 +212,28 @@ def get_last_lines():
             # Get the last 500 lines to check for bot mentions
             last_lines = lines[-500:] if len(lines) >= 500 else lines
 
+            # Check if the bot was mentioned in the last 500 lines
             for i, line in enumerate(reversed(last_lines), 1):
                 if "kummitus" in line.lower():
                     last_bot_mention = i
                     break
 
+            # If bot was mentioned, return all 500 lines excluding bot's own messages
             if last_bot_mention is not None:
-                # Bot was mentioned recently, so return all 500 lines for context
                 LOGGER.debug(f"Bot was last mentioned {last_bot_mention} lines ago.")
+
+                # Exclude bot's own messages from the last 500 lines
+                last_lines = [line.strip() for line in last_lines if "kummitus" not in line.lower()]
+
                 return "\n".join(last_lines)
+
+            # If bot wasnt mentioned, return the last 5 lines excluding bot's own messages
             else:
-                # If the bot wasn't mentioned in the last 500 lines, return one random line
                 LOGGER.debug("Bot hasn't been mentioned in the last 500 lines.")
                 last_short_lines = lines[-5:] if len(lines) >= 5 else lines
                 last_short_lines = [line.strip() for line in last_short_lines]
 
-                # Filter out lines that mention the bot
+                # Filter out bot's own messages from the last 5 lines
                 non_bot_lines_short = [line for line in last_short_lines if "kummitus" not in line.lower()]
 
                 if non_bot_lines_short:
