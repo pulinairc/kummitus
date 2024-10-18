@@ -331,6 +331,9 @@ def respond_to_questions(bot, trigger):
         # Get the last lines from pulina.log, excluding bot's own messages
         lastlines = get_last_lines()
 
+        # If bot is mentioned, strip the line from lastlines
+        lastlines = "\n".join([line for line in lastlines.splitlines() if bot.nick.lower() not in line.lower()])
+
         # The user's message is the entire matched pattern
         user_message = trigger.group(0)
 
