@@ -195,8 +195,10 @@ def find_mentioned_user(message):
             return user
     return None
 
-# Function to retrieve the last 20 lines from pulina.log if the bot hasn't been mentioned in the last x lines
+# Function to retrieve the last 500 lines from pulina.log if the bot hasn't been mentioned in the last x lines
 def get_last_lines():
+    global last_bot_mention
+
     if not os.path.exists(LOG_FILE):
         return ""
 
@@ -204,12 +206,11 @@ def get_last_lines():
         with open(LOG_FILE, "r", encoding='utf-8') as f:
             lines = f.readlines()
 
-            # Get the last x lines to check for bot mentions
+            # Get the last 500 lines to check for bot mentions
             last_lines = lines[-500:] if len(lines) >= 500 else lines
 
             # Initialize variables to track bot mentions
             last_bot_mention = None
-            total_lines = len(last_lines)
 
             for i, line in enumerate(reversed(last_lines), 1):
                 if "kummitus" in line.lower():
@@ -217,20 +218,13 @@ def get_last_lines():
                     break
 
             if last_bot_mention is not None:
-                # Calculate how many lines ago the bot was mentioned
-                lines_since_mention = last_bot_mention
-                LOGGER.debug(f"Bot was last mentioned {lines_since_mention} lines ago. No need to respond.")
-
-                # Filter out lines that mention the bot
-                non_bot_lines_full = [line for line in last_lines if "kummitus" not in line.lower()]
-                return "\n".join(non_bot_lines_full)
+                # Bot was mentioned recently, so return all 500 lines for context
+                LOGGER.debug(f"Bot was last mentioned {last_bot_mention} lines ago.")
+                return "\n".join(last_lines)
             else:
-                # If the bot wasn't mentioned in the last x lines
-                LOGGER.debug("Bot hasn't been mentioned in the last 200 lines.")
-                lines_since_mention = total_lines
-
-                # Answer to random line from the last 10 lines
-                last_short_lines = lines[-10:] if len(lines) >= 10 else lines
+                # If the bot wasn't mentioned in the last 500 lines, return one random line
+                LOGGER.debug("Bot hasn't been mentioned in the last 500 lines.")
+                last_short_lines = lines[-5:] if len(lines) >= 5 else lines
                 last_short_lines = [line.strip() for line in last_short_lines]
 
                 # Filter out lines that mention the bot
@@ -239,7 +233,7 @@ def get_last_lines():
                 if non_bot_lines_short:
                     return random.choice(non_bot_lines_short)
                 else:
-                    return "\n".join(non_bot_lines_full)
+                    return ""
 
     except Exception as e:
         LOGGER.debug(f"Error reading log file: {e}")
@@ -424,7 +418,7 @@ def respond_to_questions(bot, trigger):
     # Add cooldown for random responses
     if last_response_time and (time.time() - last_response_time) < COOLDOWN_PERIOD:
         remaining_time = COOLDOWN_PERIOD - (time.time() - last_response_time)
-        LOGGER.debug(f"Cooldown active, bot will not respond randomly. Cooldown ends in {format_cooldown_time(remaining_time)}.")
+        LOGGER.debug(f"Cooldown active, bot will not respond randomly. Cooldown ends in {format_cooldown_time(remaining_time)}. Bot was last mentioned {last_bot_mention} lines ago.")
         return
 
     # Get a random line from the last 20 lines if bot hasn't been mentioned in the last 400 lines
