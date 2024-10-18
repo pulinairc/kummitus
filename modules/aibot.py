@@ -195,6 +195,9 @@ def find_mentioned_user(message):
             return user
     return None
 
+# Declare last_bot_mention as global variable
+last_bot_mention = None
+
 # Function to retrieve the last 500 lines from pulina.log if the bot hasn't been mentioned in the last x lines
 def get_last_lines():
     global last_bot_mention
@@ -208,9 +211,6 @@ def get_last_lines():
 
             # Get the last 500 lines to check for bot mentions
             last_lines = lines[-500:] if len(lines) >= 500 else lines
-
-            # Initialize variables to track bot mentions
-            last_bot_mention = None
 
             for i, line in enumerate(reversed(last_lines), 1):
                 if "kummitus" in line.lower():
@@ -238,6 +238,19 @@ def get_last_lines():
     except Exception as e:
         LOGGER.debug(f"Error reading log file: {e}")
         return ""
+
+# Add cooldown for random responses
+def handle_cooldown():
+    if last_response_time and (time.time() - last_response_time) < COOLDOWN_PERIOD:
+        remaining_time = COOLDOWN_PERIOD - (time.time() - last_response_time)
+        if last_bot_mention is not None:
+            LOGGER.debug(f"Cooldown active, bot will not respond randomly. Cooldown ends in {format_cooldown_time(remaining_time)}. "
+                         f"Bot was last mentioned {last_bot_mention} lines ago.")
+        else:
+            LOGGER.debug(f"Cooldown active, bot will not respond randomly. Cooldown ends in {format_cooldown_time(remaining_time)}. "
+                         f"Bot has not been mentioned recently.")
+        return True  # Cooldown active
+    return False  # No cooldown
 
 # Funktio noutaa lähettäjän nimen satunnaiselta riviltä
 def extract_sender_from_line(line):
@@ -327,7 +340,7 @@ def respond_to_questions(bot, trigger):
 
         # Include the memory in the prompt
         if memory:
-            memory_prompt = "Muista tästä etenpäin nämä seuraavat tärkeät asiat, mutta tuo esiin vain tarvittaessa tai satunnaisesti pyytämättä ja yllättäen: " + " ".join(memory)
+            memory_prompt = 'Muista tästä etenpäin nämä seuraavat tärkeät asiat, mutta tuo esiin vain tarvittaessa tai satunnaisesti pyytämättä ja yllättäen. Sinun ei tarvitse joka kerta sanoa "Ymmärrän! Olen tallentanut kaikki tärkeät asiat mieleeni ja käytän niitä tarpeen mukaan.". Pidä asiat muistissa hiljaa mielessäsi. Muistettavat asiat: ' + " ".join(memory)
         else:
             memory_prompt = ""
 
@@ -416,9 +429,7 @@ def respond_to_questions(bot, trigger):
         return
 
     # Add cooldown for random responses
-    if last_response_time and (time.time() - last_response_time) < COOLDOWN_PERIOD:
-        remaining_time = COOLDOWN_PERIOD - (time.time() - last_response_time)
-        LOGGER.debug(f"Cooldown active, bot will not respond randomly. Cooldown ends in {format_cooldown_time(remaining_time)}. Bot was last mentioned {last_bot_mention} lines ago.")
+    if handle_cooldown():
         return
 
     # Get a random line from the last 20 lines if bot hasn't been mentioned in the last 400 lines
