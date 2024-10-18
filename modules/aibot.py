@@ -17,7 +17,7 @@ import re
 LOGGER = logger.get_logger(__name__)
 
 # Define a cooldown period in seconds
-COOLDOWN_PERIOD = 1800
+COOLDOWN_PERIOD = 14400
 last_response_time = None
 
 # Files
