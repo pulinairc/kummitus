@@ -14,11 +14,104 @@ import os
 import json
 from babel.dates import format_date, format_datetime, format_time
 from sopel import logger
+from openai import OpenAI
+from dotenv import load_dotenv
 
 LOGGER = logger.get_logger(__name__)  # Use Sopel logger for debugging
-
+save_path = os.path.expanduser('~/chat.mementomori.social/Documents/Brain dump/Pulina/')
 names_file = '/home/rolle/.sopel/modules/nimipaivat.json'
 last_run_date = None  # This ensures the scheduled task runs only once per day
+log_base_path = os.path.expanduser('~/pulina.fi/pulina-days/')  # Base path for local logs
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Load OpenAI as client
+client = OpenAI()
+
+# Set OpenAI API key from dotenv or environment variable
+OpenAI.api_key = os.getenv("OPENAI_API_KEY")
+
+def get_yesterday_log():
+    """Fetches the log from the local path for yesterday's date."""
+    yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+    log_date = yesterday.strftime("%Y-%m-%d")
+    log_path = os.path.join(log_base_path, f"pul-{log_date}.log")  # Local path to the log file
+
+    try:
+        with open(log_path, 'r') as log_file:
+            log_content = log_file.read()
+        return log_content, log_date
+    except FileNotFoundError as e:
+        LOGGER.error(f"Log file not found: {e}")
+        return None, log_date
+    except Exception as e:
+        LOGGER.error(f"Failed to read the log file: {e}")
+        return None, log_date
+
+def create_summary_with_gpt(log_content):
+    prompt = (
+        "IRC-keskustelu: \n\n"
+        f"{log_content}\n\n"
+        "Ole hyvä ja tiivistä keskustelu mahdollisimman kattavasti niin, että ulkopuolinen saa hyvän kuvan siitä mitä päivän aikana on tapahtunut. Tiivistelmä markdown-muodossa selkeästi jäsenneltynä ja tarvittaessa otsikoituna."
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=5000
+        )
+        summary = response.choices[0].message.content.strip()
+        return summary
+    except Exception as e:
+        LOGGER.error(f"Failed to generate summary: {e}")
+        return "Summary could not be generated."
+
+def create_summary(log_content):
+    """Creates a summary from the log content."""
+    # Simple approach, replace with natural language processing for more accurate summaries if needed
+    lines = log_content.splitlines()
+    relevant_lines = [line for line in lines if not line.startswith('---')]  # Remove irrelevant lines
+    summary = " ".join(relevant_lines[:10])  # Take first 10 relevant lines for a simple summary
+    return summary
+
+def save_summary_to_file(summary, log_date):
+    """Saves the summary to a markdown file with the given date."""
+    file_name = f"{log_date}.md"
+    file_path = os.path.join(save_path, file_name)
+
+    with open(file_path, 'w') as file:
+        file.write(f"# Summary for {log_date}\n\n")
+        file.write(summary)
+
+    LOGGER.info(f"Summary saved to {file_path}")
+
+def create_short_summary_with_gpt(log_content):
+    """Generates a short summary (under 220 characters) using GPT-4o-mini."""
+    prompt = (
+        "Kirjoita alle 220 merkkiä lyhyt yhteenveto seuraavasta keskustelusta, tarvittaessa keskity vain kohokohtiin.\n\n"
+        f"{log_content}"
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=150
+        )
+        short_summary = response.choices[0].message.content.strip()
+        return short_summary
+
+    except Exception as e:
+        LOGGER.error(f"Failed to generate short summary: {e}")
+        return "Short summary could not be generated."
+
+def post_summary_to_channel(bot, short_summary):
+    """Posts a short summary to the IRC channel at midnight."""
+    message = f"Eilen kanavalla keskusteltua: {short_summary}"
+    bot.say(message, '#pulina')
+    LOGGER.info(f"Posted short summary to #pulina: {message}")
 
 def scheduled_message(bot):
     global last_run_date
@@ -28,6 +121,15 @@ def scheduled_message(bot):
     # Check if the task has already run today
     if last_run_date == current_day:
         return  # If the message has already been sent today, do nothing
+
+    # Fetch yesterday's log and generate summaries
+    log_content, log_date = get_yesterday_log()
+    if log_content:
+        summary = create_summary_with_gpt(log_content)
+        short_summary = create_short_summary_with_gpt(log_content)
+        save_summary_to_file(summary, log_date)
+        # Post the short summary to the IRC channel
+        bot.say(f"Eilen kanavalla keskusteltua: {short_summary}", '#pulina')
 
     day = now.strftime("%d")
     month = now.strftime("%m")
