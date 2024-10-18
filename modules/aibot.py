@@ -205,7 +205,7 @@ def get_last_lines():
             lines = f.readlines()
 
             # Get the last x lines to check for bot mentions
-            last_lines = lines[-200:] if len(lines) >= 200 else lines
+            last_lines = lines[-500:] if len(lines) >= 500 else lines
 
             # Initialize variables to track bot mentions
             last_bot_mention = None
@@ -448,5 +448,5 @@ def respond_to_questions(bot, trigger):
             last_response_time = time.time()
 
             # Send the response to the channel
-            bot.say(f"{sender}: {response}", trigger.sender)
+            bot.say(f"{response}", trigger.sender)
 
