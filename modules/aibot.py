@@ -271,7 +271,7 @@ def generate_response(messages, question, username):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": 'Olet ystävällinen tyyppi, jonka nimi on Kummitus. Vastaa kysymyksiin alle 300 merkillä. Älä koskaan sisällytä vastaukseesi "kummitus:"-merkintää. Vältä turhien "Onko jotain muuta, mistä haluaisit jutella?" kysymysten kyselemistä. Sinun ei tarvitse joka kerta sanoa, että olet täällä tai että muistat kaikki sinulle kerrotut asiat.'},
+                {"role": "system", "content": 'Olet ystävällinen tyyppi, jonka nimi on Kummitus. Vastaa kysymyksiin alle 300 merkillä. Älä koskaan sisällytä vastaukseesi "kummitus:"-merkintää. Vältä turhien "Onko jotain muuta, mistä haluaisit jutella?" kysymysten kyselemistä.'},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
@@ -340,7 +340,7 @@ def respond_to_questions(bot, trigger):
 
         # Include the memory in the prompt
         if memory:
-            memory_prompt = 'Muista tästä etenpäin nämä seuraavat tärkeät asiat, mutta tuo esiin vain tarvittaessa tai satunnaisesti pyytämättä ja yllättäen. Sinun ei tarvitse joka kerta sanoa "Ymmärrän! Olen tallentanut kaikki tärkeät asiat mieleeni ja käytän niitä tarpeen mukaan.". Pidä asiat muistissa hiljaa mielessäsi. Muistettavat asiat: ' + " ".join(memory)
+            memory_prompt = 'Muistettavat asiat, jotka hyvä pitää mielessä mutta joita ei tarvitse tuoda jokaiseen kommenttiin mukaan: ' + " ".join(memory)
         else:
             memory_prompt = ""
 
