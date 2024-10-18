@@ -9,6 +9,9 @@ import os
 from lxml import etree
 from dotenv import load_dotenv
 from datetime import datetime
+import pytz
+from datetime import datetime, timedelta
+from pytz import timezone
 
 # Load environment variables from .env file
 load_dotenv()
@@ -101,6 +104,10 @@ def saa(bot, trigger):
         lat = owm_data["coord"]["lat"]
         lon = owm_data["coord"]["lon"]
 
+        # Fetch timezone using OpenWeatherMap
+        timezone_offset = owm_data["timezone"]
+        local_tz = timezone(timedelta(seconds=timezone_offset))
+
         # Fetch sunrise and sunset times from Sunrise-Sunset API using the coordinates
         sunrise_sunset_url = f"https://api.sunrise-sunset.org/json?lat={lat}&lng={lon}&formatted=0"
         ss_response = requests.get(sunrise_sunset_url)
@@ -110,15 +117,16 @@ def saa(bot, trigger):
         if ss_response.status_code == 200:
             ss_data = ss_response.json()
             if "results" in ss_data:
-                sunrise = ss_data["results"]["sunrise"].split('T')[1].split('+')[0]
-                sunset = ss_data["results"]["sunset"].split('T')[1].split('+')[0]
+                # Parse sunrise and sunset in UTC
+                sunrise_utc = datetime.strptime(ss_data["results"]["sunrise"], "%Y-%m-%dT%H:%M:%S%z")
+                sunset_utc = datetime.strptime(ss_data["results"]["sunset"], "%Y-%m-%dT%H:%M:%S%z")
 
-                # Convert sunrise and sunset to datetime objects
-                sunrise_time = datetime.strptime(sunrise, "%H:%M:%S")
-                sunset_time = datetime.strptime(sunset, "%H:%M:%S")
+                # Convert to local time using timezone from OpenWeatherMap
+                sunrise_local = sunrise_utc.astimezone(local_tz).strftime("%H:%M")
+                sunset_local = sunset_utc.astimezone(local_tz).strftime("%H:%M")
 
                 # Calculate the length of the day
-                day_length_timedelta = sunset_time - sunrise_time
+                day_length_timedelta = sunset_utc - sunrise_utc
                 hours, remainder = divmod(day_length_timedelta.seconds, 3600)
                 minutes = remainder // 60
                 day_length = f"{hours} tuntia ja {minutes} minuuttia"
@@ -127,7 +135,7 @@ def saa(bot, trigger):
         bot.say(
             f"Sää {place.capitalize()}: {weather_description}. "
             f"Lämpötila on {temperature} °C ja tuulen nopeus on {wind_speed} m/s. "
-            f"Aurinko laskee tänään klo {sunset} ja nousee huomenna klo {sunrise}. "
+            f"Aurinko laskee tänään klo {sunset_local} ja nousee huomenna klo {sunrise_local}. "
             f"Päivän pituus on {day_length}."
         )
     except Exception as e:
