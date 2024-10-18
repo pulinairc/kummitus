@@ -350,7 +350,7 @@ def respond_to_questions(bot, trigger):
 
         # Include the memory in the prompt
         if memory:
-            memory_prompt = 'Muistettavat asiat: ' + " ".join(memory)
+            memory_prompt = 'Muista keskusteluissa seuraavat asiat: ' + " ".join(memory)
         else:
             memory_prompt = ""
 
