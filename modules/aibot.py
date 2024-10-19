@@ -272,8 +272,14 @@ def generate_response(messages, question, username):
         # Build the prompt from messages and the question
         prompt = (messages if messages else "") + "\nKysymys: " + (question if question else "")
 
+        # Truncate prompt in debug message
+        if len(prompt) > 100:
+            debug_prompt = prompt[:100] + "..."
+        else:
+            debug_prompt = prompt
+
         # Debug prompt
-        LOGGER.debug(f"Prompt: {prompt}")
+        LOGGER.debug(f"Prompt: {debug_prompt}")
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
