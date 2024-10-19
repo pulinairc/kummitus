@@ -281,7 +281,7 @@ def generate_response(messages, question, username):
                 {"role": "system", "content": 'Olet ystävällinen tyyppi, jonka nimi on Kummitus. Vastaa kysymyksiin alle 220 merkillä. Älä koskaan sisällytä vastaukseesi "kummitus:"-merkintää. Vältä turhien "Onko jotain muuta, mistä haluaisit jutella?" kysymysten kyselemistä. Pyri vastaamaan jotenkin uniikilla tai hauskalla tavalla.'},
                 {"role": "user", "content": prompt}
             ],
-            temperature=1,
+            temperature=0.8,
             max_tokens=300,
         )
 
@@ -306,7 +306,7 @@ def generate_natural_response(prompt):
                 {"role": "system", "content": 'Olet ystävällinen tyyppi, jonka nimi on Kummitus. Vastauksen on oltava alle 220 merkkiä pitkä. Vältä turhien "Onko jotain muuta, mistä haluaisit jutella?" kysymysten kyselemistä.'},
                 {"role": "user", "content": prompt}
             ],
-            temperature=1,
+            temperature=0.8,
             max_tokens=300,
         )
 
