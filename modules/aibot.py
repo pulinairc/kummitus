@@ -274,7 +274,7 @@ def generate_response(messages, question, username):
 
         # Truncate prompt in debug message
         if len(prompt) > 100:
-            debug_prompt = prompt[:100] + "..."
+            debug_prompt = prompt[:100] + " [...] [truncated for debug by rolle]"
         else:
             debug_prompt = prompt
 
@@ -350,6 +350,24 @@ def get_memory_prompt(user_message):
     
     # If no match is found, return an empty string
     return ""
+
+# Function to get the surrounding context of a keyword in lastlines
+def get_relevant_lastlines(user_message, lastlines):
+    user_words = set(user_message.lower().split())
+    lastlines_words = [line.lower().split() for line in lastlines.splitlines()]
+
+    # Find the lines where a keyword from the user's message is found in lastlines
+    relevant_lines = []
+    for i, line_words in enumerate(lastlines_words):
+        if user_words & set(line_words):
+            # Include the line itself and a few surrounding lines for context (2 before and 2 after)
+            start = max(i - 2, 0)
+            end = min(i + 3, len(lastlines_words))  # 2 lines after
+            relevant_lines.extend(lastlines.splitlines()[start:end])
+            break  # Only include the first match
+
+    # Return the relevant lines or an empty string if no match found
+    return "\n".join(relevant_lines) if relevant_lines else ""
     
 # Sopel trigger function to respond to questions when bot's name is mentioned or in private messages
 @sopel.module.rule(r'(.*)')
@@ -431,14 +449,16 @@ def respond_to_questions(bot, trigger):
         # If no recognized user was mentioned, add the original user to mentioned list
         add_mentioned_user(trigger.nick)
 
-        # Debug log memory prompt
-        LOGGER.debug(f"Memory prompt: {memory_prompt}")
+        # Get relevant lines from lastlines based on user message
+        relevant_lastlines = get_relevant_lastlines(user_message, lastlines)
 
-        # Debug last lines
-        LOGGER.debug(f"Last lines: {lastlines}")
+        # Debug log the memory prompt and relevant last lines
+        LOGGER.debug(f"Memory prompt: {memory_prompt if memory_prompt else 'No relevant memory'}")
+        LOGGER.debug(f"Relevant last lines: {relevant_lastlines if relevant_lastlines else 'No relevant context'}")
 
-        # Generate a response based on the log and the user's message
-        prompt = (lastlines if lastlines else "") + "\n" + (memory_prompt if memory_prompt else "") + "\n" + (user_message if user_message else "")
+        # Build the prompt for OpenAI
+        prompt = (relevant_lastlines + "\n" if relevant_lastlines else "") + (memory_prompt + "\n" if memory_prompt else "") + user_message
+
         response = generate_response(lastlines, prompt, trigger.nick)
 
         # If trigger nick is bot's nickname, remove it from the response
