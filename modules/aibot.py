@@ -327,6 +327,30 @@ def format_cooldown_time(seconds):
     minutes, seconds = divmod(seconds, 60)
     return f"{int(minutes)} minutes {int(seconds)} seconds"
 
+# List of common Finnish conjunctions and other filler words to ignore
+COMMON_WORDS_TO_IGNORE = {
+    "että", "ja", "mutta", "vaan", "vai", "tai", "sekä", "sillä", "joten", "koska",
+    "eli", "kun", "jos", "niin", "kuin", "vaikka", "muista", "kuten"
+}
+
+# Function to check if any word from the memory is in the user's message, ignoring common words
+def get_memory_prompt(user_message):
+    # Split the user's message into words
+    user_words = set(user_message.lower().split())
+    
+    # Filter out common filler words
+    filtered_user_words = user_words - COMMON_WORDS_TO_IGNORE
+    
+    # Loop through memory and check if any memory item contains a word from the filtered user's message
+    for mem_item in memory:
+        mem_words = set(mem_item.lower().split())
+        if filtered_user_words & mem_words:
+            # Return the first memory line that matches
+            return mem_item
+    
+    # If no match is found, return an empty string
+    return ""
+    
 # Sopel trigger function to respond to questions when bot's name is mentioned or in private messages
 @sopel.module.rule(r'(.*)')
 def respond_to_questions(bot, trigger):
@@ -354,11 +378,14 @@ def respond_to_questions(bot, trigger):
         if user_message.lower().startswith(f"{bot.nick.lower()}:"):
           user_message = user_message[len(f"{bot.nick}:"):].strip()
 
-        # Include the memory in the prompt
-        if memory:
-            memory_prompt = 'Muista keskusteluissa seuraavat asiat: ' + " ".join(memory)
-        else:
-            memory_prompt = ""
+        # Include the memory in the prompt every time from file
+        # if memory:
+        #     memory_prompt = 'Muista keskusteluissa seuraavat asiat: ' + " ".join(memory)
+        # else:
+        #     memory_prompt = ""
+        
+        # Generate memory prompt based on user message
+        memory_prompt = get_memory_prompt(user_message)
 
         # Debug log the message
         LOGGER.debug(f"User message: {user_message}")
