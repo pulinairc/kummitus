@@ -64,7 +64,7 @@ def saa(bot, trigger):
             response = requests.get("https://c.rolle.wtf/raw.php")
             response.raise_for_status()
             # Print weather for "koti"
-            bot.say(f"Rollen koti: {response.text.strip()}")
+            bot.say(f"Rollen ja mustikkasopan koti: {response.text.strip()}")
         except Exception as e:
             bot.say(f"Virhe: Säädataa ei voitu hakea kodille. ({str(e)})")
         return
