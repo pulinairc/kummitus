@@ -20,7 +20,8 @@ from dotenv import load_dotenv
 LOGGER = logger.get_logger(__name__)  # Use Sopel logger for debugging
 save_path = os.path.expanduser('~/chat.mementomori.social/Documents/Brain dump/Pulina/')
 names_file = '/home/rolle/.sopel/modules/nimipaivat.json'
-last_run_date = None  # This ensures the scheduled task runs only once per day
+last_midnight_run = None
+last_morning_run = None
 log_base_path = os.path.expanduser('~/pulina.fi/pulina-days/')  # Base path for local logs
 
 # Load environment variables from .env file
@@ -114,13 +115,13 @@ def post_summary_to_channel(bot, short_summary):
     LOGGER.info(f"Posted short summary to #pulina: {message}")
 
 def scheduled_message(bot):
-    global last_run_date
+    global last_midnight_run
     now = datetime.datetime.now()
-    current_day = now.strftime("%Y-%m-%d")  # Ensures the date comparison is exact
+    current_day = now.strftime("%Y-%m-%d")
 
-    # Check if the task has already run today
-    if last_run_date == current_day:
-        return  # If the message has already been sent today, do nothing
+    # Check if the midnight message has already run today
+    if last_midnight_run == current_day:
+        return
 
     # Fetch yesterday's log and generate summaries
     log_content, log_date = get_yesterday_log()
@@ -146,17 +147,17 @@ def scheduled_message(bot):
     # Send the message
     bot.say('Päivä vaihtui! Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist), '#pulina')
 
-    # Update the last run date to today
-    last_run_date = current_day
+    # Update the last midnight run date
+    last_midnight_run = current_day
     LOGGER.info(f"Scheduled message sent at {now}")  # Logging the scheduled message
 
 def scheduled_message_morning(bot):
-    global last_run_date
+    global last_morning_run
     now = datetime.datetime.now()
     current_day = now.strftime("%Y-%m-%d")
 
-    # Check if the morning message has already been sent today
-    if last_run_date == current_day:
+    # Check if the morning message has already run today
+    if last_morning_run == current_day:
         return
 
     day = now.strftime("%d")
@@ -174,8 +175,8 @@ def scheduled_message_morning(bot):
     # Send the morning message
     bot.say('Huomenta aamuvirkut! Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist), '#pulina')
 
-    # Update the last run date to today
-    last_run_date = current_day
+    # Update the last morning run date
+    last_morning_run = current_day
     LOGGER.info(f"Scheduled morning message sent at {now}")  # Logging the morning message
 
 def setup(bot):
@@ -185,6 +186,7 @@ def setup(bot):
 
 @sopel.module.interval(60)
 def run_schedule(bot):
-    # Run all scheduled tasks
+    now = datetime.datetime.now()
+    LOGGER.debug(f"Checking scheduled tasks at {now}")
     schedule.run_pending()
-    LOGGER.debug("Checked scheduled tasks")  # Logging each time the schedule is checked
+    LOGGER.debug(f"Completed scheduled tasks check at {now}")
