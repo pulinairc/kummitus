@@ -54,7 +54,7 @@ def create_summary_with_gpt(log_content):
     prompt = (
         "IRC-keskustelu: \n\n"
         f"{log_content}\n\n"
-        "Ole hyvä ja tiivistä keskustelu mahdollisimman kattavasti niin, että ulkopuolinen saa hyvän kuvan siitä mitä päivän aikana on tapahtunut. Tiivistelmä markdown-muodossa selkeästi jäsenneltynä ja tarvittaessa otsikoituna."
+        "Ole hyvä ja tiivistä keskustelu mahdollisimman kattavasti niin, että ulkopuolinen saa hyvän kuvan siitä mitä päivän aikana on tapahtunut. Tiivistelmä markdown-muodossa selkeästi jäsenneltynä ja tarvittaessa otsikoituna. Otsikoiden jälkeen tyhjä rivi ja vain ensimmäinen kirjain isolla."
     )
 
     try:
