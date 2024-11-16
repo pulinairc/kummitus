@@ -114,79 +114,103 @@ def post_summary_to_channel(bot, short_summary):
     bot.say(message, '#pulina')
     LOGGER.info(f"Posted short summary to #pulina: {message}")
 
+def should_run_midnight():
+    """Check if midnight message should run based on current time"""
+    now = datetime.datetime.now()
+    return now.hour == 0 and now.minute == 0
+
+def should_run_morning():
+    """Check if morning message should run based on current time"""
+    now = datetime.datetime.now()
+    return now.hour == 6 and now.minute == 0
+
 def scheduled_message(bot):
     global last_midnight_run
     now = datetime.datetime.now()
     current_day = now.strftime("%Y-%m-%d")
 
-    # Check if the midnight message has already run today
-    if last_midnight_run == current_day:
-        return
+    # Only proceed if we haven't run today and it's the right time
+    if last_midnight_run != current_day and should_run_midnight():
+        LOGGER.info("Running midnight message...")
 
-    # Fetch yesterday's log and generate summaries
-    log_content, log_date = get_yesterday_log()
-    if log_content:
-        summary = create_summary_with_gpt(log_content)
-        short_summary = create_short_summary_with_gpt(log_content)
-        save_summary_to_file(summary, log_date)
-        # Post the short summary to the IRC channel
-        bot.say(f"Eilen kanavalla keskusteltua: {short_summary}", '#pulina')
+        # Fetch yesterday's log and generate summaries
+        log_content, log_date = get_yesterday_log()
+        if log_content:
+            summary = create_summary_with_gpt(log_content)
+            short_summary = create_short_summary_with_gpt(log_content)
+            save_summary_to_file(summary, log_date)
+            # Post the short summary to the IRC channel
+            bot.say(f"Eilen kanavalla keskusteltua: {short_summary}", '#pulina')
 
-    day = now.strftime("%d")
-    month = now.strftime("%m")
+        day = now.strftime("%d")
+        month = now.strftime("%m")
 
-    if os.path.exists(names_file):
-        with open(names_file, 'r') as filehandle:
-            data_json = json.loads(filehandle.read())
+        if os.path.exists(names_file):
+            with open(names_file, 'r') as filehandle:
+                data_json = json.loads(filehandle.read())
 
-        namedaynames_raw = data_json['%s-%s' % (month, day)]
-        namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
+            namedaynames_raw = data_json['%s-%s' % (month, day)]
+            namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
 
-    findate = format_date(now, format='full', locale='fi_FI')
+        findate = format_date(now, format='full', locale='fi_FI')
 
-    # Send the message
-    bot.say('Päivä vaihtui! Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist), '#pulina')
+        # Send the message
+        bot.say('Päivä vaihtui! Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist), '#pulina')
 
-    # Update the last midnight run date
-    last_midnight_run = current_day
-    LOGGER.info(f"Scheduled message sent at {now}")  # Logging the scheduled message
+        # Update the last midnight run date
+        last_midnight_run = current_day
+        LOGGER.info(f"Scheduled message sent at {now}")
 
 def scheduled_message_morning(bot):
     global last_morning_run
     now = datetime.datetime.now()
     current_day = now.strftime("%Y-%m-%d")
 
-    # Check if the morning message has already run today
-    if last_morning_run == current_day:
-        return
+    # Only proceed if we haven't run today and it's the right time
+    if last_morning_run != current_day and should_run_morning():
+        LOGGER.info("Running morning message...")
 
-    day = now.strftime("%d")
-    month = now.strftime("%m")
+        day = now.strftime("%d")
+        month = now.strftime("%m")
 
-    if os.path.exists(names_file):
-        with open(names_file, 'r') as filehandle:
-            data_json = json.loads(filehandle.read())
+        if os.path.exists(names_file):
+            with open(names_file, 'r') as filehandle:
+                data_json = json.loads(filehandle.read())
 
-        namedaynames_raw = data_json['%s-%s' % (month, day)]
-        namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
+            namedaynames_raw = data_json['%s-%s' % (month, day)]
+            namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
 
-    findate = format_date(now, format='full', locale='fi_FI')
+        findate = format_date(now, format='full', locale='fi_FI')
 
-    # Send the morning message
-    bot.say('Huomenta aamuvirkut! Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist), '#pulina')
+        # Send the morning message
+        bot.say('Huomenta aamuvirkut! Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist), '#pulina')
 
-    # Update the last morning run date
-    last_morning_run = current_day
-    LOGGER.info(f"Scheduled morning message sent at {now}")  # Logging the morning message
+        # Update the last morning run date
+        last_morning_run = current_day
+        LOGGER.info(f"Scheduled morning message sent at {now}")
 
 def setup(bot):
+    LOGGER.info("Setting up almanakka module...")
+    # Clear any existing jobs
+    schedule.clear()
     # Schedule tasks to run at 00:00 and 06:00 precisely
     schedule.every().day.at('00:00').do(scheduled_message, bot=bot)
     schedule.every().day.at('06:00').do(scheduled_message_morning, bot=bot)
+    LOGGER.info("Scheduled tasks set up successfully")
 
-@sopel.module.interval(60)
+@sopel.module.interval(30)  # Run every 30 seconds instead of 60 for more precise timing
 def run_schedule(bot):
-    now = datetime.datetime.now()
-    LOGGER.debug(f"Checking scheduled tasks at {now}")
-    schedule.run_pending()
-    LOGGER.debug(f"Completed scheduled tasks check at {now}")
+    try:
+        now = datetime.datetime.now()
+        LOGGER.debug(f"Checking scheduled tasks at {now}")
+
+        # Run both checks directly in addition to schedule
+        scheduled_message(bot)
+        scheduled_message_morning(bot)
+
+        # Also run pending scheduled tasks
+        schedule.run_pending()
+
+        LOGGER.debug(f"Completed scheduled tasks check at {now}")
+    except Exception as e:
+        LOGGER.error(f"Error in run_schedule: {e}")
