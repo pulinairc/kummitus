@@ -20,8 +20,8 @@ from dotenv import load_dotenv
 LOGGER = logger.get_logger(__name__)  # Use Sopel logger for debugging
 save_path = os.path.expanduser('~/chat.mementomori.social/Documents/Brain dump/Pulina/')
 names_file = '/home/rolle/.sopel/modules/nimipaivat.json'
-last_midnight_run = None
-last_morning_run = None
+last_midnight_run = datetime.datetime.now().strftime("%Y-%m-%d")  # Initialize with today's date
+last_morning_run = datetime.datetime.now().strftime("%Y-%m-%d")   # Initialize with today's date
 log_base_path = os.path.expanduser('~/pulina.fi/pulina-days/')  # Base path for local logs
 
 # Load environment variables from .env file
@@ -117,7 +117,8 @@ def post_summary_to_channel(bot, short_summary):
 def should_run_midnight():
     """Check if midnight message should run based on current time"""
     now = datetime.datetime.now()
-    return now.hour == 0 and now.minute == 0
+    # Allow a 30-second window for the midnight check
+    return now.hour == 0 and now.minute == 0 and now.second < 30
 
 def should_run_morning():
     """Check if morning message should run based on current time"""
@@ -129,37 +130,40 @@ def scheduled_message(bot):
     now = datetime.datetime.now()
     current_day = now.strftime("%Y-%m-%d")
 
-    # Only proceed if we haven't run today and it's the right time
-    if last_midnight_run != current_day and should_run_midnight():
-        LOGGER.info("Running midnight message...")
+    LOGGER.debug(f"Midnight check - Time: {now}, Last run: {last_midnight_run}, Should run: {should_run_midnight()}")
 
-        # Fetch yesterday's log and generate summaries
-        log_content, log_date = get_yesterday_log()
-        if log_content:
-            summary = create_summary_with_gpt(log_content)
-            short_summary = create_short_summary_with_gpt(log_content)
-            save_summary_to_file(summary, log_date)
-            # Post the short summary to the IRC channel
-            bot.say(f"Eilen kanavalla keskusteltua: {short_summary}", '#pulina')
+    # Check if it's a new day (after midnight)
+    if now.hour == 0 and now.minute == 0:
+        if last_midnight_run != current_day:
+            LOGGER.info("Running midnight message...")
 
-        day = now.strftime("%d")
-        month = now.strftime("%m")
+            # Fetch yesterday's log and generate summaries
+            log_content, log_date = get_yesterday_log()
+            if log_content:
+                summary = create_summary_with_gpt(log_content)
+                short_summary = create_short_summary_with_gpt(log_content)
+                save_summary_to_file(summary, log_date)
+                # Post the short summary to the IRC channel
+                bot.say(f"Eilen kanavalla keskusteltua: {short_summary}", '#pulina')
 
-        if os.path.exists(names_file):
-            with open(names_file, 'r') as filehandle:
-                data_json = json.loads(filehandle.read())
+            day = now.strftime("%d")
+            month = now.strftime("%m")
 
-            namedaynames_raw = data_json['%s-%s' % (month, day)]
-            namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
+            if os.path.exists(names_file):
+                with open(names_file, 'r') as filehandle:
+                    data_json = json.loads(filehandle.read())
 
-        findate = format_date(now, format='full', locale='fi_FI')
+                namedaynames_raw = data_json['%s-%s' % (month, day)]
+                namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
 
-        # Send the message
-        bot.say('Päivä vaihtui! Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist), '#pulina')
+            findate = format_date(now, format='full', locale='fi_FI')
 
-        # Update the last midnight run date
-        last_midnight_run = current_day
-        LOGGER.info(f"Scheduled message sent at {now}")
+            # Send the message
+            bot.say('Päivä vaihtui! Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist), '#pulina')
+
+            # Update the last midnight run date
+            last_midnight_run = current_day
+            LOGGER.info(f"Scheduled message sent at {now}")
 
 def scheduled_message_morning(bot):
     global last_morning_run
