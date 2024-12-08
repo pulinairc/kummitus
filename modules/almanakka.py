@@ -16,6 +16,7 @@ from babel.dates import format_date, format_datetime, format_time
 from sopel import logger
 from openai import OpenAI
 from dotenv import load_dotenv
+from datetime import datetime  # Add this import at the top
 
 LOGGER = logger.get_logger(__name__)  # Use Sopel logger for debugging
 save_path = os.path.expanduser('~/chat.mementomori.social/Documents/Brain dump/Pulina/') + datetime.now().strftime('%Y/%m/%d') + '.md'
