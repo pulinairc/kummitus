@@ -18,7 +18,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 
 LOGGER = logger.get_logger(__name__)  # Use Sopel logger for debugging
-save_path = os.path.expanduser('~/chat.mementomori.social/Documents/Brain dump/Pulina/')
+save_path = os.path.expanduser('~/chat.mementomori.social/Documents/Brain dump/Pulina/') + datetime.now().strftime('%Y/%m/%d') + '.md'
 names_file = '/home/rolle/.sopel/modules/nimipaivat.json'
 last_midnight_run = datetime.datetime.now().strftime("%Y-%m-%d")  # Initialize with today's date
 last_morning_run = datetime.datetime.now().strftime("%Y-%m-%d")   # Initialize with today's date
