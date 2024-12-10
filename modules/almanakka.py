@@ -21,9 +21,6 @@ from datetime import datetime  # Add this import at the top
 LOGGER = logger.get_logger(__name__)  # Use Sopel logger for debugging
 save_path = os.path.expanduser('~/chat.mementomori.social/Documents/Brain dump/Pulina/') + datetime.now().strftime('%Y/%m/%d') + '.md'
 names_file = '/home/rolle/.sopel/modules/nimipaivat.json'
-last_midnight_run = datetime.datetime.now().strftime("%Y-%m-%d")  # Initialize with today's date
-last_morning_run = datetime.datetime.now().strftime("%Y-%m-%d")   # Initialize with today's date
-log_base_path = os.path.expanduser('~/pulina.fi/pulina-days/')  # Base path for local logs
 
 # Load environment variables from .env file
 load_dotenv()
@@ -33,6 +30,12 @@ client = OpenAI()
 
 # Set OpenAI API key from dotenv or environment variable
 OpenAI.api_key = os.getenv("OPENAI_API_KEY")
+
+# Fix 1: Move these to be proper module-level variables
+global_vars = {
+    'last_midnight_run': datetime.now().strftime("%Y-%m-%d"),
+    'last_morning_run': datetime.now().strftime("%Y-%m-%d")
+}
 
 def get_yesterday_log():
     """Fetches the log from the local path for yesterday's date."""
@@ -127,15 +130,15 @@ def should_run_morning():
     return now.hour == 6 and now.minute == 0
 
 def scheduled_message(bot):
-    global last_midnight_run
-    now = datetime.datetime.now()
+    # Fix 2: Reference the global vars properly
+    now = datetime.now()
     current_day = now.strftime("%Y-%m-%d")
 
-    LOGGER.debug(f"Midnight check - Time: {now}, Last run: {last_midnight_run}, Should run: {should_run_midnight()}")
+    LOGGER.debug(f"Midnight check - Time: {now}, Last run: {global_vars['last_midnight_run']}, Should run: {should_run_midnight()}")
 
-    # Check if it's a new day (after midnight)
-    if now.hour == 0 and now.minute == 0:
-        if last_midnight_run != current_day:
+    # Fix 3: Add more specific time window check
+    if now.hour == 0 and 0 <= now.minute < 1:  # Run within first minute of midnight
+        if global_vars['last_midnight_run'] != current_day:
             LOGGER.info("Running midnight message...")
 
             # Fetch yesterday's log and generate summaries
@@ -162,37 +165,37 @@ def scheduled_message(bot):
             # Send the message
             bot.say('Päivä vaihtui! Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist), '#pulina')
 
-            # Update the last midnight run date
-            last_midnight_run = current_day
+            # Update using the global vars
+            global_vars['last_midnight_run'] = current_day
             LOGGER.info(f"Scheduled message sent at {now}")
 
 def scheduled_message_morning(bot):
-    global last_morning_run
-    now = datetime.datetime.now()
+    now = datetime.now()
     current_day = now.strftime("%Y-%m-%d")
 
-    # Only proceed if we haven't run today and it's the right time
-    if last_morning_run != current_day and should_run_morning():
-        LOGGER.info("Running morning message...")
+    # Fix 4: Add more specific time window check
+    if now.hour == 6 and 0 <= now.minute < 1:  # Run within first minute of 6 AM
+        if global_vars['last_morning_run'] != current_day:
+            LOGGER.info("Running morning message...")
 
-        day = now.strftime("%d")
-        month = now.strftime("%m")
+            day = now.strftime("%d")
+            month = now.strftime("%m")
 
-        if os.path.exists(names_file):
-            with open(names_file, 'r') as filehandle:
-                data_json = json.loads(filehandle.read())
+            if os.path.exists(names_file):
+                with open(names_file, 'r') as filehandle:
+                    data_json = json.loads(filehandle.read())
 
-            namedaynames_raw = data_json['%s-%s' % (month, day)]
-            namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
+                namedaynames_raw = data_json['%s-%s' % (month, day)]
+                namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
 
-        findate = format_date(now, format='full', locale='fi_FI')
+            findate = format_date(now, format='full', locale='fi_FI')
 
-        # Send the morning message
-        bot.say('Huomenta aamuvirkut! Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist), '#pulina')
+            # Send the morning message
+            bot.say('Huomenta aamuvirkut! Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist), '#pulina')
 
-        # Update the last morning run date
-        last_morning_run = current_day
-        LOGGER.info(f"Scheduled morning message sent at {now}")
+            # Update using the global vars
+            global_vars['last_morning_run'] = current_day
+            LOGGER.info(f"Scheduled morning message sent at {now}")
 
 def setup(bot):
     LOGGER.info("Setting up almanakka module...")
@@ -203,7 +206,8 @@ def setup(bot):
     schedule.every().day.at('06:00').do(scheduled_message_morning, bot=bot)
     LOGGER.info("Scheduled tasks set up successfully")
 
-@sopel.module.interval(30)  # Run every 30 seconds instead of 60 for more precise timing
+# Fix 5: Adjust the interval to run more frequently for better precision
+@sopel.module.interval(15)  # Run every 15 seconds
 def run_schedule(bot):
     try:
         now = datetime.datetime.now()
