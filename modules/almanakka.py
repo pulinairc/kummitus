@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 from datetime import datetime  # Add this import at the top
 
 LOGGER = logger.get_logger(__name__)  # Use Sopel logger for debugging
-save_path = os.path.expanduser('~/chat.mementomori.social/Documents/Brain dump/Pulina/') + datetime.now().strftime('%Y/%m/%d') + '.md'
+save_path = f"{path}/{datetime.today().strftime('%Y/%m/%d')}.md"
 names_file = '/home/rolle/.sopel/modules/nimipaivat.json'
 
 # Load environment variables from .env file
