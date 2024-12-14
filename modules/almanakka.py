@@ -120,27 +120,25 @@ def post_summary_to_channel(bot, short_summary):
 
 def should_run_midnight():
     """Check if midnight message should run based on current time"""
-    now = datetime.datetime.now()
+    now = datetime.now()
     # Allow a 30-second window for the midnight check
     return now.hour == 0 and now.minute == 0 and now.second < 30
 
 def should_run_morning():
     """Check if morning message should run based on current time"""
-    now = datetime.datetime.now()
-    return now.hour == 6 and now.minute == 0
+    now = datetime.now()
+    return now.hour == 6 and now.minute == 0 and now.second < 30
 
 def scheduled_message(bot):
-    # Fix 2: Reference the global vars properly
     now = datetime.now()
     current_day = now.strftime("%Y-%m-%d")
 
-    LOGGER.debug(f"Midnight check - Time: {now}, Last run: {global_vars['last_midnight_run']}, Should run: {should_run_midnight()}")
+    LOGGER.debug(f"Checking midnight message - Current time: {now}, Last run: {global_vars['last_midnight_run']}")
 
-    # Fix 3: Add more specific time window check
-    if now.hour == 0 and 0 <= now.minute < 1:  # Run within first minute of midnight
+    if now.hour == 0 and 0 <= now.minute < 1:
+        LOGGER.debug("Time condition met for midnight message")
         if global_vars['last_midnight_run'] != current_day:
-            LOGGER.info("Running midnight message...")
-
+            LOGGER.info(f"Running midnight message for {current_day}")
             # Fetch yesterday's log and generate summaries
             log_content, log_date = get_yesterday_log()
             if log_content:
@@ -173,11 +171,12 @@ def scheduled_message_morning(bot):
     now = datetime.now()
     current_day = now.strftime("%Y-%m-%d")
 
-    # Fix 4: Add more specific time window check
-    if now.hour == 6 and 0 <= now.minute < 1:  # Run within first minute of 6 AM
-        if global_vars['last_morning_run'] != current_day:
-            LOGGER.info("Running morning message...")
+    LOGGER.debug(f"Checking morning message - Current time: {now}, Last run: {global_vars['last_morning_run']}")
 
+    if now.hour == 6 and 0 <= now.minute < 1:
+        LOGGER.debug("Time condition met for morning message")
+        if global_vars['last_morning_run'] != current_day:
+            LOGGER.info(f"Running morning message for {current_day}")
             day = now.strftime("%d")
             month = now.strftime("%m")
 
@@ -210,7 +209,7 @@ def setup(bot):
 @sopel.module.interval(15)  # Run every 15 seconds
 def run_schedule(bot):
     try:
-        now = datetime.datetime.now()
+        now = datetime.now()
         LOGGER.debug(f"Checking scheduled tasks at {now}")
 
         # Run both checks directly in addition to schedule
