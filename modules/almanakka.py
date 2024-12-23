@@ -42,7 +42,7 @@ global_vars = {
 
 def get_yesterday_log():
     """Fetches the log from the local path for yesterday's date."""
-    yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+    yesterday = datetime.now() - datetime.timedelta(days=1)
     log_date = yesterday.strftime("%Y-%m-%d")
     log_path = os.path.join(log_base_path, f"pul-{log_date}.log")  # Local path to the log file
 
