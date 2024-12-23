@@ -196,29 +196,62 @@ def scheduled_message_morning(bot):
             global_vars['last_morning_run'] = current_day
             LOGGER.info(f"Scheduled morning message sent at {now}")
 
-def setup(bot):
-    LOGGER.info("Setting up almanakka module...")
-    # Clear any existing jobs
-    schedule.clear()
-    # Schedule tasks to run at 00:00 and 06:00 precisely
-    schedule.every().day.at('00:00').do(scheduled_message, bot=bot)
-    schedule.every().day.at('06:00').do(scheduled_message_morning, bot=bot)
-    LOGGER.info("Scheduled tasks set up successfully")
-
-# Fix 5: Adjust the interval to run more frequently for better precision
-@sopel.module.interval(15)  # Run every 15 seconds
+@sopel.module.interval(30)  # Check every 30 seconds
 def run_schedule(bot):
     try:
         now = datetime.now()
-        LOGGER.debug(f"Checking scheduled tasks at {now}")
+        current_day = now.strftime("%Y-%m-%d")
+        current_time = now.strftime("%H:%M")
 
-        # Run both checks directly in addition to schedule
-        scheduled_message(bot)
-        scheduled_message_morning(bot)
+        LOGGER.debug(f"Schedule check at {current_time}")
 
-        # Also run pending scheduled tasks
-        schedule.run_pending()
+        # Midnight message (00:00)
+        if current_time == "00:00" and global_vars['last_midnight_run'] != current_day:
+            LOGGER.info("Triggering midnight message")
 
-        LOGGER.debug(f"Completed scheduled tasks check at {now}")
+            # Get yesterday's log and create summaries
+            log_content, log_date = get_yesterday_log()
+            if log_content:
+                summary = create_summary_with_gpt(log_content)
+                short_summary = create_short_summary_with_gpt(log_content)
+                save_summary_to_file(summary, log_date)
+                bot.say(f"Eilen kanavalla keskusteltua: {short_summary}", '#pulina')
+
+            # Name day message
+            day = now.strftime("%d")
+            month = now.strftime("%m")
+
+            if os.path.exists(names_file):
+                with open(names_file, 'r') as filehandle:
+                    data_json = json.loads(filehandle.read())
+                namedaynames_raw = data_json['%s-%s' % (month, day)]
+                namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
+
+            findate = format_date(now, format='full', locale='fi_FI')
+            bot.say(f'Päivä vaihtui! Tänään on \x02{findate}\x0F. Nimipäiviään viettävät: {namedaynames_commalist}.', '#pulina')
+
+            global_vars['last_midnight_run'] = current_day
+            LOGGER.info("Midnight message completed")
+
+        # Morning message (06:00)
+        if current_time == "06:00" and global_vars['last_morning_run'] != current_day:
+            LOGGER.info("Triggering morning message")
+
+            day = now.strftime("%d")
+            month = now.strftime("%m")
+
+            if os.path.exists(names_file):
+                with open(names_file, 'r') as filehandle:
+                    data_json = json.loads(filehandle.read())
+                namedaynames_raw = data_json['%s-%s' % (month, day)]
+                namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
+
+            findate = format_date(now, format='full', locale='fi_FI')
+            bot.say(f'Huomenta aamuvirkut! Tänään on \x02{findate}\x0F. Nimipäiviään viettävät: {namedaynames_commalist}.', '#pulina')
+
+            global_vars['last_morning_run'] = current_day
+            LOGGER.info("Morning message completed")
+
     except Exception as e:
         LOGGER.error(f"Error in run_schedule: {e}")
+        LOGGER.exception("Full traceback:")
