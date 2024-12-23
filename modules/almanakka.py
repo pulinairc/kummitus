@@ -19,7 +19,10 @@ from dotenv import load_dotenv
 from datetime import datetime  # Add this import at the top
 
 LOGGER = logger.get_logger(__name__)  # Use Sopel logger for debugging
-save_path = f"{path}/{datetime.today().strftime('%Y/%m/%d')}.md"
+
+# Define base paths
+log_base_path = "/home/rolle/logs"  # Path to your log files
+save_path = f"/home/rolle/summaries/{datetime.now().strftime('%Y/%m/%d')}.md"  # Path for saving summaries
 names_file = '/home/rolle/.sopel/modules/nimipaivat.json'
 
 # Load environment variables from .env file
