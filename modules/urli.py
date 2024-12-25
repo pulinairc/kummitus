@@ -64,11 +64,7 @@ def setup(bot):
     else:
         regexes = []
 
-    # We're keeping these in their own list, rather than putting then in the
-    # callbacks list because 1, it's easier to deal with modules that are still
-    # using this list, and not the newer callbacks list and 2, having a lambda
-    # just to pass is kinda ugly.
-    if not bot.memory.contains('url_exclude'):
+    if 'url_exclude' not in bot.memory:
         bot.memory['url_exclude'] = regexes
     else:
         exclude = bot.memory['url_exclude']
@@ -76,10 +72,9 @@ def setup(bot):
             exclude.extend(regexes)
         bot.memory['url_exclude'] = exclude
 
-    # Ensure that url_callbacks and last_seen_url are in memory
-    if not bot.memory.contains('url_callbacks'):
+    if 'url_callbacks' not in bot.memory:
         bot.memory['url_callbacks'] = tools.SopelMemory()
-    if not bot.memory.contains('last_seen_url'):
+    if 'last_seen_url' not in bot.memory:
         bot.memory['last_seen_url'] = tools.SopelMemory()
 
     url_finder = re.compile(r'(?u)(%s?(?:http|https|ftp)(?:://\S+))' %
