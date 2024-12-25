@@ -16,7 +16,7 @@ from babel.dates import format_date, format_datetime, format_time
 from sopel import logger
 from openai import OpenAI
 from dotenv import load_dotenv
-from datetime import datetime  # Add this import at the top
+from datetime import datetime, timedelta
 
 LOGGER = logger.get_logger(__name__)  # Use Sopel logger for debugging
 
@@ -42,7 +42,7 @@ global_vars = {
 
 def get_yesterday_log():
     """Fetches the log from the local path for yesterday's date."""
-    yesterday = datetime.now() - datetime.timedelta(days=1)
+    yesterday = datetime.now() - timedelta(days=1)
     log_date = yesterday.strftime("%Y-%m-%d")
     log_path = os.path.join(log_base_path, f"pul-{log_date}.log")  # Local path to the log file
 
