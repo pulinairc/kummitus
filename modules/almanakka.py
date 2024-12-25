@@ -204,56 +204,59 @@ def run_schedule(bot):
     try:
         now = datetime.now()
         current_day = now.strftime("%Y-%m-%d")
-        current_time = now.strftime("%H:%M")
 
-        LOGGER.debug(f"Schedule check at {current_time}")
+        LOGGER.debug(f"Schedule check - Current time: {now.strftime('%H:%M:%S')}")
 
         # Midnight message (00:00)
-        if current_time == "00:00" and global_vars['last_midnight_run'] != current_day:
-            LOGGER.info("Triggering midnight message")
+        if now.hour == 0 and 0 <= now.minute < 1:  # Gives a 1-minute window
+            LOGGER.debug("Midnight time window active")
+            if global_vars['last_midnight_run'] != current_day:
+                LOGGER.info(f"Sending midnight message for {current_day}")
 
-            # Get yesterday's log and create summaries
-            log_content, log_date = get_yesterday_log()
-            if log_content:
-                summary = create_summary_with_gpt(log_content)
-                short_summary = create_short_summary_with_gpt(log_content)
-                save_summary_to_file(summary, log_date)
-                bot.say(f"Eilen kanavalla keskusteltua: {short_summary}", '#pulina')
+                # Get yesterday's log and create summaries
+                log_content, log_date = get_yesterday_log()
+                if log_content:
+                    summary = create_summary_with_gpt(log_content)
+                    short_summary = create_short_summary_with_gpt(log_content)
+                    save_summary_to_file(summary, log_date)
+                    bot.say(f"Eilen kanavalla keskusteltua: {short_summary}", '#pulina')
 
-            # Name day message
-            day = now.strftime("%d")
-            month = now.strftime("%m")
+                # Name day message
+                day = now.strftime("%d")
+                month = now.strftime("%m")
 
-            if os.path.exists(names_file):
-                with open(names_file, 'r') as filehandle:
-                    data_json = json.loads(filehandle.read())
-                namedaynames_raw = data_json['%s-%s' % (month, day)]
-                namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
+                if os.path.exists(names_file):
+                    with open(names_file, 'r') as filehandle:
+                        data_json = json.loads(filehandle.read())
+                    namedaynames_raw = data_json['%s-%s' % (month, day)]
+                    namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
 
-            findate = format_date(now, format='full', locale='fi_FI')
-            bot.say(f'Päivä vaihtui! Tänään on \x02{findate}\x0F. Nimipäiviään viettävät: {namedaynames_commalist}.', '#pulina')
+                findate = format_date(now, format='full', locale='fi_FI')
+                bot.say(f'Päivä vaihtui! Tänään on \x02{findate}\x0F. Nimipäiviään viettävät: {namedaynames_commalist}.', '#pulina')
 
-            global_vars['last_midnight_run'] = current_day
-            LOGGER.info("Midnight message completed")
+                global_vars['last_midnight_run'] = current_day
+                LOGGER.info("Midnight message sent successfully")
 
         # Morning message (06:00)
-        if current_time == "06:00" and global_vars['last_morning_run'] != current_day:
-            LOGGER.info("Triggering morning message")
+        if now.hour == 6 and 0 <= now.minute < 1:  # Gives a 1-minute window
+            LOGGER.debug("Morning time window active")
+            if global_vars['last_morning_run'] != current_day:
+                LOGGER.info(f"Sending morning message for {current_day}")
 
-            day = now.strftime("%d")
-            month = now.strftime("%m")
+                day = now.strftime("%d")
+                month = now.strftime("%m")
 
-            if os.path.exists(names_file):
-                with open(names_file, 'r') as filehandle:
-                    data_json = json.loads(filehandle.read())
-                namedaynames_raw = data_json['%s-%s' % (month, day)]
-                namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
+                if os.path.exists(names_file):
+                    with open(names_file, 'r') as filehandle:
+                        data_json = json.loads(filehandle.read())
+                    namedaynames_raw = data_json['%s-%s' % (month, day)]
+                    namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
 
-            findate = format_date(now, format='full', locale='fi_FI')
-            bot.say(f'Huomenta aamuvirkut! Tänään on \x02{findate}\x0F. Nimipäiviään viettävät: {namedaynames_commalist}.', '#pulina')
+                findate = format_date(now, format='full', locale='fi_FI')
+                bot.say(f'Huomenta aamuvirkut! Tänään on \x02{findate}\x0F. Nimipäiviään viettävät: {namedaynames_commalist}.', '#pulina')
 
-            global_vars['last_morning_run'] = current_day
-            LOGGER.info("Morning message completed")
+                global_vars['last_morning_run'] = current_day
+                LOGGER.info("Morning message sent successfully")
 
     except Exception as e:
         LOGGER.error(f"Error in run_schedule: {e}")
