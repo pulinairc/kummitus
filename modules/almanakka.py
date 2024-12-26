@@ -34,10 +34,11 @@ client = OpenAI()
 # Set OpenAI API key from dotenv or environment variable
 OpenAI.api_key = os.getenv("OPENAI_API_KEY")
 
-# Fix 1: Move these to be proper module-level variables
+# Initialize global vars with yesterday's date to ensure first run works
+yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 global_vars = {
-    'last_midnight_run': datetime.now().strftime("%Y-%m-%d"),
-    'last_morning_run': datetime.now().strftime("%Y-%m-%d")
+    'last_midnight_run': yesterday,
+    'last_morning_run': yesterday
 }
 
 def get_yesterday_log():
@@ -206,13 +207,13 @@ def run_schedule(bot):
         current_day = now.strftime("%Y-%m-%d")
 
         LOGGER.debug(f"Schedule check - Current time: {now.strftime('%H:%M:%S')}")
+        LOGGER.debug(f"Last midnight run: {global_vars['last_midnight_run']}, Last morning run: {global_vars['last_morning_run']}")
 
         # Midnight message (00:00)
-        if now.hour == 0 and 0 <= now.minute < 1:  # Gives a 1-minute window
+        if now.hour == 0 and 0 <= now.minute < 1:
             LOGGER.debug("Midnight time window active")
             if global_vars['last_midnight_run'] != current_day:
                 LOGGER.info(f"Sending midnight message for {current_day}")
-
                 # Get yesterday's log and create summaries
                 log_content, log_date = get_yesterday_log()
                 if log_content:
@@ -238,7 +239,7 @@ def run_schedule(bot):
                 LOGGER.info("Midnight message sent successfully")
 
         # Morning message (06:00)
-        if now.hour == 6 and 0 <= now.minute < 1:  # Gives a 1-minute window
+        if now.hour == 6 and 0 <= now.minute < 1:
             LOGGER.debug("Morning time window active")
             if global_vars['last_morning_run'] != current_day:
                 LOGGER.info(f"Sending morning message for {current_day}")
