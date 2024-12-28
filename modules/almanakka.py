@@ -18,11 +18,11 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 
-LOGGER = logger.get_logger(__name__)  # Use Sopel logger for debugging
+LOGGER = logger.get_logger(__name__)
 
 # Define base paths
-log_base_path = "/home/rolle/logs"  # Path to your log files
-save_path = f"/home/rolle/summaries/{datetime.now().strftime('%Y/%m/%d')}.md"  # Path for saving summaries
+log_base_path = "/home/rolle/pulina.fi/pulina-days"
+save_path = f"/home/rolle/summaries/{datetime.now().strftime('%Y/%m/%d')}.md"
 names_file = '/home/rolle/.sopel/modules/nimipaivat.json'
 
 # Load environment variables from .env file
@@ -45,11 +45,14 @@ def get_yesterday_log():
     """Fetches the log from the local path for yesterday's date."""
     yesterday = datetime.now() - timedelta(days=1)
     log_date = yesterday.strftime("%Y-%m-%d")
-    log_path = os.path.join(log_base_path, f"pul-{log_date}.log")  # Local path to the log file
+    log_path = os.path.join(log_base_path, f"pul-{log_date}.log")
+
+    LOGGER.debug(f"Attempting to read log from: {log_path}")
 
     try:
         with open(log_path, 'r') as log_file:
             log_content = log_file.read()
+        LOGGER.debug(f"Successfully read log file with {len(log_content)} characters")
         return log_content, log_date
     except FileNotFoundError as e:
         LOGGER.error(f"Log file not found: {e}")
@@ -79,10 +82,9 @@ def create_summary_with_gpt(log_content):
 
 def create_summary(log_content):
     """Creates a summary from the log content."""
-    # Simple approach, replace with natural language processing for more accurate summaries if needed
     lines = log_content.splitlines()
-    relevant_lines = [line for line in lines if not line.startswith('---')]  # Remove irrelevant lines
-    summary = " ".join(relevant_lines[:10])  # Take first 10 relevant lines for a simple summary
+    relevant_lines = [line for line in lines if not line.startswith('---')]
+    summary = " ".join(relevant_lines[:10])
     return summary
 
 def save_summary_to_file(summary, log_date):
