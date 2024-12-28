@@ -89,8 +89,12 @@ def create_summary(log_content):
 
 def save_summary_to_file(summary, log_date):
     """Saves the summary to a markdown file with the given date."""
-    file_name = f"{log_date}.md"
-    file_path = os.path.join(save_path, file_name)
+    # Create the directory path
+    dir_path = f"/home/rolle/summaries/{datetime.now().strftime('%Y/%m/%d')}"
+    os.makedirs(dir_path, exist_ok=True)
+
+    # Create the full file path
+    file_path = os.path.join(dir_path, f"{log_date}.md")
 
     with open(file_path, 'w') as file:
         file.write(f"# Summary for {log_date}\n\n")
