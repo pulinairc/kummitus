@@ -420,9 +420,10 @@ def respond_to_questions(bot, trigger):
         prompt = (lastlines if lastlines else "") + "\n" + (memory_prompt if memory_prompt else "") + "\n" + (user_message if user_message else "")
         response = generate_response(lastlines, prompt, trigger.nick)
 
-        # If trigger nick is bot's nickname, remove it from the response
-        if trigger.nick.lower() == bot.nick.lower():
-            response = response.replace(f"{bot.nick}:", "").strip()
+        # Remove timestamp and bot nickname patterns from the response
+        response = response.replace(f"{bot.nick}:", "").strip()
+        response = re.sub(r'^\d{2}:\d{2}\s*', '', response)  # Remove timestamp pattern
+        response = re.sub(r'<[^>]+>\s*', '', response)  # Remove <Nickname> pattern
 
         # Prepend the user's nickname to the response
         final_response = f"{trigger.nick}: {response}"
