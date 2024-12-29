@@ -12,6 +12,10 @@ from sopel import logger
 import random
 import time
 import re
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urlparse
+import mimetypes
 
 # Sopel logger
 LOGGER = logger.get_logger(__name__)
@@ -259,11 +263,73 @@ def extract_sender_from_line(line):
         return match.group(1)
     return None
 
+def fetch_url_content(url):
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+
+        # Stream response to check size before downloading
+        with requests.get(url, headers=headers, stream=True, timeout=10) as response:
+            response.raise_for_status()
+
+            # Check content length if available
+            content_length = response.headers.get('content-length')
+            if content_length and int(content_length) > MAX_URL_SIZE:
+                LOGGER.debug(f"Content too large: {content_length} bytes")
+                return "Sisältö on liian suuri käsiteltäväksi."
+
+            # Get full content
+            content = response.content.decode('utf-8', errors='ignore')
+
+            # Get content type
+            content_type = response.headers.get('content-type', '').lower()
+
+            # Handle different content types
+            if 'text/html' in content_type:
+                soup = BeautifulSoup(content, 'html.parser')
+                # Remove script and style elements
+                for script in soup(["script", "style"]):
+                    script.decompose()
+                # Get text content
+                text = soup.get_text(separator=' ', strip=True)
+                # Basic cleanup
+                text = ' '.join(text.split())
+                return text[:4000]  # Limit length to avoid token limits
+
+            elif 'application/json' in content_type:
+                return str(json.loads(content))[:4000]
+
+            elif 'text/plain' in content_type:
+                return content[:4000]
+
+            else:
+                LOGGER.debug(f"Unsupported content type: {content_type}")
+                return f"Sisältötyyppiä ei tueta: {content_type}"
+
+    except requests.exceptions.RequestException as e:
+        LOGGER.debug(f"Request error fetching URL {url}: {e}")
+        return f"Virhe sivun noutamisessa: {str(e)}"
+    except Exception as e:
+        LOGGER.debug(f"Unexpected error fetching URL {url}: {e}")
+        return f"Odottamaton virhe sivun noutamisessa: {str(e)}"
+
 # Function to call OpenAI GPT-4o-mini API and generate a response
 def generate_response(messages, question, username):
     try:
-        # Build the prompt from messages and the question
-        prompt = (messages if messages else "") + "\nKysymys: " + (question if question else "")
+        # Extract URLs from the question
+        urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', question)
+
+        url_contents = []
+        for url in urls:
+            content = fetch_url_content(url)
+            url_contents.append(f"Sisältö osoitteesta {url}:\n{content}")
+
+        # Add URL contents to the prompt if any were found
+        if url_contents:
+            prompt = (messages if messages else "") + "\n" + "\n".join(url_contents) + "\nKysymys: " + question
+        else:
+            prompt = (messages if messages else "") + "\nKysymys: " + question
 
         # Truncate prompt in debug message
         if len(prompt) > 100:
