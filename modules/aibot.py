@@ -34,6 +34,13 @@ LOG_FILE = 'pulina.log'
 OUTPUT_FILE_DIR = "/var/www/botit.pulina.fi/public_html/"
 OUTPUT_FILE_PATH = os.path.join(OUTPUT_FILE_DIR, "muisti.txt")
 
+# Keywords that indicate user wants to see chat history
+log_related_words = [
+  'viimeksi', 'kanavalla', 'logi', 'logissa', 'keskustelu',
+  'puhuttu', 'sanottu', 'kirjoitettu', 'mainittu', 'keskusteltu', 'juttu', 'juttelua', 'juteltu', 'juttua', 'aiemmin', 'äsken', 'historia', 'tänään', 'eilen', 'lokissa', 'tapahtunut', 'tapahtui', 'puhetta', 'puhe',
+  'keskustelua', 'viestit', 'viestejä', 'chatti', 'chatissa'
+]
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -202,7 +209,7 @@ def find_mentioned_user(message):
 # Declare last_bot_mention as global variable
 last_bot_mention = None
 
-# Function to retrieve the last 500 lines from pulina.log if the bot hasn't been mentioned in the last x lines
+# Function to retrieve the last lines from pulina.log if the bot hasn't been mentioned in the last x lines
 def get_last_lines(message=None, mentioned_nick=None):
     if not os.path.exists(LOG_FILE):
         LOGGER.debug(f"Log file not found: {LOG_FILE}")
@@ -211,26 +218,27 @@ def get_last_lines(message=None, mentioned_nick=None):
     try:
         with open(LOG_FILE, "r", encoding='utf-8') as f:
             lines = f.readlines()
-            last_lines = lines[-500:] if len(lines) >= 500 else lines
+            last_lines = lines[-5000:] if len(lines) >= 5000 else lines
 
             # Keywords that indicate user wants to see chat history
             log_related_words = [
                 'viimeksi', 'kanavalla', 'logi', 'logissa', 'keskustelu',
-                'puhuttu', 'sanottu', 'kirjoitettu', 'mainittu', 'keskusteltu',
-                'juttu', 'juttelua', 'juteltu', 'juttua', 'aiemmin', 'äsken', 'historia', 'tänään', 'eilen', 'lokissa', 'tapahtunut', 'tapahtui', 'puhetta', 'puhe',
+                'puhuttu', 'sanottu', 'kirjoitettu', 'mainittu', 'keskusteltu', 'juttu', 'juttelua', 'juteltu', 'juttua', 'aiemmin', 'äsken', 'historia', 'tänään', 'eilen',
+                'lokissa', 'tapahtunut', 'tapahtui', 'puhetta', 'puhe',
                 'keskustelua', 'viestit', 'viestejä', 'chatti', 'chatissa'
             ]
 
-            # If message contains log-related words, return more context
-            if message and any(word in message.lower() for word in log_related_words):
-                # Filter out empty lines and system messages
-                valid_lines = [
-                    line for line in last_lines
-                    if line.strip() and re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line)
-                ]
-                LOGGER.debug(f"Found {len(valid_lines)} valid lines for log query")
-                # Return last 20 lines for log-related queries
-                return "\n".join(valid_lines[-20:])
+            # Debug log for message and keywords
+            if message:
+                LOGGER.debug(f"Checking message for log keywords: {message}")
+                found_keywords = [word for word in log_related_words if word in message.lower()]
+                LOGGER.debug(f"Found keywords: {found_keywords}")
+
+                # If log-related words found, return all lines
+                if found_keywords:
+                    full_log = "\n".join(last_lines)
+                    LOGGER.debug(f"Returning full log of {len(last_lines)} lines ({len(full_log)} characters)")
+                    return full_log
 
             # If a specific nick is mentioned, get relevant context
             if mentioned_nick:
@@ -357,6 +365,7 @@ def generate_response(messages, question, username):
 
         # Get the last lines from pulina.log
         lastlines = get_last_lines(message=question)  # For specific queries
+        LOGGER.debug(f"Retrieved log lines: {lastlines[:200]}...")  # Debug the actual content
 
         # Always get last 15 lines for context
         with open(LOG_FILE, "r", encoding='utf-8') as f:
@@ -378,7 +387,11 @@ def generate_response(messages, question, username):
 
         # Add query-specific context if different from recent context
         if lastlines and lastlines != recent_context:
-            prompt += f"Aiheeseen liittyvät keskustelut:\n{lastlines}\n\n"
+            # Check if this is a log-related query
+            if any(word in question.lower() for word in log_related_words):
+                prompt = f"Kanavan lastlog:\n{lastlines}\n\n"
+            else:
+                prompt = f"Aiheeseen liittyvät keskustelut:\n{lastlines}\n\n"
 
         if url_contents:
             prompt += "\n".join(url_contents) + "\n"
@@ -386,15 +399,16 @@ def generate_response(messages, question, username):
             prompt += messages + "\n"
         prompt += "Kysymys: " + question
 
-        # Truncate prompt in debug message
-        debug_prompt = prompt[:100] + "..." if len(prompt) > 100 else prompt
+        # More detailed debug logging
+        LOGGER.debug(f"Recent context length: {len(recent_context)}")
+        LOGGER.debug(f"Last lines length: {len(lastlines) if lastlines else 0}")
         LOGGER.debug(f"Full prompt length: {len(prompt)}")
-        LOGGER.debug(f"Prompt preview: {debug_prompt}")
+        LOGGER.debug(f"Prompt structure:\n{prompt[:500]}...")  # Show more of the prompt structure
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": 'Olet kummitus-botti. Vastauksen on oltava alle 220 merkkiä pitkä. Älä koskaan vastaa IRC-formaatissa (esim. "HH:MM <nick>"). Vastaa aina suoraan asiaan.'},
+                {"role": "system", "content": 'Olet kummitus-botti. Vastauksen on oltava alle 220 merkkiä pitkä. Älä koskaan vastaa IRC-formaatissa (esim. "HH:MM <nick>"). Vastaa aina suoraan asiaan. Käytä annettua keskusteluhistoriaa vastatessasi kysymyksiin kanavalla käydyistä keskusteluista.'},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.4,
@@ -419,7 +433,7 @@ def generate_natural_response(prompt):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": 'Olet kummitus-botti. Vastauksen on oltava alle 220 merkkiä pitkä. Älä koskaan vastaa IRC-formaatissa (esim. "HH:MM <nick>"). Vastaa aina suoraan asiaan.'},
+                {"role": "system", "content": 'Olet kummitus-botti. Vastauksen on oltava alle 220 merkkiä pitkä. Älä koskaan vastaa IRC-formaatissa (esim. "HH:MM <nick>"). Vastaa aina suoraan asiaan. Käytä annettua keskusteluhistoriaa vastatessasi kysymyksiin kanavalla käydyistä keskusteluista.'},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.4,
@@ -528,7 +542,11 @@ def respond_to_questions(bot, trigger):
         add_mentioned_user(trigger.nick)
 
         # Debug log memory prompt
-        LOGGER.debug(f"Memory prompt: {memory_prompt}")
+        # If memory prompt is empty, log "Memory prompt is empty", else log the memory prompt
+        if memory_prompt:
+            LOGGER.debug(f"Memory prompt: {memory_prompt}")
+        else:
+            LOGGER.debug("Memory prompt is empty")
 
         # Debug last lines
         LOGGER.debug(f"Last lines: {lastlines}")
