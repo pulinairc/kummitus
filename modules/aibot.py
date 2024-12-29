@@ -132,7 +132,7 @@ def write_memory_to_file(memory):
             if memory:
                 f.write("\n".join(memory))
             else:
-                f.write("Muisti on tyhjä.")
+                f.write("")
 
         LOGGER.debug(f"Memory saved to text file: {OUTPUT_FILE_PATH}")
     except Exception as e:
