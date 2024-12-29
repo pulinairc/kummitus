@@ -421,8 +421,8 @@ def generate_response(messages, question, username):
                 {"role": "system", "content": 'Olet kummitus-botti. Vastauksen on oltava alle 220 merkkiä pitkä. Älä koskaan vastaa IRC-formaatissa (esim. "HH:MM <nick>").'},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.4,
-            max_tokens=13000,
+            temperature=0.5,
+            max_tokens=5000,
         )
 
         # Extract the actual text response
@@ -446,8 +446,8 @@ def generate_natural_response(prompt):
                 {"role": "system", "content": 'Olet kummitus-botti. Vastauksen on oltava alle 220 merkkiä pitkä. Älä koskaan vastaa IRC-formaatissa (esim. "HH:MM <nick>").'},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.4,
-            max_tokens=13000,
+            temperature=0.5,
+            max_tokens=5000,
         )
 
         # Extract the actual text response from the API call
