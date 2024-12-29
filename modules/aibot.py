@@ -272,18 +272,21 @@ def get_last_lines(message=None, mentioned_nick=None):
                 LOGGER.debug(f"Found {len(valid_lines)} valid lines for time-related query")
                 return "\n".join(valid_lines[-10:])  # Return last 10 lines
 
-            # Otherwise return the last 15 valid messages, excluding bot's own messages
+            # Otherwise return the last 15 valid messages, excluding bot's messages and messages to bot
             valid_lines = []
             for line in reversed(last_lines):
-                # Check if line matches IRC message format and is not from the bot
-                if (re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line) and
-                    not re.search(r'^\d{2}:\d{2}\s*<kummitus>', line, re.IGNORECASE)):
-                    valid_lines.append(line)
-                    if len(valid_lines) >= 15:  # Get last 15 valid messages
-                        break
+                # Check if line matches IRC message format
+                if re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line):
+                    # Skip if it's bot's message or a message containing "kummitus:"
+                    if (not re.search(r'^\d{2}:\d{2}\s*<kummitus>', line, re.IGNORECASE) and
+                        'kummitus:' not in line.lower() and
+                        not re.search(r'<[^>]+>\s*kummitus[,:]', line, re.IGNORECASE)):
+                        valid_lines.append(line)
+                        if len(valid_lines) >= 15:  # Get last 15 valid messages
+                            break
 
             if valid_lines:
-                LOGGER.debug(f"Found {len(valid_lines)} valid lines (excluding bot messages)")
+                LOGGER.debug(f"Found {len(valid_lines)} valid lines (excluding bot messages and messages to bot)")
                 return "\n".join(reversed(valid_lines))  # Reverse back to chronological order
 
             LOGGER.debug("No valid lines found")
