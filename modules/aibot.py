@@ -356,28 +356,40 @@ def generate_response(messages, question, username):
         urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', question)
 
         # Get the last lines from pulina.log
-        lastlines = get_last_lines(message=question)  # We're getting the lines but not using them properly
+        lastlines = get_last_lines(message=question)  # For specific queries
+
+        # Always get last 15 lines for context
+        with open(LOG_FILE, "r", encoding='utf-8') as f:
+            all_lines = f.readlines()
+            # Filter valid IRC messages from last 15 lines
+            recent_context = [
+                line.strip() for line in all_lines[-15:]
+                if line.strip() and re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line)
+            ]
+            recent_context = "\n".join(recent_context)
 
         url_contents = []
         for url in urls:
             content = fetch_url_content(url)
             url_contents.append(f"Sisältö osoitteesta {url}:\n{content}")
 
-        # Add URL contents to the prompt if any were found
+        # Build the prompt with both context and URL contents if any
+        prompt = f"Viimeiset keskustelut kanavalla:\n{recent_context}\n\n"  # Always include recent context
+
+        # Add query-specific context if different from recent context
+        if lastlines and lastlines != recent_context:
+            prompt += f"Aiheeseen liittyvät keskustelut:\n{lastlines}\n\n"
+
         if url_contents:
-            prompt = (messages if messages else "") + "\n" + "\n".join(url_contents) + "\nKysymys: " + question
-        else:
-            # Here's where we need to include the lastlines
-            prompt = (lastlines if lastlines else "") + "\n" + (messages if messages else "") + "\nKysymys: " + question
+            prompt += "\n".join(url_contents) + "\n"
+        if messages:
+            prompt += messages + "\n"
+        prompt += "Kysymys: " + question
 
         # Truncate prompt in debug message
-        if len(prompt) > 100:
-            debug_prompt = prompt[:100] + "..."
-        else:
-            debug_prompt = prompt
-
-        # Debug prompt
-        LOGGER.debug(f"Prompt: {debug_prompt}")
+        debug_prompt = prompt[:100] + "..." if len(prompt) > 100 else prompt
+        LOGGER.debug(f"Full prompt length: {len(prompt)}")
+        LOGGER.debug(f"Prompt preview: {debug_prompt}")
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
