@@ -277,11 +277,11 @@ def generate_response(messages, question, username):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": 'Olet ystävällinen tyyppi, jonka nimi on Kummitus. Vastaa kysymyksiin alle 220 merkillä. Älä koskaan sisällytä vastaukseesi "kummitus:"-merkintää. Vältä turhien "Onko jotain muuta, mistä haluaisit jutella?" kysymysten kyselemistä. Pyri vastaamaan jotenkin uniikilla tai hauskalla tavalla.'},
+                {"role": "system", "content": 'Olet kummitus-botti. Vastauksen on oltava alle 220 merkkiä pitkä.'},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.8,
-            max_tokens=300,
+            temperature=0.4,
+            max_tokens=13000,
         )
 
         # Extract the actual text response
@@ -302,11 +302,11 @@ def generate_natural_response(prompt):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": 'Olet ystävällinen tyyppi, jonka nimi on Kummitus. Vastauksen on oltava alle 220 merkkiä pitkä. Vältä turhien "Onko jotain muuta, mistä haluaisit jutella?" kysymysten kyselemistä.'},
+                {"role": "system", "content": 'Olet kummitus-botti. Vastauksen on oltava alle 220 merkkiä pitkä.'},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.8,
-            max_tokens=300,
+            temperature=0.4,
+            max_tokens=13000,
         )
 
         # Extract the actual text response from the API call
