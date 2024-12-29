@@ -420,6 +420,10 @@ def respond_to_questions(bot, trigger):
         prompt = (lastlines if lastlines else "") + "\n" + (memory_prompt if memory_prompt else "") + "\n" + (user_message if user_message else "")
         response = generate_response(lastlines, prompt, trigger.nick)
 
+        # Clean up the response - remove any IRC-style formatting that might be in the AI response
+        clean_response = re.sub(r'^\d{2}:\d{2}\s*<[^>]+>\s*', '', response)  # Remove timestamp and nickname patterns
+        response = clean_response  # Use the cleaned response for further processing
+
         # Remove timestamp and bot nickname patterns from the response
         response = response.replace(f"{bot.nick}:", "").strip()
         response = re.sub(r'^\d{2}:\d{2}\s*', '', response)  # Remove timestamp pattern
