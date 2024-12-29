@@ -418,7 +418,7 @@ def generate_response(messages, question, username):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": 'Olet kummitus-botti. Vastauksen on oltava alle 220 merkkiä pitkä. Älä koskaan vastaa IRC-formaatissa (esim. "HH:MM <nick>"). Vastaa aina suoraan asiaan. Käytä annettua keskusteluhistoriaa vastatessasi kysymyksiin kanavalla käydyistä keskusteluista.'},
+                {"role": "system", "content": 'Olet kummitus-botti. Vastauksen on oltava alle 220 merkkiä pitkä. Älä koskaan vastaa IRC-formaatissa (esim. "HH:MM <nick>").'},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.4,
@@ -443,7 +443,7 @@ def generate_natural_response(prompt):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": 'Olet kummitus-botti. Vastauksen on oltava alle 220 merkkiä pitkä. Älä koskaan vastaa IRC-formaatissa (esim. "HH:MM <nick>"). Vastaa aina suoraan asiaan. Käytä annettua keskusteluhistoriaa vastatessasi kysymyksiin kanavalla käydyistä keskusteluista.'},
+                {"role": "system", "content": 'Olet kummitus-botti. Vastauksen on oltava alle 220 merkkiä pitkä. Älä koskaan vastaa IRC-formaatissa (esim. "HH:MM <nick>").'},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.4,
