@@ -25,7 +25,7 @@ COOLDOWN_PERIOD = 14400
 last_response_time = None
 
 # Files
-LOG_FILE = 'pulina.log'
+LOG_FILE = '/home/rolle/.sopel/pulina.log'
 MENTIONED_USERS_FILE = "mentioned_users.json"
 MEMORY_FILE = 'memory.json'
 MEMORY_BACKUP_FILE = "memory-backup.json"
@@ -205,12 +205,32 @@ last_bot_mention = None
 # Function to retrieve the last 500 lines from pulina.log if the bot hasn't been mentioned in the last x lines
 def get_last_lines(message=None, mentioned_nick=None):
     if not os.path.exists(LOG_FILE):
+        LOGGER.debug(f"Log file not found: {LOG_FILE}")
         return ""
 
     try:
         with open(LOG_FILE, "r", encoding='utf-8') as f:
             lines = f.readlines()
             last_lines = lines[-500:] if len(lines) >= 500 else lines
+
+            # Keywords that indicate user wants to see chat history
+            log_related_words = [
+                'viimeksi', 'kanavalla', 'logi', 'logissa', 'keskustelu',
+                'puhuttu', 'sanottu', 'kirjoitettu', 'mainittu', 'keskusteltu',
+                'juttu', 'juttelua', 'juteltu', 'juttua', 'aiemmin', 'äsken', 'historia', 'tänään', 'eilen', 'lokissa', 'tapahtunut', 'tapahtui', 'puhetta', 'puhe',
+                'keskustelua', 'viestit', 'viestejä', 'chatti', 'chatissa'
+            ]
+
+            # If message contains log-related words, return more context
+            if message and any(word in message.lower() for word in log_related_words):
+                # Filter out empty lines and system messages
+                valid_lines = [
+                    line for line in last_lines
+                    if line.strip() and re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line)
+                ]
+                LOGGER.debug(f"Found {len(valid_lines)} valid lines for log query")
+                # Return last 20 lines for log-related queries
+                return "\n".join(valid_lines[-20:])
 
             # If a specific nick is mentioned, get relevant context
             if mentioned_nick:
@@ -219,6 +239,10 @@ def get_last_lines(message=None, mentioned_nick=None):
                 context_counter = 0
 
                 for line in reversed(last_lines):
+                    # Skip empty lines and system messages
+                    if not line.strip() or not re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line):
+                        continue
+
                     if mentioned_nick.lower() in line.lower():
                         in_context = True
                         context_counter = 3  # Keep 3 messages after mention
@@ -229,15 +253,26 @@ def get_last_lines(message=None, mentioned_nick=None):
                         if context_counter < 0:
                             in_context = False
 
+                LOGGER.debug(f"Found relevant lines for {mentioned_nick}: {len(relevant_lines)}")
                 return "\n".join(reversed(relevant_lines[-10:]))  # Return last 10 relevant lines max
 
             # If message contains time-related Finnish words, include recent context
             time_related_words = ['äsken', 'tänään', 'eilen', 'aiemmin', 'viimeksi']
             if message and any(word in message.lower() for word in time_related_words):
-                return "\n".join(last_lines[-10:])  # Return last 10 lines
+                # Filter out empty lines and system messages
+                valid_lines = [line for line in last_lines if line.strip() and re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line)]
+                LOGGER.debug(f"Found {len(valid_lines)} valid lines for time-related query")
+                return "\n".join(valid_lines[-10:])  # Return last 10 lines
 
-            # Otherwise just return the last message
-            return last_lines[-1] if last_lines else ""
+            # Otherwise just return the last valid message
+            for line in reversed(last_lines):
+                # Check if line matches IRC message format (HH:MM <nick> message)
+                if re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line):
+                    LOGGER.debug(f"Found last valid line: {line.strip()}")
+                    return line
+
+            LOGGER.debug("No valid lines found")
+            return ""
 
     except Exception as e:
         LOGGER.debug(f"Error reading log file: {e}")
