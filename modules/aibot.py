@@ -355,6 +355,9 @@ def generate_response(messages, question, username):
         # Extract URLs from the question
         urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', question)
 
+        # Get the last lines from pulina.log
+        lastlines = get_last_lines(message=question)  # We're getting the lines but not using them properly
+
         url_contents = []
         for url in urls:
             content = fetch_url_content(url)
@@ -364,7 +367,8 @@ def generate_response(messages, question, username):
         if url_contents:
             prompt = (messages if messages else "") + "\n" + "\n".join(url_contents) + "\nKysymys: " + question
         else:
-            prompt = (messages if messages else "") + "\nKysymys: " + question
+            # Here's where we need to include the lastlines
+            prompt = (lastlines if lastlines else "") + "\n" + (messages if messages else "") + "\nKysymys: " + question
 
         # Truncate prompt in debug message
         if len(prompt) > 100:
