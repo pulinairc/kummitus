@@ -199,48 +199,41 @@ def find_mentioned_user(message):
 last_bot_mention = None
 
 # Function to retrieve the last 500 lines from pulina.log if the bot hasn't been mentioned in the last x lines
-def get_last_lines():
-    global last_bot_mention
-
+def get_last_lines(message=None, mentioned_nick=None):
     if not os.path.exists(LOG_FILE):
         return ""
 
     try:
         with open(LOG_FILE, "r", encoding='utf-8') as f:
             lines = f.readlines()
-
-            # Get the last 500 lines to check for bot mentions
             last_lines = lines[-500:] if len(lines) >= 500 else lines
 
-            # Check if the bot was mentioned in the last 500 lines
-            for i, line in enumerate(reversed(last_lines), 1):
-                if "kummitus" in line.lower():
-                    last_bot_mention = i
-                    break
+            # If a specific nick is mentioned, get relevant context
+            if mentioned_nick:
+                relevant_lines = []
+                in_context = False
+                context_counter = 0
 
-            # If bot was mentioned, return all 500 lines excluding bot's own messages
-            if last_bot_mention is not None:
-                LOGGER.debug(f"Bot was last mentioned {last_bot_mention} lines ago.")
+                for line in reversed(last_lines):
+                    if mentioned_nick.lower() in line.lower():
+                        in_context = True
+                        context_counter = 3  # Keep 3 messages after mention
 
-                # Exclude bot's own messages from the last 500 lines
-                last_lines = [line.strip() for line in last_lines if "kummitus" not in line.lower()]
+                    if in_context:
+                        relevant_lines.append(line)
+                        context_counter -= 1
+                        if context_counter < 0:
+                            in_context = False
 
-                return "\n".join(last_lines)
+                return "\n".join(reversed(relevant_lines[-10:]))  # Return last 10 relevant lines max
 
-            # If bot wasnt mentioned, return the last 5 lines excluding bot's own messages
-            else:
-                LOGGER.debug("Bot hasn't been mentioned in the last 500 lines.")
-                last_lines = lines[-5:] if len(lines) >= 5 else lines
-                last_short_lines = lines[-5:] if len(lines) >= 5 else lines
-                last_short_lines = [line.strip() for line in last_short_lines]
+            # If message contains time-related Finnish words, include recent context
+            time_related_words = ['äsken', 'tänään', 'eilen', 'aiemmin', 'viimeksi']
+            if message and any(word in message.lower() for word in time_related_words):
+                return "\n".join(last_lines[-10:])  # Return last 10 lines
 
-                # Filter out bot's own messages from the last 5 lines
-                non_bot_lines_short = [line for line in last_short_lines if "kummitus" not in line.lower()]
-
-                if non_bot_lines_short:
-                    return random.choice(non_bot_lines_short)
-                else:
-                    return ""
+            # Otherwise just return the last message
+            return last_lines[-1] if last_lines else ""
 
     except Exception as e:
         LOGGER.debug(f"Error reading log file: {e}")
@@ -326,6 +319,19 @@ def generate_natural_response(prompt):
 def format_cooldown_time(seconds):
     minutes, seconds = divmod(seconds, 60)
     return f"{int(minutes)} minutes {int(seconds)} seconds"
+
+# Add new function to parse nicknames from HTML file
+def load_channel_users():
+    try:
+        with open('/var/www/botit.pulina.fi/public_html/pulina.html', 'r', encoding='utf-8') as f:
+            content = f.read()
+            # Extract nicknames from title attributes and span contents
+            nicks = re.findall(r'title="([^@]+)@|>([^<]+)</span>', content)
+            # Flatten and clean the list of nicknames
+            return list(set(nick for tuple in nicks for nick in tuple if nick))
+    except Exception as e:
+        LOGGER.debug(f"Error loading channel users: {e}")
+        return []
 
 # Sopel trigger function to respond to questions when bot's name is mentioned or in private messages
 @sopel.module.rule(r'(.*)')
