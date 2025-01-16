@@ -276,13 +276,13 @@ def get_last_lines(message=None, mentioned_nick=None):
             # and messages that are part of previous bot conversations
             valid_lines = []
             conversation_started = False
-            
+
             for line in reversed(last_lines):
                 # Check if line matches IRC message format
                 if re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line):
                     # Skip if it's part of a bot conversation
-                    if ('kummitus:' in line.lower() or 
-                        re.search(r'<kummitus>', line, re.IGNORECASE) or 
+                    if ('kummitus:' in line.lower() or
+                        re.search(r'<kummitus>', line, re.IGNORECASE) or
                         re.search(r'<[^>]+>\s*kummitus[,:]', line, re.IGNORECASE)):
                         if not conversation_started:
                             continue
@@ -382,43 +382,41 @@ def generate_response(messages, question, username):
         # Extract URLs from the question
         urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', question)
 
-        # Modified: Get context but exclude previous bot conversations
+        # Limit recent context to fewer messages
         lastlines = get_last_lines(message=question)
-        
-        # Get recent context but exclude bot conversations
+        if lastlines:
+            # Limit to last 10 lines max
+            lastlines = "\n".join(lastlines.split("\n")[-10:])
+
+        # Get recent context but limit size
         with open(LOG_FILE, "r", encoding='utf-8') as f:
             all_lines = f.readlines()
             recent_context = [
-                line.strip() for line in all_lines[-30:]  # Look at more lines to find enough valid ones
-                if line.strip() and 
+                line.strip() for line in all_lines[-15:]  # Reduced from 30 to 15
+                if line.strip() and
                 re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line) and
                 not re.search(r'<kummitus>', line, re.IGNORECASE) and
                 'kummitus:' not in line.lower() and
                 not re.search(r'<[^>]+>\s*kummitus[,:]', line, re.IGNORECASE)
-            ][:15]  # Take only the last 15 valid messages
+            ][:8]  # Take only the last 8 valid messages (reduced from 15)
             recent_context = "\n".join(recent_context)
 
+        # Limit URL content length
         url_contents = []
-        for url in urls:
+        for url in urls[:2]:  # Limit to first 2 URLs only
             content = fetch_url_content(url)
+            # Limit content length
+            content = content[:1000] if content else ""  # Reduced from 4000 to 1000
             url_contents.append(f"Sisältö osoitteesta {url}:\n{content}")
 
-        # Build the prompt with both context and URL contents if any
-        prompt = f"Viimeiset keskustelut kanavalla:\n{recent_context}\n\n"  # Always include recent context
-
-        # Add query-specific context if different from recent context
-        if lastlines and lastlines != recent_context:
-            # Check if this is a log-related query
-            if any(word in question.lower() for word in log_related_words):
-                prompt = f"Kanavan lastlog:\n{lastlines}\n\n"
-            else:
-                prompt = f"Aiheeseen liittyvät keskustelut:\n{lastlines}\n\n"
+        # Build a more concise prompt
+        prompt = f"Viimeiset keskustelut:\n{recent_context[-1000:]}\n\n"  # Limit context size
 
         if url_contents:
-            prompt += "\n".join(url_contents) + "\n"
+            prompt += "\n".join(url_contents[:2]) + "\n"  # Limit URL contents
         if messages:
-            prompt += messages + "\n"
-        prompt += "Kysymys: " + question
+            prompt += messages[-1000:] + "\n"  # Limit messages size
+        prompt += "Kysymys: " + question[-500:]  # Limit question size
 
         # More detailed debug logging
         LOGGER.debug(f"Recent context length: {len(recent_context)}")
@@ -502,6 +500,11 @@ def respond_to_questions(bot, trigger):
         # Get the last lines from pulina.log, excluding bot's own messages
         lastlines = get_last_lines()
 
+        # Limit lastlines to prevent token overflow
+        if lastlines:
+            # Only keep last 5 lines
+            lastlines = "\n".join(lastlines.split("\n")[-5:])
+
         # If bot is mentioned, strip the line from lastlines
         lastlines = "\n".join([line for line in lastlines.splitlines() if bot.nick.lower() not in line.lower()])
 
@@ -512,9 +515,10 @@ def respond_to_questions(bot, trigger):
         if user_message.lower().startswith(f"{bot.nick.lower()}:"):
           user_message = user_message[len(f"{bot.nick}:"):].strip()
 
-        # Include the memory in the prompt
+        # Include the memory in the prompt, but limit it
         if memory:
-            memory_prompt = '' + " ".join(memory)
+            # Only include last 5 memory items
+            memory_prompt = ' '.join(memory[-5:])
         else:
             memory_prompt = ""
 
@@ -573,7 +577,14 @@ def respond_to_questions(bot, trigger):
         LOGGER.debug(f"Last lines: {lastlines}")
 
         # Generate a response based on the log and the user's message
-        prompt = (lastlines if lastlines else "") + "\n" + (memory_prompt if memory_prompt else "") + "\n" + (user_message if user_message else "")
+        # Limit the total prompt size
+        prompt = (
+            (lastlines[-1000:] if lastlines else "") +
+            "\n" +
+            (memory_prompt[-500:] if memory_prompt else "") +
+            "\n" +
+            (user_message[-500:] if user_message else "")
+        )
         response = generate_response(lastlines, prompt, trigger.nick)
 
         # Clean up the response - remove any IRC-style formatting that might be in the AI response
