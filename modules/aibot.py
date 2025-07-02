@@ -418,7 +418,6 @@ def generate_response(messages, question, username):
             prompt += messages[-1000:] + "\n"  # Limit messages size
         prompt += "Kysymys: " + question[-500:]  # Limit question size
 
-        prompt += "Älä koskaan tuo esille keskusteluhistoriaan liittyviä asioita, ellei erikseen mainita tai kysytä. "
 
         # More detailed debug logging
         LOGGER.debug(f"Recent context length: {len(recent_context)}")
@@ -426,10 +425,24 @@ def generate_response(messages, question, username):
         LOGGER.debug(f"Full prompt length: {len(prompt)}")
         LOGGER.debug(f"Prompt structure:\n{prompt[:500]}...")  # Show more of the prompt structure
 
+        # Build system message with memory context
+        system_message = (
+            "Olet kummitus-botti IRC-kanavalla. Vastaa luonnollisesti ja inhimillisesti. "
+            "Vastauksen on oltava alle 220 merkkiä pitkä. "
+            "Älä koskaan vastaa IRC-formaatissa (esim. 'HH:MM <nick>'). "
+            "Älä mainitse muistojasi tai aiempia keskusteluja, ellei niitä erikseen kysytä. "
+            "Käytä muistojasi taustalla ymmärtääksesi tilanteen, mutta älä korosta niitä vastauksessasi."
+        )
+        
+        # Add memory context to system message for understanding, but instruct not to mention it
+        if memory:
+            memory_context = " ".join(memory[-3:])  # Use only last 3 memory items
+            system_message += f" Muistosi (älä mainitse näitä suoraan): {memory_context}"
+        
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": 'Olet kummitus-botti. Vastauksen on oltava alle 220 merkkiä pitkä. Älä koskaan vastaa IRC-formaatissa (esim. "HH:MM <nick>").'},
+                {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.5,
@@ -454,7 +467,7 @@ def generate_natural_response(prompt):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": 'Olet kummitus-botti. Vastauksen on oltava alle 220 merkkiä pitkä. Älä koskaan vastaa IRC-formaatissa (esim. "HH:MM <nick>").'},
+                {"role": "system", "content": 'Olet kummitus-botti IRC-kanavalla. Vastaa luonnollisesti ja inhimillisesti. Vastauksen on oltava alle 220 merkkiä pitkä. Älä koskaan vastaa IRC-formaatissa (esim. "HH:MM <nick>"). Älä mainitse muistojasi tai aiempia keskusteluja, ellei niitä erikseen kysytä.'},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.5,
@@ -517,12 +530,8 @@ def respond_to_questions(bot, trigger):
         if user_message.lower().startswith(f"{bot.nick.lower()}:"):
           user_message = user_message[len(f"{bot.nick}:"):].strip()
 
-        # Include the memory in the prompt, but limit it
-        if memory:
-            # Only include last 5 memory items
-            memory_prompt = ' '.join(memory[-5:])
-        else:
-            memory_prompt = ""
+        # Memory will be included in system message instead of user prompt
+        memory_prompt = ""
 
         # Debug log the message
         LOGGER.debug(f"User message: {user_message}")
@@ -579,11 +588,9 @@ def respond_to_questions(bot, trigger):
         LOGGER.debug(f"Last lines: {lastlines}")
 
         # Generate a response based on the log and the user's message
-        # Limit the total prompt size
+        # Don't include memory in user prompt - it's in system message
         prompt = (
             (lastlines[-1000:] if lastlines else "") +
-            "\n" +
-            (memory_prompt[-500:] if memory_prompt else "") +
             "\n" +
             (user_message[-500:] if user_message else "")
         )
@@ -638,7 +645,7 @@ def respond_to_questions(bot, trigger):
         sender = extract_sender_from_line(random_line)
 
         # Create a prompt for OpenAI based on the selected line
-        prompt = f"Älä koskaan tuo esille keskusteluhistoriaan liittyviä asioita, ellei erikseen mainita tai kysytä. Vastaa luonnollisesti seuraavaan viestiin: {random_line}"
+        prompt = f"Vastaa luonnollisesti seuraavaan viestiin: {random_line}"
 
         # Generate a response using OpenAI
         response = generate_natural_response(prompt)
