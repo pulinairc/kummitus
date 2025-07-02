@@ -410,13 +410,15 @@ def generate_response(messages, question, username):
             url_contents.append(f"Sisältö osoitteesta {url}:\n{content}")
 
         # Build a more concise prompt
-        prompt = f"Viimeiset keskustelut:\n{recent_context[-1000:]}\n\n"  # Limit context size
+        prompt = f"Tähänastiset keskustelut:\n{recent_context[-1000:]}\n\n"  # Limit context size
 
         if url_contents:
             prompt += "\n".join(url_contents[:2]) + "\n"  # Limit URL contents
         if messages:
             prompt += messages[-1000:] + "\n"  # Limit messages size
         prompt += "Kysymys: " + question[-500:]  # Limit question size
+
+        prompt += "Älä koskaan tuo esille keskusteluhistoriaan liittyviä asioita, ellei erikseen mainita tai kysytä. "
 
         # More detailed debug logging
         LOGGER.debug(f"Recent context length: {len(recent_context)}")
@@ -636,7 +638,7 @@ def respond_to_questions(bot, trigger):
         sender = extract_sender_from_line(random_line)
 
         # Create a prompt for OpenAI based on the selected line
-        prompt = f"Vastaa luonnollisesti seuraavaan viestiin: {random_line}"
+        prompt = f"Älä koskaan tuo esille keskusteluhistoriaan liittyviä asioita, ellei erikseen mainita tai kysytä. Vastaa luonnollisesti seuraavaan viestiin: {random_line}"
 
         # Generate a response using OpenAI
         response = generate_natural_response(prompt)
