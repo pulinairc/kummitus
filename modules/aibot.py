@@ -30,16 +30,14 @@ MENTIONED_USERS_FILE = "mentioned_users.json"
 MEMORY_FILE = 'memory.json'
 MEMORY_BACKUP_FILE = "memory-backup.json"
 NOTES_FILE = 'user_notes.json'
-LOG_FILE = 'pulina.log'
 OUTPUT_FILE_DIR = "/var/www/botit.pulina.fi/public_html/"
 OUTPUT_FILE_PATH = os.path.join(OUTPUT_FILE_DIR, "muisti.txt")
 
-# Keywords that indicate user wants to see chat history
-log_related_words = [
-  'viimeksi', 'kanavalla', 'logi', 'logissa', 'keskustelu',
-  'puhuttu', 'sanottu', 'kirjoitettu', 'mainittu', 'keskusteltu', 'juttu', 'juttelua', 'juteltu', 'juttua', 'aiemmin', 'äsken', 'historia', 'tänään', 'eilen', 'lokissa', 'tapahtunut', 'tapahtui', 'puhetta', 'puhe',
-  'keskustelua', 'viestit', 'viestejä', 'chatti', 'chatissa'
-]
+# Constants
+MAX_URL_SIZE = 10 * 1024 * 1024  # 10MB limit for URL content
+
+# Configuration
+HISTORICAL_LOG_DIR = "/home/rolle/pulina.fi/pul"
 
 # Load environment variables from .env file
 load_dotenv()
@@ -215,7 +213,7 @@ last_bot_mention = None
 
 # Finnish stop words to exclude from keyword searches
 FINNISH_STOP_WORDS = {
-    'on', 'ja', 'ei', 'se', 'että', 'en', 'ole', 'et', 'nyt', 'kun', 'mä', 'sä', 'ne', 
+    'on', 'ja', 'ei', 'se', 'että', 'en', 'ole', 'et', 'nyt', 'kun', 'mä', 'sä', 'ne',
     'te', 'me', 'he', 'tää', 'toi', 'ton', 'sen', 'sit', 'jos', 'mut', 'tai', 'vaan',
     'kyl', 'kyllä', 'joo', 'juu', 'nii', 'niin', 'voi', 'vois', 'ois', 'oot', 'oon',
     'olet', 'olen', 'olemme', 'olette', 'ovat', 'oli', 'olivat', 'ollut', 'olleet',
@@ -226,19 +224,19 @@ FINNISH_STOP_WORDS = {
 # Function to get today's messages from dedicated log file
 def get_todays_messages():
     today_log_file = "/var/www/botit.pulina.fi/public_html/lastlog.log"
-    
+
     if not os.path.exists(today_log_file):
         LOGGER.debug(f"Today's log file not found: {today_log_file}")
         return ""
-    
+
     try:
         with open(today_log_file, "r", encoding='utf-8') as f:
             lines = f.readlines()
             todays_lines = [line.strip() for line in lines if line.strip()]
-        
+
         # Return last 500 lines to avoid payload too large errors
         return "\n".join(todays_lines[-500:]) if todays_lines else ""
-        
+
     except Exception as e:
         LOGGER.debug(f"Error reading today's messages: {e}")
         return ""
@@ -247,78 +245,116 @@ def get_todays_messages():
 def extract_keywords(message):
     # Remove punctuation and split into words
     words = re.findall(r'\b\w+\b', message.lower())
-    
+
     # Filter out stop words and short words
-    keywords = [word for word in words 
+    keywords = [word for word in words
                 if len(word) > 2 and word not in FINNISH_STOP_WORDS]
-    
+
     return keywords
 
 # Function to search historical logs for any keywords using ripgrep
 def search_historical_logs(keywords, max_results=500):
     """Search through all historical log files for keywords using simple grep"""
-    historical_log_dir = "/home/rolle/pulina.fi/pul"
-    
-    if not os.path.exists(historical_log_dir) or not keywords:
+    LOGGER.debug(f"Starting historical search with keywords: {keywords}")
+
+    if not keywords:
+        LOGGER.debug("No keywords provided, returning empty list")
         return []
-    
+
+    if not os.path.exists(HISTORICAL_LOG_DIR):
+        LOGGER.debug(f"Historical log directory does not exist: {HISTORICAL_LOG_DIR}")
+        return []
+
     try:
         import subprocess
-        
+
         matches = []
-        LOGGER.debug(f"Searching historical logs for keywords: {keywords}")
-        
+
         # Search keywords - limit to first few for performance
         for keyword in keywords[:4]:
+            if not keyword or len(keyword) < 2:
+                LOGGER.debug(f"Skipping too short keyword: {keyword}")
+                continue
+
             try:
-                # Simple grep command like you showed
-                cmd = f'grep -i "{keyword}" {historical_log_dir}/pulina-*.log | head -500'
+                # Simple grep command with proper escaping
+                escaped_keyword = keyword.replace('"', '\\"')
+                cmd = f'grep -i "{escaped_keyword}" {HISTORICAL_LOG_DIR}/pulina-*.log | head -500'
+                LOGGER.debug(f"Running command: {cmd}")
+
                 result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
-                
-                if result.returncode == 0:
+
+                LOGGER.debug(f"Grep result for '{keyword}': return code {result.returncode}, stdout length {len(result.stdout)}, stderr: {result.stderr}")
+
+                if result.returncode == 0 and result.stdout.strip():
+                    lines_found = result.stdout.strip().split('\n')
+                    LOGGER.debug(f"Found {len(lines_found)} lines for keyword '{keyword}'")
+
                     # Parse to extract real dates from log file paths
-                    for line in result.stdout.strip().split('\n'):
+                    for line in lines_found:
                         if line.strip() and ':' in line:
                             # Extract date from filename in path like /home/rolle/pulina.fi/pul/pulina-2021-03.log
                             parts = line.split(':', 1)
                             if len(parts) >= 2:
                                 file_path = parts[0]
                                 line_content = parts[1]
-                                
-                                # Extract date from filename like pulina-2021-03.log
+
+                                # Extract date from filename - we know the format is pulina-YYYY-MM.log
                                 filename = os.path.basename(file_path)
                                 if filename.startswith('pulina-') and filename.endswith('.log'):
                                     date_part = filename.replace('pulina-', '').replace('.log', '')
-                                    
-                                    matches.append({
-                                        'line': line,
-                                        'date': date_part,
-                                        'file': filename
-                                    })
-                
+                                else:
+                                    date_part = "unknown"
+
+                                matches.append({
+                                    'line': line,
+                                    'date': date_part,
+                                    'file': filename,
+                                    'keyword': keyword
+                                })
+                else:
+                    LOGGER.debug(f"No matches found for keyword '{keyword}' (return code: {result.returncode})")
+                    if result.stderr:
+                        LOGGER.debug(f"Stderr: {result.stderr}")
+
             except Exception as e:
                 LOGGER.debug(f"Error searching for keyword {keyword}: {e}")
                 continue
-            
-            # Don't break early, search all keywords for comprehensive context
-        
+
+        LOGGER.debug(f"Total matches found before deduplication: {len(matches)}")
+
+        # Remove duplicates while preserving order
+        seen_lines = set()
+        unique_matches = []
+        for match in matches:
+            line_key = match['line']
+            if line_key not in seen_lines:
+                seen_lines.add(line_key)
+                unique_matches.append(match)
+
+        matches = unique_matches
+        LOGGER.debug(f"Unique matches after deduplication: {len(matches)}")
+
         # Debug: Log any real IRC join events found (format: "-!- user ... has joined")
         join_events = [m for m in matches if 'has joined' in m['line'] and '-!-' in m['line']]
         if join_events:
             LOGGER.debug(f"Found {len(join_events)} real IRC join events in historical search")
             for event in join_events[:3]:  # Log first 3
                 LOGGER.debug(f"Join event: [{event['date']}] {event['line']}")
-            
+
             # If we found join events, prioritize them at the beginning
             other_matches = [m for m in matches if m not in join_events]
             matches = join_events + other_matches[:max_results-len(join_events)]
         else:
             # Sort by date (chronologically) if no join events
-            matches.sort(key=lambda x: x['date'])
-        
-        LOGGER.debug(f"Historical search complete: {len(matches)} matches found")
+            try:
+                matches.sort(key=lambda x: x['date'])
+            except:
+                pass  # If sorting fails, just continue with original order
+
+        LOGGER.debug(f"Historical search complete: {len(matches)} final matches")
         return matches[:max_results]
-        
+
     except Exception as e:
         LOGGER.debug(f"Error in historical search: {e}")
         return []
@@ -326,41 +362,41 @@ def search_historical_logs(keywords, max_results=500):
 # Function to find relevant context based on keywords
 def get_relevant_context(keywords, max_lines=100):
     today_log_file = "/var/www/botit.pulina.fi/public_html/lastlog.log"
-    
+
     if not os.path.exists(today_log_file) or not keywords:
         return get_todays_messages()  # Fallback to regular today's messages
-    
+
     try:
         with open(today_log_file, "r", encoding='utf-8') as f:
             lines = f.readlines()
-        
+
         relevant_lines = []
         for line in lines:
             line = line.strip()
             if not line or not re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line):
                 continue
-                
+
             # Check if any keyword appears in the line
             line_lower = line.lower()
             if any(keyword in line_lower for keyword in keywords):
                 relevant_lines.append(line)
-        
+
         # If we found keyword matches, return them + some recent context
         if relevant_lines:
             # Get last 50 lines as recent context
-            recent_lines = [line.strip() for line in lines[-50:] 
+            recent_lines = [line.strip() for line in lines[-50:]
                           if line.strip() and re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line.strip())]
-            
+
             # Combine relevant lines with recent context, avoiding duplicates
             all_relevant = list(dict.fromkeys(relevant_lines + recent_lines))  # Remove duplicates while preserving order
-            
+
             LOGGER.debug(f"Found {len(relevant_lines)} keyword matches, {len(all_relevant)} total relevant lines")
             return "\n".join(all_relevant[-max_lines:])  # Limit to max_lines
         else:
             # No keyword matches, return recent context
             LOGGER.debug("No keyword matches found, using recent context")
             return get_todays_messages()
-            
+
     except Exception as e:
         LOGGER.debug(f"Error in keyword search: {e}")
         return get_todays_messages()  # Fallback
@@ -376,25 +412,7 @@ def get_last_lines(message=None, mentioned_nick=None):
             lines = f.readlines()
             last_lines = lines[-5000:] if len(lines) >= 5000 else lines
 
-            # Keywords that indicate user wants to see chat history
-            log_related_words = [
-                'viimeksi', 'kanavalla', 'logi', 'logissa', 'keskustelu',
-                'puhuttu', 'sanottu', 'kirjoitettu', 'mainittu', 'keskusteltu', 'juttu', 'juttelua', 'juteltu', 'juttua', 'aiemmin', 'äsken', 'historia', 'tänään', 'eilen',
-                'lokissa', 'tapahtunut', 'tapahtui', 'puhetta', 'puhe',
-                'keskustelua', 'viestit', 'viestejä', 'chatti', 'chatissa'
-            ]
-
-            # Debug log for message and keywords
-            if message:
-                LOGGER.debug(f"Checking message for log keywords: {message}")
-                found_keywords = [word for word in log_related_words if word in message.lower()]
-                LOGGER.debug(f"Found keywords: {found_keywords}")
-
-                # If log-related words found, return all lines
-                if found_keywords:
-                    full_log = "\n".join(last_lines)
-                    LOGGER.debug(f"Returning full log of {len(last_lines)} lines ({len(full_log)} characters)")
-                    return full_log
+            # No hardcoded keyword checking - let AI decide what's relevant
 
             # If a specific nick is mentioned, get relevant context
             if mentioned_nick:
@@ -420,13 +438,7 @@ def get_last_lines(message=None, mentioned_nick=None):
                 LOGGER.debug(f"Found relevant lines for {mentioned_nick}: {len(relevant_lines)}")
                 return "\n".join(reversed(relevant_lines[-10:]))  # Return last 10 relevant lines max
 
-            # If message contains time-related Finnish words, include recent context
-            time_related_words = ['äsken', 'tänään', 'eilen', 'aiemmin', 'viimeksi']
-            if message and any(word in message.lower() for word in time_related_words):
-                # Filter out empty lines and system messages
-                valid_lines = [line for line in last_lines if line.strip() and re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line)]
-                LOGGER.debug(f"Found {len(valid_lines)} valid lines for time-related query")
-                return "\n".join(valid_lines[-10:])  # Return last 10 lines
+            # No time-related word checking - let AI handle context
 
             # Return the last 15 valid messages, excluding bot's messages, messages to bot,
             # and messages that are part of previous bot conversations
@@ -485,7 +497,7 @@ def call_free_api(messages, max_tokens=5000, temperature=0.5):
     """Call the free Pollinations API with dummy key for security"""
     try:
         payload = {
-            "model": "gpt-4.1-nano",
+            "model": "gpt-4.1-mini",
             "messages": messages,
             "max_tokens": max_tokens,
             "temperature": temperature
@@ -511,7 +523,7 @@ def call_free_api(messages, max_tokens=5000, temperature=0.5):
         else:
             LOGGER.debug(f"Free API error: {response.status_code} - {response.text}")
             return None
-            
+
     except Exception as e:
         LOGGER.debug(f"Error calling free API: {e}")
         return None
@@ -580,17 +592,11 @@ def generate_response(messages, question, username, user_message_only=""):
             lastlines = "\n".join(lastlines.split("\n")[-10:])
 
         # Use intelligent keyword-based context from today's log AND historical search
-        # Use AI to detect if this is a historical query
+                # Use AI to detect if this is a historical query
         user_text = user_message_only if user_message_only else question
-        
-        # Quick check for obvious historical words first
-        obvious_historical = ['milloin', 'koska', 'ensimmäinen', 'historia', 'muisto', 'mainittiin', 'puhuttiin', 'sanottiin', 'aikaisemmin', 'aiemmin', 'vanha', 'ennen']
-        is_obviously_historical = any(word in user_text.lower() for word in obvious_historical)
-        
-        # If not obviously historical, ask AI to decide
-        if not is_obviously_historical:
-            detection_prompt = f"""Is this question asking about historical information from logs? 
-            
+
+        detection_prompt = f"""Is this question asking about historical information from logs?
+
 Question: '{user_text}'
 
 Return ONLY: {{"historical": true}} or {{"historical": false}}
@@ -599,65 +605,37 @@ Examples:
 - "milloin banaani mainittiin?" → {{"historical": true}}
 - "mitä mieltä olet?" → {{"historical": false}}
 - "puhuttiinko eilen kissasta?" → {{"historical": true}}
+- "koska viimeksi mainittiin sana auto?" → {{"historical": true}}
+- "miltä tuntuu?" → {{"historical": false}}
 
 JSON:"""
-            
-            try:
-                detection_response = call_free_api([{"role": "user", "content": detection_prompt}], max_tokens=30)
-                if detection_response and detection_response.get('content'):
-                    import json
-                    detection_json = json.loads(detection_response['content'].strip())
-                    is_historical_query = detection_json.get('historical', False)
-                else:
-                    is_historical_query = False
-            except:
+
+        try:
+            detection_response = call_free_api([{"role": "user", "content": detection_prompt}], max_tokens=30)
+            if detection_response:
+                import json
+                # call_free_api returns a string, not a dict
+                detection_json = json.loads(detection_response.strip())
+                is_historical_query = detection_json.get('historical', False)
+            else:
                 is_historical_query = False
-        else:
-            is_historical_query = True
-        
+        except Exception as e:
+            LOGGER.debug(f"Historical detection failed: {e}")
+            is_historical_query = False
+
+        LOGGER.debug(f"AI determined query '{user_text}' is historical: {is_historical_query}")
+
         historical_matches = []
         if is_historical_query:
-            # Let AI decide what to search for using strict JSON format
-            search_prompt = f"""Extract 1-2 most relevant search terms from this question: '{user_text}'
+            # Extract keywords from the user's question
+            keywords = extract_keywords(user_text)
+            LOGGER.debug(f"Extracted keywords from '{user_text}': {keywords}")
 
-Return ONLY valid JSON format:
-{{"terms": ["term1", "term2"]}}
+            if keywords:
+                historical_matches = search_historical_logs(keywords[:3])  # Use first 3 keywords
+            else:
+                LOGGER.debug("No keywords extracted for historical search")
 
-Focus on key nouns, names, or specific topics mentioned.
-
-JSON:"""
-            
-            try:
-                search_response = call_free_api([{"role": "user", "content": search_prompt}], max_tokens=50)
-                
-                if search_response:
-                    import json
-                    # Handle both dict and string responses
-                    content = search_response.get('content') if isinstance(search_response, dict) else search_response
-                    if content:
-                        response_json = json.loads(content.strip())
-                        search_terms = [term.lower() for term in response_json.get('terms', [])][:2]
-                        LOGGER.debug(f"AI suggested search terms: {search_terms}")
-                    else:
-                        # Fallback to basic keyword extraction
-                        keywords = extract_keywords(user_text)
-                        search_terms = keywords[:2]
-                        LOGGER.debug(f"AI failed, using fallback terms: {search_terms}")
-                else:
-                    # Fallback to basic keyword extraction
-                    keywords = extract_keywords(user_text)
-                    search_terms = keywords[:2]
-                    LOGGER.debug(f"AI failed, using fallback terms: {search_terms}")
-                
-                if search_terms:
-                    historical_matches = search_historical_logs(search_terms)
-                
-            except Exception as e:
-                LOGGER.debug(f"AI search term generation failed: {e}, using fallback")
-                # Fallback to basic keyword extraction
-                keywords = extract_keywords(user_text)
-                historical_matches = search_historical_logs(keywords[:2])
-            
             recent_context = get_relevant_context([], max_lines=150)
             LOGGER.debug(f"Using context for historical query: {len(recent_context)} characters")
         else:
@@ -680,7 +658,7 @@ JSON:"""
                     ][:150]  # Reduced to make room for historical
                     recent_context = "\n".join(recent_context)
                 LOGGER.debug(f"Using fallback context: {len(recent_context)} characters")
-        
+
         # Add historical context if found
         historical_context = ""
         if historical_matches:
@@ -688,10 +666,10 @@ JSON:"""
             # Clean up the format and show more results, prioritizing join events
             join_events = [m for m in historical_matches if 'has joined' in m['line']]
             other_matches = [m for m in historical_matches if 'has joined' not in m['line']]
-            
+
             # Show join events first, then other matches
             priority_matches = join_events[:10] + other_matches[:10]
-            
+
             for match in priority_matches[:15]:  # Show up to 15 total
                 # Clean format: remove file path, just show date and content
                 line = match['line']
@@ -701,7 +679,7 @@ JSON:"""
                     historical_lines.append(f"[{match['date']}] {content}")
                 else:
                     historical_lines.append(f"[{match['date']}] {line}")
-                    
+
             historical_context = "Historiallisia löytöjä:\n" + "\n".join(historical_lines) + "\n\n"
             LOGGER.debug(f"Added {len(priority_matches)} historical matches (prioritized join events)")
 
@@ -716,11 +694,11 @@ JSON:"""
 
         # Build prompt with historical context first, then recent context
         prompt = ""
-        
+
         # Add historical context if available
         if historical_context:
             prompt += historical_context
-        
+
         # Add recent context
         prompt += f"Tähänastiset keskustelut:\n{recent_context}\n\n"
 
@@ -730,31 +708,31 @@ JSON:"""
             # Limit messages to avoid payload issues
             prompt += messages[-3000:] + "\n" if len(messages) > 3000 else messages + "\n"
         prompt += "Viesti: " + question
-        
+
         # Final safety check - if prompt is too large, reduce context properly
         if len(prompt) > 35000:
             LOGGER.debug(f"Prompt too large ({len(prompt)} chars), reducing context")
-            
+
             # Reduce recent_context to fit within limits - keep NEWEST messages
             target_context_size = 20000
             if len(recent_context) > target_context_size:
                 # Split by lines and take from the END to preserve recent messages
                 context_lines = recent_context.split('\n')
-                
+
                 # Work backwards from the end to keep the most recent complete messages
                 reduced_lines = []
                 current_size = 0
-                
+
                 for line in reversed(context_lines):
                     line_size = len(line) + 1  # +1 for newline
                     if current_size + line_size > target_context_size:
                         break
                     reduced_lines.insert(0, line)  # Insert at beginning to maintain order
                     current_size += line_size
-                
+
                 recent_context = '\n'.join(reduced_lines)
                 LOGGER.debug(f"Context reduced to {len(recent_context)} characters, kept {len(reduced_lines)} most recent lines")
-                
+
                 # Rebuild prompt with reduced context
                 prompt = ""
                 if historical_context:
@@ -782,12 +760,18 @@ JSON:"""
             "Käytä muistojasi taustalla ymmärtääksesi tilanteen, mutta älä korosta niitä vastauksessasi. "
             "Vältä toistamasta samoja kysymyksiä kuten 'Miten muuten menee?' tai 'Mitä kuuluu?'. "
             "Ole luova ja vaihtele vastauksiasi. Reagoi suoraan siihen mitä ihmiset sanovat sen sijaan että kyselet yleisiä kysymyksiä. "
-            "Jos näet 'Historiallisia löytöjä' -osion, nämä ovat vanhoja viestejä vuosilta 2008-2025, EI tältä päivältä. "
+            "\n\nHISTORIALLISEN DATAN TULKINTA - KRIITTINEN:"
+            "Jos näet 'Historiallisia löytöjä' -osion, nämä ovat todellisia löytöjä historiallisista IRC-logeista vuosilta 2008-nykyhetki. "
             "[YYYY-MM] tarkoittaa että viesti on lähetetty kyseiseltä vuodelta ja kuukaudelta. "
-            "Kun joku kysyy milloin henkilö liittyi kanavalle ensimmäisen kerran, etsi IRC join -viesti muodossa '-!- käyttäjä [host] has joined #pulina' historiallisista löydöistä. "
-            "Jos et löydä henkilöä historiallisista löydöistä, sano että 'En löydä [henkilön nimi] mainintoja historiallisista logeista'. "
-            "ÄLÄ KOSKAAN keksi päivämääriä tai arvaa milloin joku on liittynyt - käytä vain todellisia historiallisia löytöjä. "
-            "Tämä päivä on 2025-07-02, joten kaikki historiallisten löytöjen päivämäärät ovat menneisyydestä."
+            "TÄRKEÄÄ: Sana voi esiintyä MISSÄ TAHANSA osassa IRC-viestiä ja se LASKETAAN MAININNAKSI: "
+            "- Chat-viesteissä: '<nick> sanoo jotain sanaa sisältävää' "
+            "- Nicknameissä: '<banaani> sanoo jotain' "
+            "- Hostnames/osoitteissa: '-!- nick [~banaani@host.fi] has joined' "
+            "- Join/part-viesteissä: käyttäjien liittymisissä ja poistumisissä "
+            "ESIMERKKI: Jos näet '[2010-03] 08:40 -!- timiZ- [~banaani@host.fi] has joined #pulina', niin sana 'banaani' esiintyi maaliskuussa 2010 ensimmäisen kerran. "
+            "Jos löydät MINKÄ TAHANSA esiintymän haettua sanaa historiallisista löydöistä, kerro milloin se esiintyi ensimmäisen kerran ja mainitse missä yhteydessä. "
+            "ÄLÄ KOSKAAN sano 'ei löydy' jos näet sanan historiallisissa löydöissä. Käytä VAIN todellisia löytöjä. "
+            f"Tämä päivä on {datetime.now().strftime('%Y-%m-%d')}, joten kaikki historiallisten löytöjen päivämäärät ovat menneisyydestä."
         )
 
         # Add memory context to system message for understanding, but instruct not to mention it
@@ -809,7 +793,7 @@ JSON:"""
 
         # Fallback to paid API
         response = client.chat.completions.create(
-            model="gpt-4.1-nano",
+            model="gpt-4.1-mini",
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
@@ -843,7 +827,7 @@ def generate_natural_response(prompt):
                          'Älä mainitse muistojasi tai aiempia keskusteluja, ellei niitä erikseen kysytä. '
                          'Vältä toistamasta samoja kysymyksiä kuten "Miten muuten menee?" tai "Mitä kuuluu?". '
                          'Ole luova ja vaihtele vastauksiasi. Reagoi suoraan siihen mitä ihmiset sanovat sen sijaan että kyselet yleisiä kysymyksiä.')
-        
+
         # Try free API first if enabled
         if USE_FREE_API:
             messages = [
@@ -855,10 +839,10 @@ def generate_natural_response(prompt):
                 return free_response
             else:
                 LOGGER.debug("Free API failed, falling back to paid API")
-        
+
         # Fallback to paid API
         response = client.chat.completions.create(
-            model="gpt-4.1-nano",
+            model="gpt-4.1-mini",
             messages=[
                 {"role": "system", "content": system_content},
                 {"role": "user", "content": prompt}
