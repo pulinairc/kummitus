@@ -241,16 +241,25 @@ def get_todays_messages():
         LOGGER.debug(f"Error reading today's messages: {e}")
         return ""
 
-# Function to extract keywords from user message
+# Function to extract keywords from user message - prioritize names and unique terms
 def extract_keywords(message):
-    # Remove punctuation and split into words
+    # Keep original case to detect proper nouns
+    original_words = re.findall(r'\b\w+\b', message)
     words = re.findall(r'\b\w+\b', message.lower())
 
     # Filter out stop words and short words
-    keywords = [word for word in words
-                if len(word) > 2 and word not in FINNISH_STOP_WORDS]
+    keywords = []
+    for i, word in enumerate(words):
+        if len(word) > 2 and word not in FINNISH_STOP_WORDS:
+            # Check if this was originally capitalized (likely a name)
+            was_capitalized = i < len(original_words) and original_words[i][0].isupper()
+            keywords.append((word, was_capitalized, len(word)))
 
-    return keywords
+    # Sort by: 1) Capitalized names first, 2) Then by length
+    keywords.sort(key=lambda x: (not x[1], -x[2]))
+
+    # Return just the words
+    return [word[0] for word in keywords]
 
 # Function to search historical logs for any keywords using ripgrep
 def search_historical_logs(keywords, max_results=500):
