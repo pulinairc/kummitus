@@ -601,38 +601,52 @@ def generate_response(messages, question, username, user_message_only=""):
             lastlines = "\n".join(lastlines.split("\n")[-10:])
 
         # Use intelligent keyword-based context from today's log AND historical search
-                # Use AI to detect if this is a historical query
+                        # Quick pre-filter to avoid AI calls for obvious non-historical messages
         user_text = user_message_only if user_message_only else question
 
-        detection_prompt = f"""Is this question asking about historical information from logs?
+        # Skip AI detection for very short messages (likely simple responses)
+        words = user_text.split()
 
-Question: '{user_text}'
+        if len(words) <= 2:
+            is_historical_query = False
+            LOGGER.debug(f"Skipped AI detection for short message: '{user_text}'")
+        else:
+                        # Use AI to detect if this is a historical query
+            detection_prompt = f"""Analyze if this text is a QUESTION asking for specific historical information that would require searching chat logs.
+
+CRITERIA for historical=true:
+1. Must be a QUESTION (not a statement, opinion, or comment)
+2. Must be asking for specific past events, dates, or information
+3. Must require searching historical data to answer
+
+CRITERIA for historical=false:
+- Statements, opinions, comments about current topics
+- Questions about definitions, explanations, or general knowledge
+- Casual conversation, reactions, or affirmations
+
+Text: '{user_text}'
 
 Return ONLY: {{"historical": true}} or {{"historical": false}}
 
-Examples:
-- "milloin banaani mainittiin?" → {{"historical": true}}
-- "mitä mieltä olet?" → {{"historical": false}}
-- "puhuttiinko eilen kissasta?" → {{"historical": true}}
-- "koska viimeksi mainittiin sana auto?" → {{"historical": true}}
-- "miltä tuntuu?" → {{"historical": false}}
-
 JSON:"""
 
-        try:
-            detection_response = call_free_api([{"role": "user", "content": detection_prompt}], max_tokens=30)
-            if detection_response:
-                import json
-                # call_free_api returns a string, not a dict
-                detection_json = json.loads(detection_response.strip())
-                is_historical_query = detection_json.get('historical', False)
-            else:
+            try:
+                detection_response = call_free_api([{"role": "user", "content": detection_prompt}], max_tokens=30)
+                if detection_response:
+                    import json
+                    # call_free_api returns a string, not a dict
+                    detection_json = json.loads(detection_response.strip())
+                    is_historical_query = detection_json.get('historical', False)
+                else:
+                    is_historical_query = False
+            except Exception as e:
+                LOGGER.debug(f"Historical detection failed: {e}")
                 is_historical_query = False
-        except Exception as e:
-            LOGGER.debug(f"Historical detection failed: {e}")
-            is_historical_query = False
 
-        LOGGER.debug(f"AI determined query '{user_text}' is historical: {is_historical_query}")
+        if len(user_text.split()) <= 2:
+            LOGGER.debug(f"Short message '{user_text}' marked as non-historical: {is_historical_query}")
+        else:
+            LOGGER.debug(f"AI determined query '{user_text}' is historical: {is_historical_query}")
 
         historical_matches = []
         if is_historical_query:
