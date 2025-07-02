@@ -376,7 +376,7 @@ def fetch_url_content(url):
         LOGGER.debug(f"Unexpected error fetching URL {url}: {e}")
         return f"Odottamaton virhe sivun noutamisessa: {str(e)}"
 
-# Function to call OpenAI GPT-4o-mini API and generate a response
+# Function to call OpenAI API and generate a response
 def generate_response(messages, question, username):
     try:
         # Extract URLs from the question
@@ -440,7 +440,7 @@ def generate_response(messages, question, username):
             system_message += f" Muistosi (älä mainitse näitä suoraan): {memory_context}"
         
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4.1-nano",
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
@@ -465,7 +465,7 @@ def store_user_notes(username, message):
 def generate_natural_response(prompt):
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4.1-nano",
             messages=[
                 {"role": "system", "content": 'Olet kummitus-botti IRC-kanavalla. Vastaa luonnollisesti ja inhimillisesti. Vastauksen on oltava alle 220 merkkiä pitkä. Älä koskaan vastaa IRC-formaatissa (esim. "HH:MM <nick>"). Älä mainitse muistojasi tai aiempia keskusteluja, ellei niitä erikseen kysytä.'},
                 {"role": "user", "content": prompt}
