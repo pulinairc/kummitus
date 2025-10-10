@@ -257,13 +257,38 @@ def extract_keywords(message):
     original_words = re.findall(r'\b\w+\b', message)
     words = re.findall(r'\b\w+\b', message.lower())
 
-    # Filter out stop words and short words
+    # Meta words to filter out (words about searching/logs, not search targets)
+    # Use stemmed versions too
+    meta_words = {'etsi', 'ets', 'hae', 'katso', 'kats', 'tarkist', 'tutk', 'selvit', 'kerro', 'kerr',
+                  'logit', 'logi', 'log', 'logeist', 'logeih', 'logeiss', 'lokit', 'loki', 'lok',
+                  'lokeist', 'lokeih', 'lokeiss', 'lokitiedost', 'logs',
+                  'milloin', 'millo', 'koska', 'kos', 'missä', 'miss', 'mikä', 'mik',
+                  'viimeks', 'viime', 'ensin', 'ens', 'joku', 'jok', 'joskus', 'josk'}
+
+    # Filter out stop words, meta words, and short words
     keywords = []
     for i, word in enumerate(words):
         if len(word) > 2 and word not in FINNISH_STOP_WORDS:
+            # Simple Finnish stemming: remove last 1-2 chars for words >3 chars
+            if len(word) > 3:
+                # Try removing last char, then last 2 chars
+                stem1 = word[:-1]
+                stem2 = word[:-2] if len(word) > 4 else word
+
+                # Check if any stem matches meta words
+                if stem1 in meta_words or stem2 in meta_words or word in meta_words:
+                    continue
+
+                # Use the stemmed version for searching
+                stemmed_word = stem1
+            else:
+                if word in meta_words:
+                    continue
+                stemmed_word = word
+
             # Check if this was originally capitalized (likely a name)
             was_capitalized = i < len(original_words) and original_words[i][0].isupper()
-            keywords.append((word, was_capitalized, len(word)))
+            keywords.append((stemmed_word, was_capitalized, len(stemmed_word)))
 
     # Sort by: 1) Capitalized names first, 2) Then by length
     keywords.sort(key=lambda x: (not x[1], -x[2]))
@@ -285,71 +310,108 @@ def search_historical_logs(keywords, max_results=20, context_lines=5):
         return []
 
     try:
-        import glob
-        from collections import defaultdict
+        import subprocess
 
         all_conversations = []
+        irc_pattern = re.compile(r'^\d{2}:\d{2}\s*<[^>]+>')
 
-        # Get all log files sorted by date (newest first for relevance)
-        log_files = sorted(glob.glob(f"{HISTORICAL_LOG_DIR}/pulina-*.log"), reverse=True)
-        LOGGER.debug(f"Searching through {len(log_files)} log files")
-
-        # Search each file
-        for log_file in log_files:
-            try:
-                # Extract date from filename (pulina-YYYY-MM.log)
-                filename = os.path.basename(log_file)
-                if filename.startswith('pulina-') and filename.endswith('.log'):
-                    date_part = filename.replace('pulina-', '').replace('.log', '')
-                else:
-                    date_part = "unknown"
-
-                # Read entire file into memory (IRC logs are not huge per file)
-                with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
-                    lines = f.readlines()
-
-                # IRC message pattern
-                irc_pattern = re.compile(r'^\d{2}:\d{2}\s*<[^>]+>')
-
-                # Find matching lines and extract context
-                for i, line in enumerate(lines):
-                    line_lower = line.lower()
-
-                    # Check if any keyword matches
-                    if any(keyword.lower() in line_lower for keyword in keywords):
-                        # Extract context: lines before and after
-                        start_idx = max(0, i - context_lines)
-                        end_idx = min(len(lines), i + context_lines + 1)
-
-                        # Get context lines (only valid IRC messages)
-                        context = []
-                        for ctx_line in lines[start_idx:end_idx]:
-                            ctx_line = ctx_line.strip()
-                            if ctx_line and irc_pattern.match(ctx_line):
-                                context.append(ctx_line)
-
-                        if context:
-                            all_conversations.append({
-                                'date': date_part,
-                                'file': filename,
-                                'context': context,
-                                'matched_line': line.strip(),
-                                'keywords': keywords
-                            })
-
-                        # Limit results per file to avoid too much data
-                        if len(all_conversations) >= max_results * 2:
-                            break
-
-            except Exception as e:
-                LOGGER.debug(f"Error reading log file {log_file}: {e}")
+        # Use grep with context (MUCH FASTER than Python file reading)
+        for keyword in keywords:  # Search for ALL keywords
+            if not keyword or len(keyword) < 2:
                 continue
 
-            # Stop if we have enough results
-            if len(all_conversations) >= max_results * 2:
-                break
+            try:
+                # Escape keyword for shell
+                escaped_keyword = keyword.replace('"', '\\"').replace("'", "\\'")
 
-        # Remove duplicates based on matched_line
+                # Search files in REVERSE order (newest first) and limit results
+                # This way we get newest matches quickly without timing out
+                cmd = f'grep -i -B {context_lines} -A {context_lines} "{escaped_keyword}" $(ls -t {HISTORICAL_LOG_DIR}/pulina-*.log) 2>/dev/null | head -2000'
+
+                LOGGER.debug(f"Running grep for keyword: {keyword}")
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
+
+                if result.returncode == 0 and result.stdout.strip():
+                    lines = result.stdout.split('\n')
+                    current_file = None
+                    current_date = None
+                    current_context = []
+                    current_timestamp = None
+
+                    for line in lines:
+                        if not line.strip():
+                            continue
+
+                        # Grep separator
+                        if line == '--':
+                            if current_context and current_file and current_timestamp:
+                                matched = next((l for l in current_context if keyword.lower() in l.lower()), current_context[0])
+                                all_conversations.append({
+                                    'date': current_date,
+                                    'timestamp': current_timestamp,  # Store for sorting
+                                    'file': current_file,
+                                    'context': current_context[:],
+                                    'matched_line': matched,
+                                    'keywords': keywords
+                                })
+                            current_context = []
+                            current_timestamp = None
+                            continue
+
+                        # Parse grep output: filepath:content
+                        if ':' in line and line.split(':')[0].startswith(HISTORICAL_LOG_DIR):
+                            parts = line.split(':', 1)
+                            filepath = parts[0]
+                            content = parts[1] if len(parts) > 1 else ''
+
+                            # Extract date from filename
+                            filename = os.path.basename(filepath)
+                            if filename.startswith('pulina-') and filename.endswith('.log'):
+                                file_date = filename.replace('pulina-', '').replace('.log', '')
+                                current_file = filename
+                                current_date = file_date
+
+                            # Add IRC messages only
+                            if content.strip() and irc_pattern.match(content.strip()):
+                                current_context.append(content.strip())
+
+                                # Extract timestamp from first line with keyword match for accurate sorting
+                                if keyword.lower() in content.lower() and not current_timestamp:
+                                    time_match = re.match(r'^(\d{2}:\d{2})', content.strip())
+                                    if time_match and current_date:
+                                        # Create sortable timestamp: YYYY-MM-HH:MM
+                                        current_timestamp = f"{current_date}-{time_match.group(1)}"
+
+                                # Limit context size
+                                if len(current_context) > context_lines * 2 + 1:
+                                    current_context.pop(0)
+
+                    # Add final context
+                    if current_context and current_file and current_timestamp:
+                        matched = next((l for l in current_context if keyword.lower() in l.lower()), current_context[0])
+                        all_conversations.append({
+                            'date': current_date,
+                            'timestamp': current_timestamp,
+                            'file': current_file,
+                            'context': current_context[:],
+                            'matched_line': matched,
+                            'keywords': keywords
+                        })
+
+                    LOGGER.debug(f"Found {len(all_conversations)} total matches for keyword: {keyword}")
+
+            except subprocess.TimeoutExpired:
+                LOGGER.debug(f"Grep timeout for keyword: {keyword}")
+                continue
+            except Exception as e:
+                LOGGER.debug(f"Error searching for keyword {keyword}: {e}")
+                continue
+
+        # Sort ALL results by timestamp in REVERSE order (newest first)
+        all_conversations.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        LOGGER.debug(f"Sorted {len(all_conversations)} conversations by timestamp (newest first)")
+
+        # Remove duplicates based on matched_line while preserving order
         seen = set()
         unique_conversations = []
         for conv in all_conversations:
@@ -358,7 +420,7 @@ def search_historical_logs(keywords, max_results=20, context_lines=5):
                 seen.add(key)
                 unique_conversations.append(conv)
 
-        LOGGER.debug(f"Found {len(unique_conversations)} unique conversation contexts")
+        LOGGER.debug(f"Found {len(unique_conversations)} unique conversation contexts (sorted newest first)")
         return unique_conversations[:max_results]
 
     except Exception as e:
@@ -621,8 +683,8 @@ def generate_response(messages, question, username, user_message_only=""):
         historical_matches = []
         if asking_about_logs and keywords:
             # This is set in the main function to notify user
-            LOGGER.debug(f"Searching historical logs for keywords: {keywords[:3]}")
-            historical_matches = search_historical_logs(keywords[:3], max_results=20, context_lines=7)
+            LOGGER.debug(f"Searching historical logs for keywords: {keywords}")
+            historical_matches = search_historical_logs(keywords, max_results=20, context_lines=7)
             LOGGER.debug(f"Found {len(historical_matches)} historical matches with context")
         else:
             LOGGER.debug("Not searching historical logs (not asking about history)")
@@ -949,7 +1011,7 @@ def respond_to_questions(bot, trigger):
             # Extract keywords to show user what we're searching for
             search_keywords = extract_keywords(user_message)
             if search_keywords:
-                keywords_str = ", ".join(search_keywords[:3])
+                keywords_str = ", ".join(search_keywords)
                 # Get oldest log file date
                 import glob
                 log_files = sorted(glob.glob(f"{HISTORICAL_LOG_DIR}/pulina-*.log"))
