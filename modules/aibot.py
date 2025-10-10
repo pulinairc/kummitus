@@ -37,7 +37,8 @@ OUTPUT_FILE_PATH = os.path.join(OUTPUT_FILE_DIR, "muisti.txt")
 MAX_URL_SIZE = 10 * 1024 * 1024  # 10MB limit for URL content
 
 # Configuration
-HISTORICAL_LOG_DIR = "/home/rolle/pulina.fi/pul"
+HISTORICAL_LOG_DIR = "/home/rolle/pulina.fi/pul"  # Monthly logs from 2008
+DAILY_LOG_DIR = "/home/rolle/pulina.fi/pulina-days"  # Daily logs from 2016
 
 # Load environment variables from .env file
 load_dotenv()
@@ -297,7 +298,7 @@ def extract_keywords(message):
     return [word[0] for word in keywords]
 
 # Function to search historical logs for keywords and return context around matches
-def search_historical_logs(keywords, max_results=20, context_lines=5):
+def search_historical_logs(keywords, context_lines=5):
     """Search through all historical log files for keywords and return surrounding context"""
     LOGGER.debug(f"Starting historical search with keywords: {keywords}")
 
@@ -324,9 +325,10 @@ def search_historical_logs(keywords, max_results=20, context_lines=5):
                 # Escape keyword for shell
                 escaped_keyword = keyword.replace('"', '\\"').replace("'", "\\'")
 
-                # Search files in REVERSE order (newest first) and limit results
-                # This way we get newest matches quickly without timing out
-                cmd = f'grep -i -B {context_lines} -A {context_lines} "{escaped_keyword}" $(ls -t {HISTORICAL_LOG_DIR}/pulina-*.log) 2>/dev/null | head -2000'
+                # Search daily logs first (more precise dates), then monthly logs as fallback
+                # Daily logs: pul-YYYY-MM-DD.log (from 2016)
+                # Monthly logs: pulina-YYYY-MM.log (from 2008)
+                cmd = f'grep -i -B {context_lines} -A {context_lines} "{escaped_keyword}" $(ls -t {DAILY_LOG_DIR}/pul-*.log {HISTORICAL_LOG_DIR}/pulina-*.log 2>/dev/null) 2>/dev/null | head -2000'
 
                 LOGGER.debug(f"Running grep for keyword: {keyword}")
                 result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
@@ -344,7 +346,11 @@ def search_historical_logs(keywords, max_results=20, context_lines=5):
 
                         # Grep separator
                         if line == '--':
-                            if current_context and current_file and current_timestamp:
+                            if current_context and current_file:
+                                # If no timestamp was extracted, use file date with 00:00 as fallback
+                                if not current_timestamp and current_date:
+                                    current_timestamp = f"{current_date}-00:00"
+
                                 matched = next((l for l in current_context if keyword.lower() in l.lower()), current_context[0])
                                 all_conversations.append({
                                     'date': current_date,
@@ -365,8 +371,14 @@ def search_historical_logs(keywords, max_results=20, context_lines=5):
                             content = parts[1] if len(parts) > 1 else ''
 
                             # Extract date from filename
+                            # Daily format: pul-YYYY-MM-DD.log
+                            # Monthly format: pulina-YYYY-MM.log
                             filename = os.path.basename(filepath)
-                            if filename.startswith('pulina-') and filename.endswith('.log'):
+                            if filename.startswith('pul-') and filename.endswith('.log'):
+                                file_date = filename.replace('pul-', '').replace('.log', '')
+                                current_file = filename
+                                current_date = file_date
+                            elif filename.startswith('pulina-') and filename.endswith('.log'):
                                 file_date = filename.replace('pulina-', '').replace('.log', '')
                                 current_file = filename
                                 current_date = file_date
@@ -387,7 +399,11 @@ def search_historical_logs(keywords, max_results=20, context_lines=5):
                                     current_context.pop(0)
 
                     # Add final context
-                    if current_context and current_file and current_timestamp:
+                    if current_context and current_file:
+                        # If no timestamp was extracted, use file date with 00:00 as fallback
+                        if not current_timestamp and current_date:
+                            current_timestamp = f"{current_date}-00:00"
+
                         matched = next((l for l in current_context if keyword.lower() in l.lower()), current_context[0])
                         all_conversations.append({
                             'date': current_date,
@@ -411,6 +427,11 @@ def search_historical_logs(keywords, max_results=20, context_lines=5):
         all_conversations.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
         LOGGER.debug(f"Sorted {len(all_conversations)} conversations by timestamp (newest first)")
 
+        # Debug: Show first 3 timestamps after sorting
+        if all_conversations:
+            for i, conv in enumerate(all_conversations[:3]):
+                LOGGER.debug(f"Top result #{i+1}: timestamp={conv.get('timestamp')}, date={conv.get('date')}, matched_line={conv.get('matched_line')[:80]}")
+
         # Remove duplicates based on matched_line while preserving order
         seen = set()
         unique_conversations = []
@@ -421,7 +442,8 @@ def search_historical_logs(keywords, max_results=20, context_lines=5):
                 unique_conversations.append(conv)
 
         LOGGER.debug(f"Found {len(unique_conversations)} unique conversation contexts (sorted newest first)")
-        return unique_conversations[:max_results]
+        # Return ALL results, let the AI analyze everything
+        return unique_conversations
 
     except Exception as e:
         LOGGER.debug(f"Error in historical search: {e}")
@@ -684,7 +706,7 @@ def generate_response(messages, question, username, user_message_only=""):
         if asking_about_logs and keywords:
             # This is set in the main function to notify user
             LOGGER.debug(f"Searching historical logs for keywords: {keywords}")
-            historical_matches = search_historical_logs(keywords, max_results=20, context_lines=7)
+            historical_matches = search_historical_logs(keywords, context_lines=7)
             LOGGER.debug(f"Found {len(historical_matches)} historical matches with context")
         else:
             LOGGER.debug("Not searching historical logs (not asking about history)")
@@ -711,7 +733,7 @@ def generate_response(messages, question, username, user_message_only=""):
         if historical_matches:
             historical_sections = []
 
-            for match in historical_matches[:10]:  # Limit to 10 conversations
+            for match in historical_matches:  # Send ALL conversations to AI
                 # Format each conversation with date header
                 conversation_lines = [f"[{match['date']}] Keskustelu:"]
                 conversation_lines.extend(match['context'])
@@ -810,7 +832,9 @@ def generate_response(messages, question, username, user_message_only=""):
             "ESIMERKKI: Jos näet '[2010-03] 08:40 -!- timiZ- [~banaani@host.fi] has joined #pulina', niin sana 'banaani' esiintyi maaliskuussa 2010 ensimmäisen kerran. "
             "Jos löydät MINKÄ TAHANSA esiintymän haettua sanaa historiallisista löydöistä, kerro milloin se esiintyi ensimmäisen kerran ja mainitse missä yhteydessä. "
             "ÄLÄ KOSKAAN sano 'ei löydy' jos näet sanan historiallisissa löydöissä. Käytä VAIN todellisia löytöjä. "
-            f"Tämä päivä on {datetime.now().strftime('%Y-%m-%d')}, joten kaikki historiallisten löytöjen päivämäärät ovat menneisyydestä."
+            f"Tämä päivä on {datetime.now().strftime('%Y-%m-%d')} ja kello on {datetime.now().strftime('%H:%M')}. "
+            f"Jos näet viestin logeista samalta kuukaudelta myöhemmältä kellonajalta kuin nyt on, se on eilen tai aiemmin. "
+            f"Kaikki historiallisten löytöjen päivämäärät ovat menneisyydestä."
         )
 
         # Add memory context to system message for understanding, but instruct not to mention it
@@ -1025,7 +1049,7 @@ def respond_to_questions(bot, trigger):
                                      'toukokuusta', 'kesäkuusta', 'heinäkuusta', 'elokuusta',
                                      'syyskuusta', 'lokakuusta', 'marraskuusta', 'joulukuusta']
                         month_name = month_names[int(month)] if int(month) <= 12 else f"kuusta {month}"
-                        bot.say(f"{trigger.nick}: Etsin logeista nyt sanoilla: {keywords_str}. Käyn läpi kaikki kanavan logit {month_name} vuodesta {year}. Tässä voi kestää hetki...", trigger.sender)
+                        bot.say(f"{trigger.nick}: Etsin logeista nyt sanoilla: {keywords_str}. Käyn läpi kaikki kanavan logit alkaen {month_name} {year}. Tässä voi kestää hetki...", trigger.sender)
                     else:
                         bot.say(f"{trigger.nick}: Etsin logeista nyt sanoilla: {keywords_str}. Käyn läpi kaikki kanavan logit. Tässä voi kestää hetki...", trigger.sender)
                 else:
