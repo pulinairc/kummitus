@@ -48,8 +48,12 @@ client = OpenAI()
 # Set OpenAI API key from dotenv or environment variable
 OpenAI.api_key = os.getenv("OPENAI_API_KEY")
 
-# Configuration for API choice
-USE_FREE_API = True  # Set to False to use paid OpenAI API
+# Configuration for API choice - automatically determine based on available keys
+POLLINATIONS_API_KEY = os.getenv("POLLINATIONS_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Prefer Pollinations if key is set, otherwise use OpenAI
+USE_FREE_API = bool(POLLINATIONS_API_KEY)
 FREE_API_URL = "https://text.pollinations.ai/openai"
 
 # File paths
@@ -221,7 +225,7 @@ FINNISH_STOP_WORDS = {
     'aha', 'ahaa', 'okei', 'ok', 'hm', 'hmm', 'öö', 'öh', 'aa', 'ah', 'oh', 'noh'
 }
 
-# Function to get today's messages from dedicated log file
+# Function to get today's messages from dedicated log file (excluding bot's own messages)
 def get_todays_messages():
     today_log_file = "/var/www/botit.pulina.fi/public_html/lastlog.log"
 
@@ -232,10 +236,16 @@ def get_todays_messages():
     try:
         with open(today_log_file, "r", encoding='utf-8') as f:
             lines = f.readlines()
-            todays_lines = [line.strip() for line in lines if line.strip()]
 
-        # Return last 500 lines to avoid payload too large errors
-        return "\n".join(todays_lines[-500:]) if todays_lines else ""
+            # Filter out bot's own messages and keep only last 100 lines (not 500!)
+            todays_lines = [
+                line.strip() for line in lines[-200:]  # Read last 200, filter to ~100
+                if line.strip() and
+                not re.search(r'<kummitus>', line, re.IGNORECASE) and
+                'kummitus:' not in line.lower()
+            ][-100:]  # Keep only last 100 after filtering
+
+        return "\n".join(todays_lines) if todays_lines else ""
 
     except Exception as e:
         LOGGER.debug(f"Error reading today's messages: {e}")
@@ -261,9 +271,9 @@ def extract_keywords(message):
     # Return just the words
     return [word[0] for word in keywords]
 
-# Function to search historical logs for any keywords using ripgrep
-def search_historical_logs(keywords, max_results=500):
-    """Search through all historical log files for keywords using simple grep"""
+# Function to search historical logs for keywords and return context around matches
+def search_historical_logs(keywords, max_results=20, context_lines=5):
+    """Search through all historical log files for keywords and return surrounding context"""
     LOGGER.debug(f"Starting historical search with keywords: {keywords}")
 
     if not keywords:
@@ -275,94 +285,81 @@ def search_historical_logs(keywords, max_results=500):
         return []
 
     try:
-        import subprocess
+        import glob
+        from collections import defaultdict
 
-        matches = []
+        all_conversations = []
 
-        # Search keywords - limit to first few for performance
-        for keyword in keywords[:4]:
-            if not keyword or len(keyword) < 2:
-                LOGGER.debug(f"Skipping too short keyword: {keyword}")
-                continue
+        # Get all log files sorted by date (newest first for relevance)
+        log_files = sorted(glob.glob(f"{HISTORICAL_LOG_DIR}/pulina-*.log"), reverse=True)
+        LOGGER.debug(f"Searching through {len(log_files)} log files")
 
+        # Search each file
+        for log_file in log_files:
             try:
-                # Simple grep command with proper escaping
-                escaped_keyword = keyword.replace('"', '\\"')
-                cmd = f'grep -i "{escaped_keyword}" {HISTORICAL_LOG_DIR}/pulina-*.log | head -500'
-                LOGGER.debug(f"Running command: {cmd}")
-
-                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
-
-                LOGGER.debug(f"Grep result for '{keyword}': return code {result.returncode}, stdout length {len(result.stdout)}, stderr: {result.stderr}")
-
-                if result.returncode == 0 and result.stdout.strip():
-                    lines_found = result.stdout.strip().split('\n')
-                    LOGGER.debug(f"Found {len(lines_found)} lines for keyword '{keyword}'")
-
-                    # Parse to extract real dates from log file paths
-                    for line in lines_found:
-                        if line.strip() and ':' in line:
-                            # Extract date from filename in path like /home/rolle/pulina.fi/pul/pulina-2021-03.log
-                            parts = line.split(':', 1)
-                            if len(parts) >= 2:
-                                file_path = parts[0]
-                                line_content = parts[1]
-
-                                # Extract date from filename - we know the format is pulina-YYYY-MM.log
-                                filename = os.path.basename(file_path)
-                                if filename.startswith('pulina-') and filename.endswith('.log'):
-                                    date_part = filename.replace('pulina-', '').replace('.log', '')
-                                else:
-                                    date_part = "unknown"
-
-                                matches.append({
-                                    'line': line,
-                                    'date': date_part,
-                                    'file': filename,
-                                    'keyword': keyword
-                                })
+                # Extract date from filename (pulina-YYYY-MM.log)
+                filename = os.path.basename(log_file)
+                if filename.startswith('pulina-') and filename.endswith('.log'):
+                    date_part = filename.replace('pulina-', '').replace('.log', '')
                 else:
-                    LOGGER.debug(f"No matches found for keyword '{keyword}' (return code: {result.returncode})")
-                    if result.stderr:
-                        LOGGER.debug(f"Stderr: {result.stderr}")
+                    date_part = "unknown"
+
+                # Read entire file into memory (IRC logs are not huge per file)
+                with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
+                    lines = f.readlines()
+
+                # IRC message pattern
+                irc_pattern = re.compile(r'^\d{2}:\d{2}\s*<[^>]+>')
+
+                # Find matching lines and extract context
+                for i, line in enumerate(lines):
+                    line_lower = line.lower()
+
+                    # Check if any keyword matches
+                    if any(keyword.lower() in line_lower for keyword in keywords):
+                        # Extract context: lines before and after
+                        start_idx = max(0, i - context_lines)
+                        end_idx = min(len(lines), i + context_lines + 1)
+
+                        # Get context lines (only valid IRC messages)
+                        context = []
+                        for ctx_line in lines[start_idx:end_idx]:
+                            ctx_line = ctx_line.strip()
+                            if ctx_line and irc_pattern.match(ctx_line):
+                                context.append(ctx_line)
+
+                        if context:
+                            all_conversations.append({
+                                'date': date_part,
+                                'file': filename,
+                                'context': context,
+                                'matched_line': line.strip(),
+                                'keywords': keywords
+                            })
+
+                        # Limit results per file to avoid too much data
+                        if len(all_conversations) >= max_results * 2:
+                            break
 
             except Exception as e:
-                LOGGER.debug(f"Error searching for keyword {keyword}: {e}")
+                LOGGER.debug(f"Error reading log file {log_file}: {e}")
                 continue
 
-        LOGGER.debug(f"Total matches found before deduplication: {len(matches)}")
+            # Stop if we have enough results
+            if len(all_conversations) >= max_results * 2:
+                break
 
-        # Remove duplicates while preserving order
-        seen_lines = set()
-        unique_matches = []
-        for match in matches:
-            line_key = match['line']
-            if line_key not in seen_lines:
-                seen_lines.add(line_key)
-                unique_matches.append(match)
+        # Remove duplicates based on matched_line
+        seen = set()
+        unique_conversations = []
+        for conv in all_conversations:
+            key = conv['matched_line']
+            if key not in seen:
+                seen.add(key)
+                unique_conversations.append(conv)
 
-        matches = unique_matches
-        LOGGER.debug(f"Unique matches after deduplication: {len(matches)}")
-
-        # Debug: Log any real IRC join events found (format: "-!- user ... has joined")
-        join_events = [m for m in matches if 'has joined' in m['line'] and '-!-' in m['line']]
-        if join_events:
-            LOGGER.debug(f"Found {len(join_events)} real IRC join events in historical search")
-            for event in join_events[:3]:  # Log first 3
-                LOGGER.debug(f"Join event: [{event['date']}] {event['line']}")
-
-            # If we found join events, prioritize them at the beginning
-            other_matches = [m for m in matches if m not in join_events]
-            matches = join_events + other_matches[:max_results-len(join_events)]
-        else:
-            # Sort by date (chronologically) if no join events
-            try:
-                matches.sort(key=lambda x: x['date'])
-            except:
-                pass  # If sorting fails, just continue with original order
-
-        LOGGER.debug(f"Historical search complete: {len(matches)} final matches")
-        return matches[:max_results]
+        LOGGER.debug(f"Found {len(unique_conversations)} unique conversation contexts")
+        return unique_conversations[:max_results]
 
     except Exception as e:
         LOGGER.debug(f"Error in historical search: {e}")
@@ -379,15 +376,18 @@ def get_relevant_context(keywords, max_lines=100):
         with open(today_log_file, "r", encoding='utf-8') as f:
             lines = f.readlines()
 
+        # Precompile regex pattern for better performance
+        irc_pattern = re.compile(r'^\d{2}:\d{2}\s*<[^>]+>')
+
         relevant_lines = []
         for line in lines:
             line = line.strip()
-            if not line or not re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line):
+            if not line or not irc_pattern.search(line):
                 continue
 
-            # Check if any keyword appears in the line
+            # OPTIMIZED: Check if any keyword appears in the line using word boundaries
             line_lower = line.lower()
-            if any(keyword in line_lower for keyword in keywords):
+            if any(re.search(r'\b' + re.escape(keyword) + r'\b', line_lower) for keyword in keywords):
                 relevant_lines.append(line)
 
         # If we found keyword matches, return them + some recent context
@@ -503,23 +503,26 @@ def extract_sender_from_line(line):
     return None
 
 def call_free_api(messages, max_tokens=5000, temperature=0.5):
-    """Call the free Pollinations API with dummy key for security"""
+    """Call the Pollinations API"""
     try:
         payload = {
-            "model": "gpt-4.1-mini",
+            "model": "openai",  # Pollinations uses "openai" as model name
             "messages": messages,
             "max_tokens": max_tokens,
             "temperature": temperature
         }
+
+        # Use the actual Pollinations API key if available
+        auth_header = f"Bearer {POLLINATIONS_API_KEY}" if POLLINATIONS_API_KEY else "Bearer dummy-key"
 
         response = requests.post(
             FREE_API_URL,
             json=payload,
             headers={
                 "Content-Type": "application/json",
-                "Authorization": "Bearer dummy-key"  # Use dummy key to avoid leaking real API key
+                "Authorization": auth_header
             },
-            timeout=30
+            timeout=15  # Reduced from 30 to 15 seconds
         )
 
         if response.status_code == 200:
@@ -600,111 +603,62 @@ def generate_response(messages, question, username, user_message_only=""):
             # Limit to last 10 lines max
             lastlines = "\n".join(lastlines.split("\n")[-10:])
 
-        # Use intelligent keyword-based context from today's log AND historical search
-                        # Quick pre-filter to avoid AI calls for obvious non-historical messages
+        # OPTIMIZED: Only search full history if user asks about logs/history
         user_text = user_message_only if user_message_only else question
+        user_text_lower = user_text.lower()
 
-        # Skip AI detection for very short messages (likely simple responses)
-        words = user_text.split()
+        # Check if user is asking about logs (only log-related words, not common words)
+        log_keywords = ['logit', 'logi', 'logeista', 'logeihin', 'logeissa', 'logeist', 'logeis',
+                       'lokit', 'loki', 'lokeista', 'lokeihin', 'lokeissa', 'lokitiedost', 'logs']
+        asking_about_logs = any(keyword in user_text_lower for keyword in log_keywords)
 
-        if len(words) <= 2:
-            is_historical_query = False
-            LOGGER.debug(f"Skipped AI detection for short message: '{user_text}'")
-        else:
-                        # Use AI to detect if this is a historical query
-            detection_prompt = f"""Analyze if this text is a QUESTION asking for specific historical information that would require searching chat logs.
+        # Extract keywords from the user's question
+        keywords = extract_keywords(user_text)
+        LOGGER.debug(f"Extracted keywords from '{user_text}': {keywords}")
+        LOGGER.debug(f"Asking about logs/history: {asking_about_logs}")
 
-CRITERIA for historical=true:
-1. Must be a QUESTION (not a statement, opinion, or comment)
-2. Must be asking for specific past events, dates, or information
-3. Must require searching historical data to answer
-
-CRITERIA for historical=false:
-- Statements, opinions, comments about current topics
-- Questions about definitions, explanations, or general knowledge
-- Casual conversation, reactions, or affirmations
-
-Text: '{user_text}'
-
-Return ONLY: {{"historical": true}} or {{"historical": false}}
-
-JSON:"""
-
-            try:
-                detection_response = call_free_api([{"role": "user", "content": detection_prompt}], max_tokens=30)
-                if detection_response:
-                    import json
-                    # call_free_api returns a string, not a dict
-                    detection_json = json.loads(detection_response.strip())
-                    is_historical_query = detection_json.get('historical', False)
-                else:
-                    is_historical_query = False
-            except Exception as e:
-                LOGGER.debug(f"Historical detection failed: {e}")
-                is_historical_query = False
-
-        if len(user_text.split()) <= 2:
-            LOGGER.debug(f"Short message '{user_text}' marked as non-historical: {is_historical_query}")
-        else:
-            LOGGER.debug(f"AI determined query '{user_text}' is historical: {is_historical_query}")
-
+        # Only search historical logs if explicitly asking about history/logs
         historical_matches = []
-        if is_historical_query:
-            # Extract keywords from the user's question
-            keywords = extract_keywords(user_text)
-            LOGGER.debug(f"Extracted keywords from '{user_text}': {keywords}")
-
-            if keywords:
-                historical_matches = search_historical_logs(keywords[:3])  # Use first 3 keywords
-            else:
-                LOGGER.debug("No keywords extracted for historical search")
-
-            recent_context = get_relevant_context([], max_lines=150)
-            LOGGER.debug(f"Using context for historical query: {len(recent_context)} characters")
+        if asking_about_logs and keywords:
+            # This is set in the main function to notify user
+            LOGGER.debug(f"Searching historical logs for keywords: {keywords[:3]}")
+            historical_matches = search_historical_logs(keywords[:3], max_results=20, context_lines=7)
+            LOGGER.debug(f"Found {len(historical_matches)} historical matches with context")
         else:
-            # No keywords, use today's context
-            todays_context = get_todays_messages()
-            if todays_context:
-                recent_context = todays_context
-                LOGGER.debug(f"Using today's context: {len(todays_context)} characters")
-            else:
-                # Fallback to reasonable recent context
-                with open(LOG_FILE, "r", encoding='utf-8') as f:
-                    all_lines = f.readlines()
-                    recent_context = [
-                        line.strip() for line in all_lines[-500:]  # Reasonable window
-                        if line.strip() and
-                        re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line) and
-                        not re.search(r'<kummitus>', line, re.IGNORECASE) and
-                        'kummitus:' not in line.lower() and
-                        not re.search(r'<[^>]+>\s*kummitus[,:]', line, re.IGNORECASE)
-                    ][:150]  # Reduced to make room for historical
-                    recent_context = "\n".join(recent_context)
-                LOGGER.debug(f"Using fallback context: {len(recent_context)} characters")
+            LOGGER.debug("Not searching historical logs (not asking about history)")
 
-        # Add historical context if found
+        # For recent context, just use last 100 lines from today (for general conversation flow)
+        recent_context = get_todays_messages()
+        if not recent_context:
+            # Fallback to recent messages from main log
+            with open(LOG_FILE, "r", encoding='utf-8') as f:
+                all_lines = f.readlines()
+                recent_context = [
+                    line.strip() for line in all_lines[-100:]
+                    if line.strip() and
+                    re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line) and
+                    not re.search(r'<kummitus>', line, re.IGNORECASE) and
+                    'kummitus:' not in line.lower() and
+                    not re.search(r'<[^>]+>\s*kummitus[,:]', line, re.IGNORECASE)
+                ][-50:]  # Keep last 50 valid messages for recent flow
+                recent_context = "\n".join(recent_context)
+        LOGGER.debug(f"Recent context length: {len(recent_context)} characters")
+
+        # Add historical context if found (now with conversation context)
         historical_context = ""
         if historical_matches:
-            historical_lines = []
-            # Clean up the format and show more results, prioritizing join events
-            join_events = [m for m in historical_matches if 'has joined' in m['line']]
-            other_matches = [m for m in historical_matches if 'has joined' not in m['line']]
+            historical_sections = []
 
-            # Show join events first, then other matches
-            priority_matches = join_events[:10] + other_matches[:10]
+            for match in historical_matches[:10]:  # Limit to 10 conversations
+                # Format each conversation with date header
+                conversation_lines = [f"[{match['date']}] Keskustelu:"]
+                conversation_lines.extend(match['context'])
+                conversation_lines.append("")  # Empty line between conversations
 
-            for match in priority_matches[:15]:  # Show up to 15 total
-                # Clean format: remove file path, just show date and content
-                line = match['line']
-                if ':' in line:
-                    # Remove file path from grep output
-                    content = line.split(':', 1)[1] if line.count(':') > 1 else line
-                    historical_lines.append(f"[{match['date']}] {content}")
-                else:
-                    historical_lines.append(f"[{match['date']}] {line}")
+                historical_sections.append("\n".join(conversation_lines))
 
-            historical_context = "Historiallisia löytöjä:\n" + "\n".join(historical_lines) + "\n\n"
-            LOGGER.debug(f"Added {len(priority_matches)} historical matches (prioritized join events)")
+            historical_context = "Historiallisia löytöjä:\n" + "\n".join(historical_sections) + "\n"
+            LOGGER.debug(f"Added {len(historical_matches)} historical conversation contexts")
 
         # Get URL content with reasonable limits to avoid payload issues
         url_contents = []
@@ -984,6 +938,36 @@ def respond_to_questions(bot, trigger):
 
         # Debug last lines
         LOGGER.debug(f"Last lines: {lastlines}")
+
+        # Check if user is asking about logs and notify before searching
+        user_text_lower = user_message.lower()
+        log_keywords = ['logit', 'logi', 'logeista', 'logeihin', 'logeissa', 'logeist', 'logeis',
+                       'lokit', 'loki', 'lokeista', 'lokeihin', 'lokeissa', 'lokitiedost', 'logs']
+        asking_about_logs = any(keyword in user_text_lower for keyword in log_keywords)
+
+        if asking_about_logs:
+            # Extract keywords to show user what we're searching for
+            search_keywords = extract_keywords(user_message)
+            if search_keywords:
+                keywords_str = ", ".join(search_keywords[:3])
+                # Get oldest log file date
+                import glob
+                log_files = sorted(glob.glob(f"{HISTORICAL_LOG_DIR}/pulina-*.log"))
+                if log_files:
+                    oldest_file = os.path.basename(log_files[0])
+                    oldest_date = oldest_file.replace('pulina-', '').replace('.log', '')
+                    # Parse YYYY-MM format
+                    if '-' in oldest_date:
+                        year, month = oldest_date.split('-')
+                        month_names = ['', 'tammikuusta', 'helmikuusta', 'maaliskuusta', 'huhtikuusta',
+                                     'toukokuusta', 'kesäkuusta', 'heinäkuusta', 'elokuusta',
+                                     'syyskuusta', 'lokakuusta', 'marraskuusta', 'joulukuusta']
+                        month_name = month_names[int(month)] if int(month) <= 12 else f"kuusta {month}"
+                        bot.say(f"{trigger.nick}: Etsin logeista nyt sanoilla: {keywords_str}. Käyn läpi kaikki kanavan logit {month_name} vuodesta {year}. Tässä voi kestää hetki...", trigger.sender)
+                    else:
+                        bot.say(f"{trigger.nick}: Etsin logeista nyt sanoilla: {keywords_str}. Käyn läpi kaikki kanavan logit. Tässä voi kestää hetki...", trigger.sender)
+                else:
+                    bot.say(f"{trigger.nick}: Etsin logeista nyt sanoilla: {keywords_str}. Tässä voi kestää hetki...", trigger.sender)
 
         # Generate a response based on the log and the user's message
         # Don't include memory in user prompt - it's in system message
