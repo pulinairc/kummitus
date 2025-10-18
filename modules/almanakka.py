@@ -177,6 +177,29 @@ def scheduled_message(bot):
             global_vars['last_midnight_run'] = current_day
             LOGGER.info(f"Scheduled message sent at {now}")
 
+def get_daily_temperatures():
+    """Fetches current, min and max temperatures for Jyväskylä from Open-Meteo API."""
+    try:
+        # Jyväskylä coordinates
+        latitude = 62.2426
+        longitude = 25.7473
+
+        # Open-Meteo API URL for current and daily forecast
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current=temperature_2m&daily=temperature_2m_max,temperature_2m_min&timezone=Europe/Helsinki&forecast_days=1"
+
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        temp_current = round(data['current']['temperature_2m'])
+        temp_min = round(data['daily']['temperature_2m_min'][0])
+        temp_max = round(data['daily']['temperature_2m_max'][0])
+
+        return temp_current, temp_min, temp_max
+    except Exception as e:
+        LOGGER.error(f"Failed to fetch temperatures: {e}")
+        return None, None, None
+
 def scheduled_message_morning(bot):
     now = datetime.now()
     current_day = now.strftime("%Y-%m-%d")
@@ -199,8 +222,19 @@ def scheduled_message_morning(bot):
 
             findate = format_date(now, format='full', locale='fi_FI')
 
+            # Get temperature data
+            temp_current, temp_min, temp_max = get_daily_temperatures()
+
+            # Build the message
+            message = 'Huomenta aamuvirkut! Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist)
+
+            if temp_current is not None and temp_min is not None and temp_max is not None:
+                message += f' Ulkona on nyt {temp_current}°C, tänään kylmimmillään {temp_min}°C ja lämpimimmillään {temp_max}°C. Kivaa päivää!'
+            else:
+                message += ' Kivaa päivää!'
+
             # Send the morning message
-            bot.say('Huomenta aamuvirkut! Tänään on \x02%s\x0F. Nimipäiviään viettävät: %s.' % (findate, namedaynames_commalist), '#pulina')
+            bot.say(message, '#pulina')
 
             # Update using the global vars
             global_vars['last_morning_run'] = current_day
@@ -260,7 +294,19 @@ def run_schedule(bot):
                     namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
 
                 findate = format_date(now, format='full', locale='fi_FI')
-                bot.say(f'Huomenta aamuvirkut! Tänään on \x02{findate}\x0F. Nimipäiviään viettävät: {namedaynames_commalist}.', '#pulina')
+
+                # Get temperature data
+                temp_current, temp_min, temp_max = get_daily_temperatures()
+
+                # Build the message
+                message = f'Huomenta aamuvirkut! Tänään on \x02{findate}\x0F. Nimipäiviään viettävät: {namedaynames_commalist}.'
+
+                if temp_current is not None and temp_min is not None and temp_max is not None:
+                    message += f' Ulkona on nyt {temp_current}°C, tänään kylmimmillään {temp_min}°C ja lämpimimmillään {temp_max}°C. Kivaa päivää!'
+                else:
+                    message += ' Kivaa päivää!'
+
+                bot.say(message, '#pulina')
 
                 global_vars['last_morning_run'] = current_day
                 LOGGER.info("Morning message sent successfully")
