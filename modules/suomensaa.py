@@ -144,23 +144,13 @@ def saa(bot, trigger):
                 minutes = remainder // 60
                 day_length = f"{hours} tuntia ja {minutes} minuuttia"
 
-        # Fetch home weather data
-        home_weather = ""
-        try:
-            home_response = requests.get("https://c.rolle.wtf/raw.php", timeout=5)
-            home_response.raise_for_status()
-            home_weather = f" Rollen ja mustikkasopan koti: {home_response.text.strip()}"
-        except Exception as e:
-            # If home weather fails, just skip it
-            pass
-
         # Build final weather message in Finnish
         bot.say(
             f"Sää {place.capitalize()}: {weather_description}. "
             f"Lämpötila on {temperature} °C. Kylmin lämpötila tänään on {temp_min} °C ja lämpimin {temp_max} °C. "
             f"Tuulen nopeus on {wind_speed} m/s. "
             f"Aurinko laskee tänään klo {sunset} ja nousee huomenna klo {sunrise}. "
-            f"Päivän pituus on {day_length}.{home_weather}"
+            f"Päivän pituus on {day_length}."
         )
     except Exception as e:
         bot.say(f"Virhe: Säätietoja ei voitu hakea paikkakunnalle {place.capitalize()}. ({str(e)})")
