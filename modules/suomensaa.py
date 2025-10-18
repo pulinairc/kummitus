@@ -157,7 +157,7 @@ def saa(bot, trigger):
         # Build final weather message in Finnish
         bot.say(
             f"Sää {place.capitalize()}: {weather_description}. "
-            f"Lämpötila on {temperature} °C, kylmimmillään {temp_min} °C ja lämpimimmillään {temp_max} °C. "
+            f"Lämpötila on {temperature} °C. Kylmin lämpötila tänään on {temp_min} °C ja lämpimin {temp_max} °C. "
             f"Tuulen nopeus on {wind_speed} m/s. "
             f"Aurinko laskee tänään klo {sunset} ja nousee huomenna klo {sunrise}. "
             f"Päivän pituus on {day_length}.{home_weather}"
