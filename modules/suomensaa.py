@@ -106,13 +106,24 @@ def saa(bot, trigger):
 
         # Get temperature and wind speed from OpenWeatherMap data
         temperature = owm_data["main"]["temp"]
-        temp_min = owm_data["main"]["temp_min"]
-        temp_max = owm_data["main"]["temp_max"]
         wind_speed = owm_data["wind"]["speed"]
 
         # Get latitude and longitude from OpenWeatherMap data
         lat = owm_data["coord"]["lat"]
         lon = owm_data["coord"]["lon"]
+
+        # Fetch daily min/max temperatures from Open-Meteo API
+        temp_min = temp_max = None
+        try:
+            meteo_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1"
+            meteo_response = requests.get(meteo_url, timeout=10)
+            meteo_response.raise_for_status()
+            meteo_data = meteo_response.json()
+            temp_min = round(meteo_data['daily']['temperature_2m_min'][0])
+            temp_max = round(meteo_data['daily']['temperature_2m_max'][0])
+        except Exception as e:
+            # If Open-Meteo fails, continue without min/max
+            pass
 
         # Fetch sunrise and sunset times from Sunrise-Sunset API using the coordinates
         sunrise_sunset_url = f"https://api.sunrise-sunset.org/json?lat={lat}&lng={lon}&formatted=0"
@@ -144,12 +155,20 @@ def saa(bot, trigger):
                 day_length = f"{hours} tuntia ja {minutes} minuuttia"
 
         # Build final weather message in Finnish
-        bot.say(
+        message = (
             f"Sää {place.capitalize()}: {weather_description}. "
-            f"Lämpötila on {temperature} °C. Kylmin lämpötila tänään on {temp_min} °C ja lämpimin {temp_max} °C. "
+            f"Lämpötila on {temperature} °C. "
+        )
+
+        if temp_min is not None and temp_max is not None:
+            message += f"Kylmin lämpötila tänään on {temp_min} °C ja lämpimin {temp_max} °C. "
+
+        message += (
             f"Tuulen nopeus on {wind_speed} m/s. "
             f"Aurinko laskee tänään klo {sunset} ja nousee huomenna klo {sunrise}. "
             f"Päivän pituus on {day_length}."
         )
+
+        bot.say(message)
     except Exception as e:
         bot.say(f"Virhe: Säätietoja ei voitu hakea paikkakunnalle {place.capitalize()}. ({str(e)})")
