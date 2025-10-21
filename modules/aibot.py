@@ -947,7 +947,7 @@ def respond_to_questions(bot, trigger):
     if trigger.nick == "Orvokki":
         return
 
-    if bot.nick in trigger.group(0) or trigger.is_privmsg:
+    if bot.nick.lower() in trigger.group(0).lower() or trigger.is_privmsg:
         # Do not reply if the private message is !reload or !restart
         if trigger.is_privmsg and trigger.group(0).startswith("!"):
             return
