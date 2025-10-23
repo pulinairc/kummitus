@@ -586,7 +586,7 @@ def extract_sender_from_line(line):
         return match.group(1)
     return None
 
-def call_free_api(messages, max_tokens=5000, temperature=0.5):
+def call_free_api(messages, max_tokens=5000, temperature=0.6):
     """Call the Pollinations API"""
     try:
         payload = {
@@ -848,7 +848,7 @@ def generate_response(messages, question, username, user_message_only=""):
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ]
-            free_response = call_free_api(messages, max_tokens=5000, temperature=0.5)
+            free_response = call_free_api(messages, max_tokens=5000, temperature=0.6)
             if free_response:
                 return free_response
             else:
@@ -861,7 +861,7 @@ def generate_response(messages, question, username, user_message_only=""):
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.5,
+            temperature=0.6,
             max_tokens=5000,
         )
 
@@ -897,7 +897,7 @@ def generate_natural_response(prompt):
                 {"role": "system", "content": system_content},
                 {"role": "user", "content": prompt}
             ]
-            free_response = call_free_api(messages, max_tokens=5000, temperature=0.5)
+            free_response = call_free_api(messages, max_tokens=5000, temperature=0.6)
             if free_response:
                 return free_response
             else:
@@ -910,7 +910,7 @@ def generate_natural_response(prompt):
                 {"role": "system", "content": system_content},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.5,
+            temperature=0.6,
             max_tokens=5000,
         )
 
