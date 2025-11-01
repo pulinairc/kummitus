@@ -226,7 +226,7 @@ FINNISH_STOP_WORDS = {
     'aha', 'ahaa', 'okei', 'ok', 'hm', 'hmm', 'öö', 'öh', 'aa', 'ah', 'oh', 'noh'
 }
 
-# Function to get today's messages from dedicated log file (excluding bot's own messages)
+# Function to get today's messages from dedicated log file (INCLUDING bot's own messages)
 def get_todays_messages():
     today_log_file = "/var/www/botit.pulina.fi/public_html/lastlog.log"
 
@@ -238,13 +238,11 @@ def get_todays_messages():
         with open(today_log_file, "r", encoding='utf-8') as f:
             lines = f.readlines()
 
-            # Filter out bot's own messages and keep only last 100 lines (not 500!)
+            # Keep all messages including bot's own, to maintain conversation context
             todays_lines = [
-                line.strip() for line in lines[-200:]  # Read last 200, filter to ~100
-                if line.strip() and
-                not re.search(r'<kummitus>', line, re.IGNORECASE) and
-                'kummitus:' not in line.lower()
-            ][-100:]  # Keep only last 100 after filtering
+                line.strip() for line in lines[-150:]  # Read last 150 lines
+                if line.strip()
+            ][-100:]  # Keep only last 100
 
         return "\n".join(todays_lines) if todays_lines else ""
 
@@ -586,14 +584,16 @@ def extract_sender_from_line(line):
         return match.group(1)
     return None
 
-def call_free_api(messages, max_tokens=5000, temperature=0.6):
+def call_free_api(messages, max_tokens=5000, temperature=0.7, frequency_penalty=0.3, presence_penalty=0.2):
     """Call the Pollinations API"""
     try:
         payload = {
             "model": "openai",  # Pollinations uses "openai" as model name
             "messages": messages,
             "max_tokens": max_tokens,
-            "temperature": temperature
+            "temperature": temperature,
+            "frequency_penalty": frequency_penalty,
+            "presence_penalty": presence_penalty
         }
 
         # Use the actual Pollinations API key if available
@@ -814,13 +814,18 @@ def generate_response(messages, question, username, user_message_only=""):
 
         # Build system message with memory context
         system_message = (
-            "Olet kummitus-botti IRC-kanavalla. Vastaa luonnollisesti ja inhimillisesti. "
+            f"Olet kummitus-botti IRC-kanavalla. Sinun nimesi on 'kummitus'. Vastaa luonnollisesti ja inhimillisesti käyttäjälle {username}. "
             "Vastauksen on oltava alle 220 merkkiä pitkä. "
             "Älä koskaan vastaa IRC-formaatissa (esim. 'HH:MM <nick>'). "
+            "Älä aloita vastausta käyttäjän nimellä, se lisätään automaattisesti. "
+            "TÄRKEÄÄ: Keskusteluhistoriassa näkyvät viestit muodossa 'HH:MM <nickname> viesti'. "
+            "Jos näet viestin '<kummitus> ...' niin se on SINUN aikaisempi vastauksesi. Älä toista samoja asioita mitä olet jo sanonut. "
+            "Vastaa aina siihen mitä käyttäjä juuri kysyi, älä aiempiin viesteihisi. "
             "Älä mainitse muistojasi tai aiempia keskusteluja, ellei niitä erikseen kysytä. "
             "Käytä muistojasi taustalla ymmärtääksesi tilanteen, mutta älä korosta niitä vastauksessasi. "
             "Vältä toistamasta samoja kysymyksiä kuten 'Miten muuten menee?' tai 'Mitä kuuluu?'. "
             "Ole luova ja vaihtele vastauksiasi. Reagoi suoraan siihen mitä ihmiset sanovat sen sijaan että kyselet yleisiä kysymyksiä. "
+            "Älä toista samoja fraaseja tai sanoja liikaa. "
             "\n\nHISTORIALLISEN DATAN TULKINTA - KRIITTINEN:"
             "Jos näet 'Historiallisia löytöjä' -osion, nämä ovat todellisia löytöjä historiallisista IRC-logeista vuosilta 2008-nykyhetki. "
             "[YYYY-MM] tarkoittaa että viesti on lähetetty kyseiseltä vuodelta ja kuukaudelta. "
@@ -848,7 +853,7 @@ def generate_response(messages, question, username, user_message_only=""):
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ]
-            free_response = call_free_api(messages, max_tokens=5000, temperature=0.6)
+            free_response = call_free_api(messages, max_tokens=5000, temperature=0.7)
             if free_response:
                 return free_response
             else:
@@ -861,8 +866,10 @@ def generate_response(messages, question, username, user_message_only=""):
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.6,
+            temperature=0.7,
             max_tokens=5000,
+            frequency_penalty=0.3,
+            presence_penalty=0.2,
         )
 
         # Extract the actual text response
@@ -1074,11 +1081,11 @@ def respond_to_questions(bot, trigger):
         response = re.sub(r'^\d{2}:\d{2}\s*', '', response)  # Remove timestamp pattern
         response = re.sub(r'<[^>]+>\s*', '', response)  # Remove <Nickname> pattern
 
-        # Prepend the user's nickname to the response
-        final_response = f"{trigger.nick}: {response}"
+        # Strip "kummitus:" or "<kummitus>" from the response if it appears
+        response = response.replace("kummitus:", "").replace("<kummitus>", "").strip()
 
-        # Strip "kummitus:" or "<kummitus>" from the response, if in any part of it
-        final_response = final_response.replace("kummitus:", "").replace("<kummitus>", "")
+        # Remove any nickname prefixes that the AI might have added
+        response = re.sub(r'^[a-zA-Z0-9_\-\[\]\\^{}|]+:\s*', '', response)
 
         # Log bot messages to the log file
         timestamp = datetime.now().strftime('%H:%M')
@@ -1088,12 +1095,8 @@ def respond_to_questions(bot, trigger):
         # Store a note from the user's question
         store_user_notes(trigger.nick, user_message)
 
-        # Find if any mentioned user is in the message
-        mentioned_user = find_mentioned_user(user_message)
-
-        if mentioned_user:
-            # If the user is recognized, strip out the trigger.nick from the response
-            final_response = final_response.replace(f"{trigger.nick}:", "").strip()
+        # Prepend the user's nickname to the response
+        final_response = f"{trigger.nick}: {response}"
 
         # Send the response back to the channel or user
         bot.say(final_response, trigger.sender)
