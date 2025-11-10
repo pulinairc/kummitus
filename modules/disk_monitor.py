@@ -1,17 +1,53 @@
 """
-disk_monitor.py - Sopel disk monitor module
-Monitors for disk errors and gracefully shuts down the bot when disk is full
+disk_monitor.py - Sopel error handler and disk monitor module
+Shuts down the bot gracefully on any error or when disk is full
 Made by rolle
 """
 import sopel
 import sys
 import os
 from sopel import logger
+from sopel.tools import events
 
 LOGGER = logger.get_logger(__name__)
 
 # Track if we've already initiated shutdown
 shutdown_initiated = False
+
+# Override Sopel's default error handler
+def setup(bot):
+    """Setup function to override error handling"""
+    # Store original error handler
+    original_error = bot.error
+
+    def custom_error(trigger=None, exception=None, message=None):
+        """Custom error handler that shuts down on any error"""
+        global shutdown_initiated
+
+        if shutdown_initiated:
+            return
+
+        shutdown_initiated = True
+        LOGGER.error(f"Error detected: {exception or message}")
+
+        # Ping rolle in #pulina
+        try:
+            bot.say(f"Virhe havaittu ({type(exception).__name__ if exception else 'unknown'}), sammutan itteni nyt, heippa! Ping rolle", '#pulina')
+        except:
+            pass
+
+        # Quit from IRC gracefully
+        try:
+            bot.quit("Virhe havaittu, sammutetaan botti")
+        except:
+            pass
+
+        # Exit the process
+        LOGGER.error("Exiting due to error")
+        sys.exit(1)
+
+    # Replace error handler
+    bot.error = custom_error
 
 @sopel.module.interval(60)
 @sopel.module.require_owner()
