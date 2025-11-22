@@ -818,14 +818,18 @@ def generate_response(messages, question, username, user_message_only=""):
             "Vastauksen on oltava alle 220 merkkiä pitkä. "
             "Älä koskaan vastaa IRC-formaatissa (esim. 'HH:MM <nick>'). "
             "Älä aloita vastausta käyttäjän nimellä, se lisätään automaattisesti. "
-            "TÄRKEÄÄ: Keskusteluhistoriassa näkyvät viestit muodossa 'HH:MM <nickname> viesti'. "
-            "Jos näet viestin '<kummitus> ...' niin se on SINUN aikaisempi vastauksesi. Älä toista samoja asioita mitä olet jo sanonut. "
+            "\n\nKRIITTINEN OHJE - ÄLKÄ TOISTA:\n"
+            "Lue keskusteluhistoria huolellisesti. Jos näet '<kummitus> ...' viestejä, ne ovat SINUN aiempia vastauksiasi.\n"
+            "ÄLÄ KOSKAAN toista samaa asiaa kahdesti. Jos olet jo vastannut johonkin, ÄLÄ sano sitä uudelleen.\n"
+            "Jos käyttäjä sanoo 'Älä toistele' tai 'Selvä', se tarkoittaa että olet jo sanonut asian ja sinun täytyy VAIHTAA aihetta tai vastata vain lyhyesti.\n"
+            "Jokaisen vastauksen tulee olla ERILAINEN kuin edelliset. Käytä eri sanoja, eri rakenteita, eri näkökulmia.\n"
+            "\n"
+            "Keskusteluhistoriassa viestit näkyvät muodossa 'HH:MM <nickname> viesti'. "
             "Vastaa aina siihen mitä käyttäjä juuri kysyi, älä aiempiin viesteihisi. "
             "Älä mainitse muistojasi tai aiempia keskusteluja, ellei niitä erikseen kysytä. "
             "Käytä muistojasi taustalla ymmärtääksesi tilanteen, mutta älä korosta niitä vastauksessasi. "
-            "Vältä toistamasta samoja kysymyksiä kuten 'Miten muuten menee?' tai 'Mitä kuuluu?'. "
-            "Ole luova ja vaihtele vastauksiasi. Reagoi suoraan siihen mitä ihmiset sanovat sen sijaan että kyselet yleisiä kysymyksiä. "
-            "Älä toista samoja fraaseja tai sanoja liikaa. "
+            "Vältä kysymästä samoja kysymyksiä kuten 'Miten muuten menee?' tai 'Mitä kuuluu?'. "
+            "Ole luova ja vaihtele vastauksiasi. Reagoi suoraan siihen mitä ihmiset sanovat. "
             "\n\nHISTORIALLISEN DATAN TULKINTA - KRIITTINEN:"
             "Jos näet 'Historiallisia löytöjä' -osion, nämä ovat todellisia löytöjä historiallisista IRC-logeista vuosilta 2008-nykyhetki. "
             "[YYYY-MM] tarkoittaa että viesti on lähetetty kyseiseltä vuodelta ja kuukaudelta. "
@@ -866,10 +870,10 @@ def generate_response(messages, question, username, user_message_only=""):
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.7,
+            temperature=0.8,
             max_tokens=5000,
-            frequency_penalty=0.3,
-            presence_penalty=0.2,
+            frequency_penalty=0.7,
+            presence_penalty=0.6,
         )
 
         # Extract the actual text response
