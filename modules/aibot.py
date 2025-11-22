@@ -814,15 +814,21 @@ def generate_response(messages, question, username, user_message_only=""):
 
         # Build system message with memory context
         system_message = (
-            f"Olet kummitus-botti IRC-kanavalla. Sinun nimesi on 'kummitus'. Vastaa luonnollisesti ja inhimillisesti käyttäjälle {username}. "
+            f"Olet kummitus-botti IRC-kanavalla. Sinun nimesi on 'kummitus'. Vastaat käyttäjälle {username}. "
             "Vastauksen on oltava alle 220 merkkiä pitkä. "
             "Älä koskaan vastaa IRC-formaatissa (esim. 'HH:MM <nick>'). "
             "Älä aloita vastausta käyttäjän nimellä, se lisätään automaattisesti. "
+            "\n\nNICKNAME-TUNNISTUS:\n"
+            "IRC-viesteissä '<nickname>' tarkoittaa AINA käyttäjän nimimerkkiä, ei kirjaimellista merkitystä.\n"
+            "Esimerkki: '<mustikkasoppa>' on käyttäjän NIMI, ei mustikkasoppaa ruokana.\n"
+            "Esimerkki: '<BuddhaD>' on käyttäjän NIMI, ei Buddha-viittaus.\n"
+            "Jos joku puhuu 'mustikkasoppa' ilman <>, se voi olla joko käyttäjästä tai ruuasta kontekstista riippuen.\n"
+            "Kun näet '<nimi>', se on AINA henkilö, ei asia.\n"
             "\n\nKRIITTINEN OHJE - ÄLKÄ TOISTA:\n"
             "Lue keskusteluhistoria huolellisesti. Jos näet '<kummitus> ...' viestejä, ne ovat SINUN aiempia vastauksiasi.\n"
             "ÄLÄ KOSKAAN toista samaa asiaa kahdesti. Jos olet jo vastannut johonkin, ÄLÄ sano sitä uudelleen.\n"
-            "Jos käyttäjä sanoo 'Älä toistele' tai 'Selvä', se tarkoittaa että olet jo sanonut asian ja sinun täytyy VAIHTAA aihetta tai vastata vain lyhyesti.\n"
-            "Jokaisen vastauksen tulee olla ERILAINEN kuin edelliset. Käytä eri sanoja, eri rakenteita, eri näkökulmia.\n"
+            "Jokaisen vastauksen tulee olla TÄYSIN ERILAINEN kuin edelliset. Käytä eri sanoja, eri rakenteita, eri näkökulmia.\n"
+            "Jos huomaat että sanoisit saman asian uudelleen, LOPETA ja sano jotain TÄYSIN MUUTA.\n"
             "\n"
             "Keskusteluhistoriassa viestit näkyvät muodossa 'HH:MM <nickname> viesti'. "
             "Vastaa aina siihen mitä käyttäjä juuri kysyi, älä aiempiin viesteihisi. "
@@ -846,10 +852,10 @@ def generate_response(messages, question, username, user_message_only=""):
             f"Kaikki historiallisten löytöjen päivämäärät ovat menneisyydestä."
         )
 
-        # Add memory context to system message for understanding, but instruct not to mention it
+        # Add memory context to system message - these are RULES to follow
         if memory:
-            memory_context = " ".join(memory[-3:])  # Use only last 3 memory items
-            system_message += f" Muistosi (älä mainitse näitä suoraan): {memory_context}"
+            memory_rules = "\n".join(memory)  # Use ALL memory items
+            system_message += f"\n\nMUISTISÄÄNNÖT (NOUDATA NÄITÄ AINA):\n{memory_rules}\n"
 
         # Try free API first if enabled
         if USE_FREE_API:
