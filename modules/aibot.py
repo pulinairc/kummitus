@@ -853,8 +853,10 @@ def generate_response(messages, question, username, user_message_only=""):
         )
 
         # Add memory context to system message - these are RULES to follow
-        if memory:
-            memory_rules = "\n".join(memory)  # Use ALL memory items
+        # Reload memory from file to ensure it's current
+        current_memory = load_memory()
+        if current_memory:
+            memory_rules = "\n".join(current_memory)  # Use ALL memory items
             system_message += f"\n\nMUISTISÄÄNNÖT (NOUDATA NÄITÄ AINA):\n{memory_rules}\n"
 
         # Try free API first if enabled
