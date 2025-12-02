@@ -16,6 +16,7 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 import mimetypes
+import threading
 
 # Sopel logger
 LOGGER = logger.get_logger(__name__)
@@ -1151,8 +1152,8 @@ def respond_to_questions(bot, trigger):
     if trigger.nick == "Orvokki":
         return
 
-    # Auto memory: check every 10 messages for memorable facts
-    check_auto_memory()
+    # Auto memory: check every 10 messages for memorable facts (run in background thread)
+    threading.Thread(target=check_auto_memory, daemon=True).start()
 
     # Match all Finnish declensions of "kummitus" (kummitusta, kummituksen, kummitukselle, etc.)
     msg_lower = trigger.group(0).lower()
