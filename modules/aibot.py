@@ -216,6 +216,10 @@ def find_mentioned_user(message):
 # Declare last_bot_mention as global variable
 last_bot_mention = None
 
+# Auto memory: counter for messages processed
+auto_memory_counter = 0
+AUTO_MEMORY_INTERVAL = 10  # Check every 10 messages
+
 # Finnish stop words to exclude from keyword searches
 FINNISH_STOP_WORDS = {
     'on', 'ja', 'ei', 'se', 'että', 'en', 'ole', 'et', 'nyt', 'kun', 'mä', 'sä', 'ne',
@@ -624,6 +628,148 @@ def call_free_api(messages, max_tokens=5000, temperature=0.7, frequency_penalty=
         LOGGER.debug(f"Error calling free API: {e}")
         return None
 
+def extract_auto_memories(chat_lines):
+    """Use Gemini via Pollinations to extract memorable facts from chat lines"""
+    global memory
+
+    LOGGER.info(f"[AUTO-MEMORY] Starting memory extraction from {len(chat_lines.split(chr(10)))} lines")
+
+    if not chat_lines:
+        LOGGER.info("[AUTO-MEMORY] No chat lines to process")
+        return
+
+    try:
+        # Get current memories to avoid duplicates
+        current_memory = load_memory()
+        LOGGER.info(f"[AUTO-MEMORY] Current memory count: {len(current_memory)}")
+        current_memory_text = "\n".join(current_memory) if current_memory else "Ei aiempia muistoja."
+
+        system_prompt = (
+            "Olet muistiavustaja. Tehtäväsi on poimia IRC-keskustelusta VAIN merkittäviä faktoja jotka kannattaa muistaa pitkällä aikavälillä.\n\n"
+            "POIMI VAIN:\n"
+            "- Henkilökohtaisia faktoja käyttäjistä (ammatti, harrastukset, perhe, lemmikit, asuinpaikka)\n"
+            "- Tärkeitä tapahtumia (syntymäpäivät, muutot, uudet työt)\n"
+            "- Käyttäjien välisiä suhteita\n"
+            "- Merkittäviä mielipiteitä tai mieltymyksiä\n\n"
+            "ÄLÄ POIMI:\n"
+            "- Arkipäiväistä small talkia\n"
+            "- Tilapäisiä asioita (mitä söi tänään, mikä sää on)\n"
+            "- Vitsejä tai meemejä\n"
+            "- Linkkejä tai URL-osoitteita\n"
+            "- Mitään mikä on jo muistissa\n\n"
+            "VASTAUSMUOTO:\n"
+            "- Jos löydät muistettavia faktoja, vastaa JSON-listana: [\"fakta1\", \"fakta2\"]\n"
+            "- Jos ei löydy mitään muistettavaa, vastaa: []\n"
+            "- Kirjoita faktat muodossa '<nick> + fakta', esim: 'rolle tykkää kahvista'\n"
+        )
+
+        user_prompt = (
+            f"NYKYISET MUISTOT (älä toista näitä):\n{current_memory_text}\n\n"
+            f"ANALYSOITAVAT VIESTIT:\n{chat_lines}\n\n"
+            "Poimi merkittävät faktat JSON-listana tai [] jos ei löydy:"
+        )
+
+        payload = {
+            "model": "gemini",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            "max_tokens": 500,
+            "temperature": 0.3
+        }
+
+        auth_header = f"Bearer {POLLINATIONS_API_KEY}" if POLLINATIONS_API_KEY else "Bearer dummy-key"
+
+        LOGGER.info(f"[AUTO-MEMORY] Sending request to Pollinations Gemini API")
+
+        response = requests.post(
+            FREE_API_URL,
+            json=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": auth_header
+            },
+            timeout=15
+        )
+
+        LOGGER.info(f"[AUTO-MEMORY] API response status: {response.status_code}")
+
+        if response.status_code == 200:
+            result = response.json()
+            if "choices" in result and len(result["choices"]) > 0:
+                content = result["choices"][0]["message"]["content"].strip()
+                LOGGER.info(f"[AUTO-MEMORY] Gemini response: {content}")
+
+                # Parse JSON response
+                try:
+                    # Clean up response - find JSON array
+                    json_match = re.search(r'\[.*?\]', content, re.DOTALL)
+                    if json_match:
+                        new_memories = json.loads(json_match.group())
+                        LOGGER.info(f"[AUTO-MEMORY] Parsed {len(new_memories)} potential memories")
+
+                        if new_memories and isinstance(new_memories, list):
+                            added_count = 0
+                            for mem in new_memories:
+                                if isinstance(mem, str) and mem.strip():
+                                    mem = mem.strip()
+                                    # Check for duplicates (case-insensitive)
+                                    is_duplicate = any(
+                                        mem.lower() in existing.lower() or existing.lower() in mem.lower()
+                                        for existing in current_memory
+                                    )
+                                    if is_duplicate:
+                                        LOGGER.info(f"[AUTO-MEMORY] Skipping duplicate: {mem}")
+                                    else:
+                                        add_to_memory(mem)
+                                        added_count += 1
+                                        LOGGER.info(f"[AUTO-MEMORY] Added new memory: {mem}")
+
+                            LOGGER.info(f"[AUTO-MEMORY] Total added: {added_count} new memories")
+                        else:
+                            LOGGER.info("[AUTO-MEMORY] No memories to add (empty list)")
+                    else:
+                        LOGGER.info("[AUTO-MEMORY] No JSON array found in response")
+                except json.JSONDecodeError as e:
+                    LOGGER.info(f"[AUTO-MEMORY] JSON parse error: {e}")
+        else:
+            LOGGER.info(f"[AUTO-MEMORY] API error: {response.status_code} - {response.text[:200]}")
+
+    except Exception as e:
+        LOGGER.info(f"[AUTO-MEMORY] Exception: {e}")
+
+def check_auto_memory():
+    """Check last 10 lines and extract memories if interval reached"""
+    global auto_memory_counter
+
+    auto_memory_counter += 1
+    LOGGER.debug(f"[AUTO-MEMORY] Message counter: {auto_memory_counter}/{AUTO_MEMORY_INTERVAL}")
+
+    if auto_memory_counter >= AUTO_MEMORY_INTERVAL:
+        LOGGER.info(f"[AUTO-MEMORY] Interval reached ({AUTO_MEMORY_INTERVAL} messages), starting extraction")
+        auto_memory_counter = 0
+
+        # Get last 10 lines from today's log
+        today_log_file = "/var/www/botit.pulina.fi/public_html/lastlog.log"
+
+        if os.path.exists(today_log_file):
+            try:
+                with open(today_log_file, "r", encoding='utf-8') as f:
+                    lines = f.readlines()
+                    last_lines = [line.strip() for line in lines[-10:] if line.strip()]
+
+                    if last_lines:
+                        chat_text = "\n".join(last_lines)
+                        LOGGER.info(f"[AUTO-MEMORY] Processing {len(last_lines)} lines:\n{chat_text[:500]}")
+                        extract_auto_memories(chat_text)
+                    else:
+                        LOGGER.info("[AUTO-MEMORY] No lines to process")
+            except Exception as e:
+                LOGGER.info(f"[AUTO-MEMORY] File read error: {e}")
+        else:
+            LOGGER.info(f"[AUTO-MEMORY] Log file not found: {today_log_file}")
+
 def fetch_url_content(url):
     try:
         headers = {
@@ -1004,6 +1150,9 @@ def respond_to_questions(bot, trigger):
     # Check if the nickname is "Orvokki" and ignore the message if it is
     if trigger.nick == "Orvokki":
         return
+
+    # Auto memory: check every 10 messages for memorable facts
+    check_auto_memory()
 
     # Match all Finnish declensions of "kummitus" (kummitusta, kummituksen, kummitukselle, etc.)
     msg_lower = trigger.group(0).lower()
