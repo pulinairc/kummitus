@@ -588,7 +588,7 @@ def call_free_api(messages, max_tokens=5000, temperature=0.7, frequency_penalty=
     """Call the Pollinations API"""
     try:
         payload = {
-            "model": "openai",  # Pollinations uses "openai" as model name
+            "model": "gemini",  # Use gemini model for better responses
             "messages": messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
@@ -815,9 +815,11 @@ def generate_response(messages, question, username, user_message_only=""):
         # Build system message with memory context
         system_message = (
             f"Olet kummitus-botti IRC-kanavalla. Sinun nimesi on 'kummitus'. Vastaat käyttäjälle {username}. "
-            "Vastauksen on oltava alle 220 merkkiä pitkä. "
+            "Vastauksen on oltava alle 200 merkkiä pitkä, käytä kokonaista lausetta. "
             "Älä koskaan vastaa IRC-formaatissa (esim. 'HH:MM <nick>'). "
             "Älä aloita vastausta käyttäjän nimellä, se lisätään automaattisesti. "
+            "ÄLÄ KOSKAAN toista käyttäjän kysymystä vastauksessasi - vastaa suoraan. "
+            "Käytä hymiöitä harvoin, älä laita joka viestiin."
             "\n\nNICKNAME-TUNNISTUS:\n"
             "IRC-viesteissä '<nickname>' tarkoittaa AINA käyttäjän nimimerkkiä, ei kirjaimellista merkitystä.\n"
             "Esimerkki: '<mustikkasoppa>' on käyttäjän NIMI, ei mustikkasoppaa ruokana.\n"
