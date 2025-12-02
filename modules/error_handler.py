@@ -79,13 +79,12 @@ def setup(bot):
         else:
             # For other errors, call the original error handler
             if original_error:
-                original_error(trigger, exception, message)
+                original_error(exception=exception)
 
     # Replace error handler
     bot.error = custom_error
 
 @sopel.module.interval(60)
-@sopel.module.require_owner()
 def check_disk_space(bot):
     """Check disk space every 60 seconds and shut down if critically low"""
     global shutdown_initiated
