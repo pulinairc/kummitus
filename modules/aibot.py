@@ -1005,7 +1005,10 @@ def respond_to_questions(bot, trigger):
     if trigger.nick == "Orvokki":
         return
 
-    if bot.nick.lower() in trigger.group(0).lower() or trigger.is_privmsg:
+    # Match all Finnish declensions of "kummitus" (kummitusta, kummituksen, kummitukselle, etc.)
+    msg_lower = trigger.group(0).lower()
+    bot_mentioned = 'kummitu' in msg_lower  # Common stem for all forms
+    if bot_mentioned or trigger.is_privmsg:
         # Do not reply if the private message is !reload or !restart
         if trigger.is_privmsg and trigger.group(0).startswith("!"):
             return
