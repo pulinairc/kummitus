@@ -41,7 +41,7 @@ HISTORICAL_LOG_DIR = "/home/rolle/pulina.fi/pul"  # Monthly logs from 2008
 DAILY_LOG_DIR = "/home/rolle/pulina.fi/pulina-days"  # Daily logs from 2016
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv("/home/rolle/.sopel/.env")
 
 # Load OpenAI as client
 client = OpenAI()
@@ -681,7 +681,7 @@ def extract_auto_memories(chat_lines):
 
         auth_header = f"Bearer {POLLINATIONS_API_KEY}" if POLLINATIONS_API_KEY else "Bearer dummy-key"
 
-        LOGGER.info(f"[AUTO-MEMORY] Sending request to Pollinations Gemini API")
+        LOGGER.info(f"[AUTO-MEMORY] Sending request to Pollinations Gemini API (key present: {bool(POLLINATIONS_API_KEY)})")
 
         response = requests.post(
             FREE_API_URL,
