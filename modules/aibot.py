@@ -1145,6 +1145,59 @@ def load_channel_users():
         LOGGER.debug(f"Error loading channel users: {e}")
         return []
 
+# Simple Gemini command via Pollinations
+AIVOKUOLLUT_PERSONA = """KIELLOT:
+1. ÄLÄ sano "olen kummitus/botti" - vastaa asiaan!
+2. ÄLÄ kysy jatkokysymyksiä
+3. ÄLÄ toista käyttäjän kysymystä
+4. ÄLÄ kiroile
+5. ÄLÄ käytä emojeja, vain :D :P harvoin
+
+IRC-botti. Max 200 merkkiä. Suomeksi.
+<nick> = käyttäjän nimi, ei asia.
+"""
+
+@sopel.module.commands('aivokuollut')
+def aivokuollut_command(bot, trigger):
+    """Simple Gemini response via Pollinations API"""
+    if not trigger.group(2):
+        bot.say(f"{trigger.nick}: Anna joku lause, esim: !aivokuollut mikä on elämän tarkoitus")
+        return
+
+    prompt = trigger.group(2).strip()
+
+    try:
+        response = requests.post(
+            FREE_API_URL,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {POLLINATIONS_API_KEY}"
+            },
+            json={
+                "model": "gemini",
+                "messages": [
+                    {"role": "system", "content": AIVOKUOLLUT_PERSONA},
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 300,
+            },
+            timeout=15
+        )
+
+        if response.status_code == 200:
+            result = response.json()
+            if "choices" in result and len(result["choices"]) > 0:
+                answer = result["choices"][0]["message"]["content"].strip()
+                bot.say(f"{trigger.nick}: {answer}")
+            else:
+                bot.say(f"{trigger.nick}: Ei vastausta")
+        else:
+            bot.say(f"{trigger.nick}: API virhe: {response.status_code}")
+
+    except Exception as e:
+        LOGGER.error(f"aivokuollut error: {e}")
+        bot.say(f"{trigger.nick}: Virhe: {e}")
+
 # Sopel trigger function to respond to questions when bot's name is mentioned or in private messages
 @sopel.module.rule(r'(.*)')
 def respond_to_questions(bot, trigger):
