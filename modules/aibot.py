@@ -514,13 +514,14 @@ TEHTÄVÄ: Vastaa käyttäjän kysymykseen max 220 merkillä.
 - Mainitse lokitiedosto ({log_file})
 - ÄLÄ keksi mitään, käytä vain yllä olevia tietoja"""
 
+        LOGGER.info(f"[AI-LOG-SEARCH] Calling summary API with {len(log_content)} chars of content")
         summary_response = call_free_api([
             {"role": "user", "content": summarize_prompt}
-        ], max_tokens=400, temperature=0.5)
+        ], max_tokens=400)
 
         if not summary_response:
-            # Fallback: just show some raw content
-            return f"[{log_file}] {search_info}: {log_content[:200]}...", log_file
+            LOGGER.error(f"[AI-LOG-SEARCH] Summary API returned empty response")
+            return f"Löysin {log_file} tietoa mutta yhteenvedon luonti epäonnistui (API-virhe).", log_file
 
         return summary_response, log_file
 
@@ -913,14 +914,14 @@ def call_free_api(messages, max_tokens=5000, temperature=0.7, frequency_penalty=
             if "choices" in result and len(result["choices"]) > 0:
                 return result["choices"][0]["message"]["content"].strip()
             else:
-                LOGGER.debug(f"Unexpected free API response format: {result}")
+                LOGGER.error(f"[FREE-API] Unexpected response format: {result}")
                 return None
         else:
-            LOGGER.debug(f"Free API error: {response.status_code} - {response.text}")
+            LOGGER.error(f"[FREE-API] Error {response.status_code}: {response.text[:200]}")
             return None
 
     except Exception as e:
-        LOGGER.debug(f"Error calling free API: {e}")
+        LOGGER.error(f"[FREE-API] Exception: {e}")
         return None
 
 def extract_auto_memories(chat_lines):
@@ -1298,7 +1299,7 @@ def generate_response(messages, question, username, user_message_only=""):
             "- et ole myrkyllisen positiivinen - realistinen mutta kannustava\n"
             "- voit olla eri mieltä ja sanoa sen suoraan\n"
             "- älä ylikehu tai intoile turhaan\n"
-            "- jos joku laittaa vain hymiön kuten :D, reagoi siihen (esim. 'heh' tai 'jep') - älä kysy miksi he nauravat\n"
+            "- jos joku laittaa vain hymiön kuten :D, ÄLÄ VASTAA OLLENKAAN - se ei vaadi vastausta\n"
             "- jos joku kysyy jotain todella tyhmää tai itsestäänselvää, voit sanoa sen suoraan (esim. 'olipas tyhmä kysymys' tai 'no mitä luulet')\n"
             "\n\nITSETIETOISUUS:\n"
             "- tiedät olevasi tekoäly ja kone - voit myöntää sen avoimesti jos kysytään\n"
