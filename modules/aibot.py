@@ -910,7 +910,7 @@ def call_free_api(messages, max_tokens=5000, temperature=0.7, frequency_penalty=
                 "Content-Type": "application/json",
                 "Authorization": auth_header
             },
-            timeout=15  # Reduced from 30 to 15 seconds
+            timeout=100
         )
 
         if response.status_code == 200:
