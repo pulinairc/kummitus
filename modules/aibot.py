@@ -500,6 +500,10 @@ Vastaa VAIN JSON, ei muuta tekstiä."""
         if not log_content:
             return f"Lokista {log_file} ei löytynyt sisältöä. {search_info}", log_file
 
+        # Truncate log content to fit API limit (max 7000 chars for input, leave room for prompt)
+        if len(log_content) > 5000:
+            log_content = log_content[:5000] + "\n... (katkaistiin)"
+
         summarize_prompt = f"""Olet IRC-kanavan #pulina arkistonhoitaja. Käyttäjä kysyi: "{user_question}"
 
 Hait lokitiedostosta {log_file} ({search_info}).
