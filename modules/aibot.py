@@ -893,13 +893,11 @@ def extract_sender_from_line(line):
 def call_free_api(messages, max_tokens=5000, temperature=0.7, frequency_penalty=0.3, presence_penalty=0.2):
     """Call the Pollinations API"""
     try:
+        # openai model doesn't support temperature, frequency_penalty, presence_penalty
         payload = {
-            "model": "openai",  # Pollinations uses "openai" as model name
+            "model": "openai",
             "messages": messages,
             "max_tokens": max_tokens,
-            "temperature": temperature,
-            "frequency_penalty": frequency_penalty,
-            "presence_penalty": presence_penalty
         }
 
         # Use the actual Pollinations API key if available
