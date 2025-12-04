@@ -300,6 +300,108 @@ def extract_keywords(message):
     # Return just the words
     return [word[0] for word in keywords]
 
+# Finnish month names to numbers
+FINNISH_MONTHS = {
+    'tammikuu': '01', 'tammikuussa': '01', 'tammikuun': '01', 'tammikuuta': '01',
+    'helmikuu': '02', 'helmikuussa': '02', 'helmikuun': '02', 'helmikuuta': '02',
+    'maaliskuu': '03', 'maaliskuussa': '03', 'maaliskuun': '03', 'maaliskuuta': '03',
+    'huhtikuu': '04', 'huhtikuussa': '04', 'huhtikuun': '04', 'huhtikuuta': '04',
+    'toukokuu': '05', 'toukokuussa': '05', 'toukokuun': '05', 'toukokuuta': '05',
+    'kesäkuu': '06', 'kesäkuussa': '06', 'kesäkuun': '06', 'kesäkuuta': '06',
+    'heinäkuu': '07', 'heinäkuussa': '07', 'heinäkuun': '07', 'heinäkuuta': '07',
+    'elokuu': '08', 'elokuussa': '08', 'elokuun': '08', 'elokuuta': '08',
+    'syyskuu': '09', 'syyskuussa': '09', 'syyskuun': '09', 'syyskuuta': '09',
+    'lokakuu': '10', 'lokakuussa': '10', 'lokakuun': '10', 'lokakuuta': '10',
+    'marraskuu': '11', 'marraskuussa': '11', 'marraskuun': '11', 'marraskuuta': '11',
+    'joulukuu': '12', 'joulukuussa': '12', 'joulukuun': '12', 'joulukuuta': '12',
+}
+
+def parse_date_from_query(query):
+    """Parse Finnish date references from query, returns (year, month) or None"""
+    query_lower = query.lower()
+
+    # Find year (4 digits starting with 19 or 20)
+    year_match = re.search(r'\b(19\d{2}|20\d{2})\b', query)
+    year = year_match.group(1) if year_match else None
+
+    # Find month from Finnish month names
+    month = None
+    for month_name, month_num in FINNISH_MONTHS.items():
+        if month_name in query_lower:
+            month = month_num
+            break
+
+    if year and month:
+        return (year, month)
+    elif year:
+        return (year, None)
+    return None
+
+def read_log_by_date(year, month=None, max_lines=100, sample_from='start'):
+    """Read log file directly by date. Returns actual log content."""
+    LOGGER.debug(f"Reading log for {year}-{month}, max_lines={max_lines}, sample_from={sample_from}")
+
+    if month:
+        # Try monthly log first
+        log_file = os.path.join(HISTORICAL_LOG_DIR, f"pulina-{year}-{month}.log")
+        if not os.path.exists(log_file):
+            LOGGER.debug(f"Log file not found: {log_file}")
+            return None, f"Lokitiedostoa {year}-{month} ei löydy."
+    else:
+        # No month specified, try to find any log from that year
+        import glob
+        pattern = os.path.join(HISTORICAL_LOG_DIR, f"pulina-{year}-*.log")
+        files = sorted(glob.glob(pattern))
+        if not files:
+            return None, f"Vuodelta {year} ei löydy lokeja."
+        log_file = files[0]  # First month of that year
+        month = os.path.basename(log_file).replace('pulina-', '').replace('.log', '').split('-')[1]
+
+    try:
+        with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+
+        if not lines:
+            return None, f"Loki {year}-{month} on tyhjä."
+
+        # Filter to IRC messages only
+        irc_pattern = re.compile(r'^\d{2}:\d{2}\s*[<\[]')
+        valid_lines = [l.strip() for l in lines if l.strip() and irc_pattern.match(l.strip())]
+
+        if not valid_lines:
+            return None, f"Lokissa {year}-{month} ei ole IRC-viestejä."
+
+        total_lines = len(valid_lines)
+
+        # Sample lines based on preference
+        if sample_from == 'start':
+            sampled = valid_lines[:max_lines]
+            position = "alusta"
+        elif sample_from == 'end':
+            sampled = valid_lines[-max_lines:]
+            position = "lopusta"
+        elif sample_from == 'random':
+            import random
+            if len(valid_lines) > max_lines:
+                start_idx = random.randint(0, len(valid_lines) - max_lines)
+                sampled = valid_lines[start_idx:start_idx + max_lines]
+            else:
+                sampled = valid_lines
+            position = "satunnaisesti"
+        else:
+            sampled = valid_lines[:max_lines]
+            position = "alusta"
+
+        header = f"[{year}-{month}] Lokissa {total_lines} riviä, näytetään {len(sampled)} riviä ({position}):\n"
+        content = header + "\n".join(sampled)
+
+        LOGGER.debug(f"Read {len(sampled)} lines from {log_file}")
+        return content, None
+
+    except Exception as e:
+        LOGGER.error(f"Error reading log {log_file}: {e}")
+        return None, f"Virhe luettaessa lokia: {e}"
+
 # Function to search historical logs for keywords and return context around matches
 def search_historical_logs(keywords, context_lines=5):
     """Search through all historical log files for keywords and return surrounding context"""
@@ -845,14 +947,26 @@ def generate_response(messages, question, username, user_message_only=""):
                        'lokit', 'loki', 'lokeista', 'lokeihin', 'lokeissa', 'lokitiedost', 'logs']
         asking_about_logs = any(keyword in user_text_lower for keyword in log_keywords)
 
+        # Check if user specifies a date (e.g. "kesäkuussa 2012")
+        date_info = parse_date_from_query(user_text)
+        date_based_content = None
+        date_error = None
+
+        if asking_about_logs and date_info:
+            year, month = date_info
+            LOGGER.debug(f"Date-based log request detected: year={year}, month={month}")
+            date_based_content, date_error = read_log_by_date(year, month, max_lines=50, sample_from='random')
+            if date_error:
+                LOGGER.debug(f"Date-based log error: {date_error}")
+
         # Extract keywords from the user's question
         keywords = extract_keywords(user_text)
         LOGGER.debug(f"Extracted keywords from '{user_text}': {keywords}")
         LOGGER.debug(f"Asking about logs/history: {asking_about_logs}")
 
-        # Only search historical logs if explicitly asking about history/logs
+        # Only search historical logs if explicitly asking about history/logs AND no date-based content
         historical_matches = []
-        if asking_about_logs and keywords:
+        if asking_about_logs and keywords and not date_based_content:
             # This is set in the main function to notify user
             LOGGER.debug(f"Searching historical logs for keywords: {keywords}")
             historical_matches = search_historical_logs(keywords, context_lines=7)
@@ -905,8 +1019,15 @@ def generate_response(messages, question, username, user_message_only=""):
         # Build prompt with historical context first, then recent context
         prompt = ""
 
-        # Add historical context if available
-        if historical_context:
+        # Add date-based log content if available (priority over keyword search)
+        if date_based_content:
+            prompt += f"LOKIN SISÄLTÖ (oikeat rivit lokista):\n{date_based_content}\n\n"
+            prompt += "TÄRKEÄÄ: Yllä olevat rivit ovat OIKEITA rivejä lokitiedostosta. Käytä VAIN näitä rivejä vastauksessasi. ÄLÄ keksi omia rivejä.\n\n"
+        elif date_error:
+            prompt += f"LOKIN VIRHE: {date_error}\n\n"
+
+        # Add historical context if available (only if no date-based content)
+        if historical_context and not date_based_content:
             prompt += historical_context
 
         # Add recent context
@@ -1298,28 +1419,24 @@ def respond_to_questions(bot, trigger):
         asking_about_logs = any(keyword in user_text_lower for keyword in log_keywords)
 
         if asking_about_logs:
-            # Extract keywords to show user what we're searching for
-            search_keywords = extract_keywords(user_message)
-            if search_keywords:
-                keywords_str = ", ".join(search_keywords)
-                # Get oldest log file date
-                import glob
-                log_files = sorted(glob.glob(f"{HISTORICAL_LOG_DIR}/pulina-*.log"))
-                if log_files:
-                    oldest_file = os.path.basename(log_files[0])
-                    oldest_date = oldest_file.replace('pulina-', '').replace('.log', '')
-                    # Parse YYYY-MM format
-                    if '-' in oldest_date:
-                        year, month = oldest_date.split('-')
-                        month_names = ['', 'tammikuusta', 'helmikuusta', 'maaliskuusta', 'huhtikuusta',
-                                     'toukokuusta', 'kesäkuusta', 'heinäkuusta', 'elokuusta',
-                                     'syyskuusta', 'lokakuusta', 'marraskuusta', 'joulukuusta']
-                        month_name = month_names[int(month)] if int(month) <= 12 else f"kuusta {month}"
-                        bot.say(f"{trigger.nick}: Etsin logeista nyt sanoilla: {keywords_str}. Käyn läpi kaikki kanavan logit alkaen {month_name} {year}. Tässä voi kestää hetki...", trigger.sender)
-                    else:
-                        bot.say(f"{trigger.nick}: Etsin logeista nyt sanoilla: {keywords_str}. Käyn läpi kaikki kanavan logit. Tässä voi kestää hetki...", trigger.sender)
+            # Check if user specified a date
+            date_info = parse_date_from_query(user_message)
+            if date_info:
+                year, month = date_info
+                if month:
+                    month_names = ['', 'tammikuun', 'helmikuun', 'maaliskuun', 'huhtikuun',
+                                 'toukokuun', 'kesäkuun', 'heinäkuun', 'elokuun',
+                                 'syyskuun', 'lokakuun', 'marraskuun', 'joulukuun']
+                    month_name = month_names[int(month)] if int(month) <= 12 else f"kuun {month}"
+                    bot.say(f"{trigger.nick}: Haen {month_name} {year} lokin...", trigger.sender)
                 else:
-                    bot.say(f"{trigger.nick}: Etsin logeista nyt sanoilla: {keywords_str}. Tässä voi kestää hetki...", trigger.sender)
+                    bot.say(f"{trigger.nick}: Haen vuoden {year} lokeja...", trigger.sender)
+            else:
+                # No date, use keyword search
+                search_keywords = extract_keywords(user_message)
+                if search_keywords:
+                    keywords_str = ", ".join(search_keywords)
+                    bot.say(f"{trigger.nick}: Etsin logeista sanoilla: {keywords_str}...", trigger.sender)
 
         # Generate a response based on the log and the user's message
         # Don't include memory in user prompt - it's in system message
