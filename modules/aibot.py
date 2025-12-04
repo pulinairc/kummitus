@@ -506,7 +506,7 @@ Hait lokitiedostosta {log_file} ({search_info}).
 LOKIN SISÄLTÖ:
 {log_content}
 
-TEHTÄVÄ: Kirjoita LYHYT YHTEENVETO (max 250 merkkiä) siitä mitä lokissa tapahtui.
+TEHTÄVÄ: Kirjoita LYHYT YHTEENVETO (max 220 merkkiä) siitä mitä lokissa tapahtui.
 - Kerro yleisesti mistä aiheista keskusteltiin
 - Mainitse muutama aktiivinen käyttäjä jos näkyy
 - Mainitse lokitiedoston nimi ({log_file})
@@ -1611,8 +1611,14 @@ def respond_to_questions(bot, trigger):
 
         if asking_about_logs:
             # Use AI-based log search
-            # Channel was born in April 2008
-            bot.say(f"{trigger.nick}: Hetkinen, tutkin lokeja kanavan syntyhistoriasta huhtikuusta 2008 lähtien. Tässä voi kestää hetki...", trigger.sender)
+            # Channel was born in April 2008 - calculate time since
+            from datetime import datetime
+            channel_birth = datetime(2008, 4, 1)
+            now = datetime.now()
+            diff = now - channel_birth
+            years = diff.days // 365
+            months = (diff.days % 365) // 30
+            bot.say(f"{trigger.nick}: Hetkinen, tutkin lokeja kanavan syntyhistoriasta huhtikuusta 2008 lähtien, eli {years} vuoden ja {months} kuukauden ajalta. Tässä voi kestää hetki...", trigger.sender)
 
             def say_status(msg):
                 bot.say(f"{trigger.nick}: {msg}", trigger.sender)
