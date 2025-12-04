@@ -428,7 +428,7 @@ Vastaa VAIN JSON, ei muuta tekstiä."""
 
         # Notify user what we're doing
         if bot_say_func:
-            bot_say_func(f"Haen lokista {log_file}...")
+            bot_say_func(f"Valitsin lokitiedoston {log_file}. Katsotaan mitä täältä löytyy...")
 
         # Step 2: Execute the search
         # Determine full path
@@ -1619,6 +1619,8 @@ def respond_to_questions(bot, trigger):
 
         if asking_about_logs:
             # Use AI-based log search
+            bot.say(f"{trigger.nick}: Hetkinen, tutkin lokeja...", trigger.sender)
+
             def say_status(msg):
                 bot.say(f"{trigger.nick}: {msg}", trigger.sender)
 
