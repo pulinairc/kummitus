@@ -391,10 +391,11 @@ SÄÄNNÖT:
 - log_file: Valitse YKSI tiedosto kysymyksen perusteella (esim. "pulina-2012-06.log" tai "pul-2024-12-04.log")
 - search_type: "random_sample" (satunnaisia rivejä), "grep" (etsi tiettyä sanaa/nimeä), "first_lines" (lokin alku), "last_lines" (lokin loppu)
 - grep_pattern: Jos search_type on "grep", anna hakusana (esim. käyttäjänimi tai aihe). Muuten null.
-- max_lines: Montako riviä haetaan (10-100)
+- max_lines: Montako riviä haetaan (1-100). Jos käyttäjä pyytää yhtä tiettyä riviä, käytä 1.
 - explanation: Lyhyt selitys miksi valitsit tämän
 
 Jos kysymys on epäselvä tai päivämäärää ei voi päätellä, valitse uusin kuukausiloki.
+Jos käyttäjä kysyy "kaikkien aikojen ensimmäistä", valitse VANHIN loki (pulina-2008-04.log).
 Vastaa VAIN JSON, ei muuta tekstiä."""
 
     try:
@@ -506,11 +507,11 @@ Hait lokitiedostosta {log_file} ({search_info}).
 LOKIN SISÄLTÖ:
 {log_content}
 
-TEHTÄVÄ: Kirjoita LYHYT YHTEENVETO (max 220 merkkiä) siitä mitä lokitiedostosta löytyi.
-- Kerro yleisesti mistä aiheista keskusteltiin
-- Mainitse muutama aktiivinen käyttäjä jos näkyy
-- Mainitse lokitiedoston nimi ({log_file})
-- ÄLÄ listaa raakoja lokirivejä - tee YHTEENVETO
+TEHTÄVÄ: Vastaa käyttäjän kysymykseen max 220 merkillä.
+- Jos käyttäjä pyytää tiettyä riviä (esim. "ensimmäinen rivi"), lainaa se
+- Jos käyttäjä hakee tiettyä henkilöä tai aihetta, kerro mitä löytyi
+- Jos käyttäjä kysyy yleisesti, tee yhteenveto
+- Mainitse lokitiedosto ({log_file})
 - ÄLÄ keksi mitään, käytä vain yllä olevia tietoja"""
 
         summary_response = call_free_api([
