@@ -891,42 +891,55 @@ def extract_sender_from_line(line):
     return None
 
 def call_free_api(messages, max_tokens=5000, temperature=0.7, frequency_penalty=0.3, presence_penalty=0.2):
-    """Call the Pollinations API"""
-    try:
-        # openai model doesn't support temperature, frequency_penalty, presence_penalty
-        payload = {
-            "model": "openai",
-            "messages": messages,
-            "max_tokens": max_tokens,
-        }
+    """Call the Pollinations API with retry logic"""
+    max_retries = 3
+    retry_delay = 5  # seconds
 
-        # Use the actual Pollinations API key if available
-        auth_header = f"Bearer {POLLINATIONS_API_KEY}" if POLLINATIONS_API_KEY else "Bearer dummy-key"
+    for attempt in range(max_retries):
+        try:
+            # openai model doesn't support temperature, frequency_penalty, presence_penalty
+            payload = {
+                "model": "openai",
+                "messages": messages,
+                "max_tokens": max_tokens,
+            }
 
-        response = requests.post(
-            FREE_API_URL,
-            json=payload,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": auth_header
-            },
-            timeout=100
-        )
+            # Use the actual Pollinations API key if available
+            auth_header = f"Bearer {POLLINATIONS_API_KEY}" if POLLINATIONS_API_KEY else "Bearer dummy-key"
 
-        if response.status_code == 200:
-            result = response.json()
-            if "choices" in result and len(result["choices"]) > 0:
-                return result["choices"][0]["message"]["content"].strip()
+            response = requests.post(
+                FREE_API_URL,
+                json=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": auth_header
+                },
+                timeout=100
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                if "choices" in result and len(result["choices"]) > 0:
+                    return result["choices"][0]["message"]["content"].strip()
+                else:
+                    LOGGER.error(f"[FREE-API] Unexpected response format: {result}")
+                    # Don't retry for format errors
+                    return None
             else:
-                LOGGER.error(f"[FREE-API] Unexpected response format: {result}")
+                LOGGER.error(f"[FREE-API] Error {response.status_code}: {response.text[:200]}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    continue
                 return None
-        else:
-            LOGGER.error(f"[FREE-API] Error {response.status_code}: {response.text[:200]}")
+
+        except Exception as e:
+            LOGGER.error(f"[FREE-API] Exception: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+                continue
             return None
 
-    except Exception as e:
-        LOGGER.error(f"[FREE-API] Exception: {e}")
-        return None
+    return None
 
 def extract_auto_memories(chat_lines):
     """Use Gemini via Pollinations to extract memorable facts from chat lines"""
