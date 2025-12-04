@@ -927,6 +927,9 @@ def call_free_api(messages, max_tokens=5000, temperature=0.7, frequency_penalty=
                     return None
             else:
                 LOGGER.error(f"[FREE-API] Error {response.status_code}: {response.text[:200]}")
+                # Don't retry on 400/500 errors - they won't fix themselves
+                if response.status_code in [400, 500]:
+                    return None
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay)
                     continue
@@ -1250,12 +1253,12 @@ def generate_response(messages, question, username, user_message_only=""):
             prompt += messages[-3000:] + "\n" if len(messages) > 3000 else messages + "\n"
         prompt += "Viesti: " + question
 
-        # Final safety check - if prompt is too large, reduce context properly
-        if len(prompt) > 35000:
+        # Final safety check - API limit is 7000 chars, so keep prompt under 5000
+        if len(prompt) > 5000:
             LOGGER.debug(f"Prompt too large ({len(prompt)} chars), reducing context")
 
             # Reduce recent_context to fit within limits - keep NEWEST messages
-            target_context_size = 20000
+            target_context_size = 3000
             if len(recent_context) > target_context_size:
                 # Split by lines and take from the END to preserve recent messages
                 context_lines = recent_context.split('\n')
@@ -1282,7 +1285,7 @@ def generate_response(messages, question, username, user_message_only=""):
                 if url_contents:
                     prompt += "\n".join(url_contents) + "\n"
                 if messages:
-                    prompt += messages[-2000:] + "\n" if len(messages) > 2000 else messages + "\n"
+                    prompt += messages[-1000:] + "\n" if len(messages) > 1000 else messages + "\n"
                 prompt += "Viesti: " + question
 
 
