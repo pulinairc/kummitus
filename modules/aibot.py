@@ -506,7 +506,7 @@ Hait lokitiedostosta {log_file} ({search_info}).
 LOKIN SISÄLTÖ:
 {log_content}
 
-TEHTÄVÄ: Kirjoita LYHYT YHTEENVETO (max 220 merkkiä) siitä mitä lokissa tapahtui.
+TEHTÄVÄ: Kirjoita LYHYT YHTEENVETO (max 220 merkkiä) siitä mitä lokitiedostosta löytyi.
 - Kerro yleisesti mistä aiheista keskusteltiin
 - Mainitse muutama aktiivinen käyttäjä jos näkyy
 - Mainitse lokitiedoston nimi ({log_file})
