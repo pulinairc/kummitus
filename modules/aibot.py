@@ -1668,8 +1668,8 @@ def respond_to_questions(bot, trigger):
         # Strip "kummitus:" or "<kummitus>" from the response if it appears
         response = response.replace("kummitus:", "").replace("<kummitus>", "").strip()
 
-        # Remove any nickname prefixes that the AI might have added
-        response = re.sub(r'^[a-zA-Z0-9_\-\[\]\\^{}|]+:\s*', '', response)
+        # Remove any nickname prefixes that the AI might have added (but not URLs like https:)
+        response = re.sub(r'^(?!https?:)[a-zA-Z0-9_\-\[\]\\^{}|]+:\s*', '', response)
 
         # Log bot messages to the log file
         timestamp = datetime.now().strftime('%H:%M')
