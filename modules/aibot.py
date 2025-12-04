@@ -499,25 +499,19 @@ Vastaa VAIN JSON, ei muuta tekstiä."""
         if not log_content:
             return f"Lokista {log_file} ei löytynyt sisältöä. {search_info}", log_file
 
-        summarize_prompt = f"""Olet IRC-kanavan arkistonhoitaja. Käyttäjä kysyi:
-"{user_question}"
+        summarize_prompt = f"""Olet IRC-kanavan #pulina arkistonhoitaja. Käyttäjä kysyi: "{user_question}"
 
-Hait lokitiedostosta: {log_file}
-Hakutapa: {search_info}
+Hait lokitiedostosta {log_file} ({search_info}).
 
-LOKIN SISÄLTÖ (oikeat rivit lokista):
+LOKIN SISÄLTÖ:
 {log_content}
 
-TEHTÄVÄSI:
-1. Vastaa käyttäjän kysymykseen VAIN yllä olevien rivien perusteella
-2. Mainitse mistä lokista tiedot ovat ({log_file})
-3. Lainaa mielenkiintoisia oikeita rivejä jos relevantteja
-4. Jos rivit eivät vastaa kysymykseen, sano se rehellisesti
-
-TÄRKEÄÄ:
-- ÄLÄ KEKSI rivejä - käytä VAIN yllä olevia oikeita rivejä
-- Vastaa lyhyesti ja ytimekkäästi (max 300 merkkiä)
-- Jos grep ei löytänyt osumia, kerro se"""
+TEHTÄVÄ: Kirjoita LYHYT YHTEENVETO (max 250 merkkiä) siitä mitä lokissa tapahtui.
+- Kerro yleisesti mistä aiheista keskusteltiin
+- Mainitse muutama aktiivinen käyttäjä jos näkyy
+- Mainitse lokitiedoston nimi ({log_file})
+- ÄLÄ listaa raakoja lokirivejä - tee YHTEENVETO
+- ÄLÄ keksi mitään, käytä vain yllä olevia tietoja"""
 
         summary_response = call_free_api([
             {"role": "user", "content": summarize_prompt}
@@ -1617,7 +1611,8 @@ def respond_to_questions(bot, trigger):
 
         if asking_about_logs:
             # Use AI-based log search
-            bot.say(f"{trigger.nick}: Hetkinen, tutkin lokeja...", trigger.sender)
+            # Channel was born in April 2008
+            bot.say(f"{trigger.nick}: Hetkinen, tutkin lokeja kanavan syntyhistoriasta huhtikuusta 2008 lähtien. Tässä voi kestää hetki...", trigger.sender)
 
             def say_status(msg):
                 bot.say(f"{trigger.nick}: {msg}", trigger.sender)
