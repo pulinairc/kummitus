@@ -337,6 +337,205 @@ def parse_date_from_query(query):
         return (year, None)
     return None
 
+def ai_log_search(user_question, bot_say_func=None):
+    """
+    AI-based log search.
+    Step 1: AI analyzes the question and decides what to search
+    Step 2: Execute the search (read file or grep)
+    Step 3: AI summarizes the results
+    Returns: (response_text, log_file_used)
+    """
+    import glob
+    import subprocess
+
+    LOGGER.info(f"[AI-LOG-SEARCH] Starting for: {user_question}")
+
+    # Get list of available log files for AI context
+    monthly_logs = sorted(glob.glob(f"{HISTORICAL_LOG_DIR}/pulina-*.log"))
+    daily_logs = sorted(glob.glob(f"{DAILY_LOG_DIR}/pul-*.log"))
+
+    # Extract date ranges
+    if monthly_logs:
+        oldest_monthly = os.path.basename(monthly_logs[0]).replace('pulina-', '').replace('.log', '')
+        newest_monthly = os.path.basename(monthly_logs[-1]).replace('pulina-', '').replace('.log', '')
+    else:
+        oldest_monthly = "ei saatavilla"
+        newest_monthly = "ei saatavilla"
+
+    if daily_logs:
+        oldest_daily = os.path.basename(daily_logs[0]).replace('pul-', '').replace('.log', '')
+        newest_daily = os.path.basename(daily_logs[-1]).replace('pul-', '').replace('.log', '')
+    else:
+        oldest_daily = "ei saatavilla"
+        newest_daily = "ei saatavilla"
+
+    # Step 1: Ask AI to analyze the question and decide search strategy
+    analyze_prompt = f"""Olet lokihakuavustaja. Käyttäjä kysyy IRC-kanavan logeista.
+
+KÄYTETTÄVISSÄ OLEVAT LOGIT:
+- Kuukausilogit: {oldest_monthly} - {newest_monthly} (tiedostot: pulina-YYYY-MM.log)
+- Päivälogit: {oldest_daily} - {newest_daily} (tiedostot: pul-YYYY-MM-DD.log)
+
+KÄYTTÄJÄN KYSYMYS: {user_question}
+
+Analysoi kysymys ja päätä hakustrategia. Vastaa TÄSMÄLLEEN tässä JSON-muodossa:
+{{
+    "log_file": "pulina-2012-06.log",
+    "search_type": "random_sample",
+    "grep_pattern": null,
+    "max_lines": 50,
+    "explanation": "Käyttäjä kysyy kesäkuun 2012 keskusteluista"
+}}
+
+SÄÄNNÖT:
+- log_file: Valitse YKSI tiedosto kysymyksen perusteella (esim. "pulina-2012-06.log" tai "pul-2024-12-04.log")
+- search_type: "random_sample" (satunnaisia rivejä), "grep" (etsi tiettyä sanaa/nimeä), "first_lines" (lokin alku), "last_lines" (lokin loppu)
+- grep_pattern: Jos search_type on "grep", anna hakusana (esim. käyttäjänimi tai aihe). Muuten null.
+- max_lines: Montako riviä haetaan (10-100)
+- explanation: Lyhyt selitys miksi valitsit tämän
+
+Jos kysymys on epäselvä tai päivämäärää ei voi päätellä, valitse uusin kuukausiloki.
+Vastaa VAIN JSON, ei muuta tekstiä."""
+
+    try:
+        # Call AI to analyze
+        analysis_response = call_free_api([
+            {"role": "user", "content": analyze_prompt}
+        ], max_tokens=300, temperature=0.3)
+
+        if not analysis_response:
+            LOGGER.error("[AI-LOG-SEARCH] AI analysis failed")
+            return "En saanut yhteyttä tekoälyyn lokihaun analysointiin.", None
+
+        LOGGER.debug(f"[AI-LOG-SEARCH] Analysis response: {analysis_response}")
+
+        # Parse JSON response
+        import json
+        # Try to extract JSON from response
+        json_match = re.search(r'\{[^}]+\}', analysis_response, re.DOTALL)
+        if not json_match:
+            LOGGER.error(f"[AI-LOG-SEARCH] Could not parse JSON from: {analysis_response}")
+            return "En ymmärtänyt lokihakupyyntöä.", None
+
+        search_config = json.loads(json_match.group())
+        log_file = search_config.get('log_file', '')
+        search_type = search_config.get('search_type', 'random_sample')
+        grep_pattern = search_config.get('grep_pattern')
+        max_lines = min(search_config.get('max_lines', 50), 100)  # Cap at 100
+        explanation = search_config.get('explanation', '')
+
+        LOGGER.info(f"[AI-LOG-SEARCH] Strategy: file={log_file}, type={search_type}, grep={grep_pattern}, lines={max_lines}")
+
+        # Notify user what we're doing
+        if bot_say_func:
+            bot_say_func(f"Haen lokista {log_file}...")
+
+        # Step 2: Execute the search
+        # Determine full path
+        if log_file.startswith('pulina-'):
+            full_path = os.path.join(HISTORICAL_LOG_DIR, log_file)
+        elif log_file.startswith('pul-'):
+            full_path = os.path.join(DAILY_LOG_DIR, log_file)
+        else:
+            return f"Tuntematon lokitiedosto: {log_file}", None
+
+        if not os.path.exists(full_path):
+            return f"Lokitiedostoa {log_file} ei löydy.", log_file
+
+        # Read the log based on search type
+        log_content = None
+        search_info = ""
+
+        if search_type == "grep" and grep_pattern:
+            # Use grep to find specific content
+            try:
+                escaped_pattern = grep_pattern.replace('"', '\\"').replace("'", "\\'")
+                cmd = f'grep -i "{escaped_pattern}" "{full_path}" | head -{max_lines}'
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
+                if result.returncode == 0 and result.stdout.strip():
+                    lines = result.stdout.strip().split('\n')
+                    log_content = '\n'.join(lines[:max_lines])
+                    search_info = f"Haettiin sanalla '{grep_pattern}', löytyi {len(lines)} osumaa"
+                else:
+                    search_info = f"Sanalla '{grep_pattern}' ei löytynyt osumia"
+                    log_content = ""
+            except Exception as e:
+                LOGGER.error(f"[AI-LOG-SEARCH] Grep error: {e}")
+                search_info = f"Hakuvirhe: {e}"
+                log_content = ""
+        else:
+            # Read file directly
+            try:
+                with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    all_lines = f.readlines()
+
+                # Filter to IRC messages only
+                irc_pattern = re.compile(r'^\d{2}:\d{2}\s*[<\[]')
+                valid_lines = [l.strip() for l in all_lines if l.strip() and irc_pattern.match(l.strip())]
+                total_lines = len(valid_lines)
+
+                if search_type == "first_lines":
+                    sampled = valid_lines[:max_lines]
+                    search_info = f"Lokin alusta {len(sampled)}/{total_lines} riviä"
+                elif search_type == "last_lines":
+                    sampled = valid_lines[-max_lines:]
+                    search_info = f"Lokin lopusta {len(sampled)}/{total_lines} riviä"
+                else:  # random_sample
+                    import random
+                    if len(valid_lines) > max_lines:
+                        start_idx = random.randint(0, len(valid_lines) - max_lines)
+                        sampled = valid_lines[start_idx:start_idx + max_lines]
+                    else:
+                        sampled = valid_lines
+                    search_info = f"Satunnainen otos {len(sampled)}/{total_lines} riviä"
+
+                log_content = '\n'.join(sampled)
+
+            except Exception as e:
+                LOGGER.error(f"[AI-LOG-SEARCH] File read error: {e}")
+                return f"Virhe luettaessa lokia: {e}", log_file
+
+        # Step 3: AI summarizes the results
+        if not log_content:
+            return f"Lokista {log_file} ei löytynyt sisältöä. {search_info}", log_file
+
+        summarize_prompt = f"""Olet IRC-kanavan arkistonhoitaja. Käyttäjä kysyi:
+"{user_question}"
+
+Hait lokitiedostosta: {log_file}
+Hakutapa: {search_info}
+
+LOKIN SISÄLTÖ (oikeat rivit lokista):
+{log_content}
+
+TEHTÄVÄSI:
+1. Vastaa käyttäjän kysymykseen VAIN yllä olevien rivien perusteella
+2. Mainitse mistä lokista tiedot ovat ({log_file})
+3. Lainaa mielenkiintoisia oikeita rivejä jos relevantteja
+4. Jos rivit eivät vastaa kysymykseen, sano se rehellisesti
+
+TÄRKEÄÄ:
+- ÄLÄ KEKSI rivejä - käytä VAIN yllä olevia oikeita rivejä
+- Vastaa lyhyesti ja ytimekkäästi (max 300 merkkiä)
+- Jos grep ei löytänyt osumia, kerro se"""
+
+        summary_response = call_free_api([
+            {"role": "user", "content": summarize_prompt}
+        ], max_tokens=400, temperature=0.5)
+
+        if not summary_response:
+            # Fallback: just show some raw content
+            return f"[{log_file}] {search_info}: {log_content[:200]}...", log_file
+
+        return summary_response, log_file
+
+    except json.JSONDecodeError as e:
+        LOGGER.error(f"[AI-LOG-SEARCH] JSON parse error: {e}")
+        return "Lokihaun analysointi epäonnistui.", None
+    except Exception as e:
+        LOGGER.error(f"[AI-LOG-SEARCH] Error: {e}")
+        return f"Lokihaussa tapahtui virhe: {e}", None
+
 def read_log_by_date(year, month=None, max_lines=100, sample_from='start'):
     """Read log file directly by date. Returns actual log content."""
     LOGGER.debug(f"Reading log for {year}-{month}, max_lines={max_lines}, sample_from={sample_from}")
@@ -1419,24 +1618,14 @@ def respond_to_questions(bot, trigger):
         asking_about_logs = any(keyword in user_text_lower for keyword in log_keywords)
 
         if asking_about_logs:
-            # Check if user specified a date
-            date_info = parse_date_from_query(user_message)
-            if date_info:
-                year, month = date_info
-                if month:
-                    month_names = ['', 'tammikuun', 'helmikuun', 'maaliskuun', 'huhtikuun',
-                                 'toukokuun', 'kesäkuun', 'heinäkuun', 'elokuun',
-                                 'syyskuun', 'lokakuun', 'marraskuun', 'joulukuun']
-                    month_name = month_names[int(month)] if int(month) <= 12 else f"kuun {month}"
-                    bot.say(f"{trigger.nick}: Haen {month_name} {year} lokin...", trigger.sender)
-                else:
-                    bot.say(f"{trigger.nick}: Haen vuoden {year} lokeja...", trigger.sender)
-            else:
-                # No date, use keyword search
-                search_keywords = extract_keywords(user_message)
-                if search_keywords:
-                    keywords_str = ", ".join(search_keywords)
-                    bot.say(f"{trigger.nick}: Etsin logeista sanoilla: {keywords_str}...", trigger.sender)
+            # Use AI-based log search
+            def say_status(msg):
+                bot.say(f"{trigger.nick}: {msg}", trigger.sender)
+
+            response, log_file = ai_log_search(user_message, say_status)
+            if response:
+                bot.say(f"{trigger.nick}: {response}", trigger.sender)
+            return  # Don't continue to normal response generation
 
         # Generate a response based on the log and the user's message
         # Don't include memory in user prompt - it's in system message
