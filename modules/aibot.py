@@ -1611,9 +1611,8 @@ def respond_to_questions(bot, trigger):
 
         if asking_about_logs:
             # Use AI-based log search
-            # Channel was born in April 2008 - calculate time since
-            from datetime import datetime
-            channel_birth = datetime(2008, 4, 1)
+            # Channel #pulina was created Tue Apr 8 13:11:22 2008
+            channel_birth = datetime(2008, 4, 8, 13, 11, 22)
             now = datetime.now()
             diff = now - channel_birth
             years = diff.days // 365
