@@ -20,6 +20,44 @@ from datetime import datetime, timedelta
 
 LOGGER = logger.get_logger(__name__)
 
+# Cache for holidays
+_holidays_cache = {}
+_holidays_cache_year = None
+
+def get_finnish_holidays(year=None):
+    """Fetch Finnish public holidays from Nager.Date API"""
+    global _holidays_cache, _holidays_cache_year
+
+    if year is None:
+        year = datetime.now().year
+
+    # Return cached if same year
+    if _holidays_cache_year == year and _holidays_cache:
+        return _holidays_cache
+
+    try:
+        response = requests.get(
+            f"https://date.nager.at/api/v3/PublicHolidays/{year}/FI",
+            timeout=10
+        )
+        if response.status_code == 200:
+            holidays = response.json()
+            # Convert to dict with date as key
+            _holidays_cache = {h['date']: h['localName'] for h in holidays}
+            _holidays_cache_year = year
+            LOGGER.info(f"Loaded {len(_holidays_cache)} Finnish holidays for {year}")
+            return _holidays_cache
+    except Exception as e:
+        LOGGER.error(f"Failed to fetch holidays: {e}")
+
+    return {}
+
+def get_today_holiday():
+    """Check if today is a Finnish public holiday"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    holidays = get_finnish_holidays()
+    return holidays.get(today)
+
 # Define base paths
 log_base_path = "/home/rolle/pulina.fi/pulina-days"
 save_path = f"/home/rolle/summaries/{datetime.now().strftime('%Y/%m/%d')}.md"
@@ -273,7 +311,13 @@ def run_schedule(bot):
                     namedaynames_commalist = str(namedaynames_raw).strip('[]').replace('\'', '')
 
                 findate = format_date(now, format='full', locale='fi_FI')
-                bot.say(f'Päivä vaihtui! Tänään on \x02{findate}\x0F. Nimipäiviään viettävät: {namedaynames_commalist}.', '#pulina')
+
+                # Check for holiday
+                holiday = get_today_holiday()
+                if holiday:
+                    bot.say(f'Päivä vaihtui! Tänään on \x02{holiday}\x0F, {findate}. Nimipäiviään viettävät: {namedaynames_commalist}.', '#pulina')
+                else:
+                    bot.say(f'Päivä vaihtui! Tänään on \x02{findate}\x0F. Nimipäiviään viettävät: {namedaynames_commalist}.', '#pulina')
 
                 global_vars['last_midnight_run'] = current_day
                 LOGGER.info("Midnight message sent successfully")
@@ -295,11 +339,17 @@ def run_schedule(bot):
 
                 findate = format_date(now, format='full', locale='fi_FI')
 
+                # Check for holiday
+                holiday = get_today_holiday()
+
                 # Get temperature data
                 temp_current, temp_min, temp_max = get_daily_temperatures()
 
                 # Build the message
-                message = f'Huomenta aamuvirkut! Tänään on \x02{findate}\x0F. Nimipäiviään viettävät: {namedaynames_commalist}.'
+                if holiday:
+                    message = f'Huomenta aamuvirkut! Tänään on \x02{holiday}\x0F, {findate}. Nimipäiviään viettävät: {namedaynames_commalist}.'
+                else:
+                    message = f'Huomenta aamuvirkut! Tänään on \x02{findate}\x0F. Nimipäiviään viettävät: {namedaynames_commalist}.'
 
                 if temp_current is not None and temp_min is not None and temp_max is not None:
                     message += f' Ulkona on nyt {temp_current}°C, tänään kylmimmillään {temp_min}°C ja lämpimimmillään {temp_max}°C. Kivaa päivää!'
