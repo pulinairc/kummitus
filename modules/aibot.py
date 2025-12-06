@@ -927,8 +927,8 @@ def call_free_api(messages, max_tokens=5000, temperature=0.7, frequency_penalty=
                     return None
             else:
                 LOGGER.error(f"[FREE-API] Error {response.status_code}: {response.text[:200]}")
-                # Don't retry on 400/500 errors - they won't fix themselves
-                if response.status_code in [400, 500]:
+                # Don't retry on 400/500/502 errors - they won't fix themselves quickly
+                if response.status_code in [400, 500, 502]:
                     return None
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay)
