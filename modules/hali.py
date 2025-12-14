@@ -10,7 +10,7 @@ from sopel.module import commands, example
 
 verb = ["halaa", "halaa", "halaa", "litistää", "taklaa", "ruttuhalaa",
         "syleilee", "puristaa", "rutistaa", "ruttaa", "pusertaa"]
-flavor = ["tiukasti", "hellästi", "vammasimmalla mahdollisella tavalla", "rakastavaisesti", "söpösti", "kivasti", "lämpimästi", "ja puristaa perseestä",
+flavor = ["tiukasti", "hellästi", "rakastavaisesti", "söpösti", "kivasti", "lämpimästi", "ja puristaa perseestä",
           "tosi tiukasti", "rauhoittavasti", "takaapäin"]
 
 @commands('hali')
