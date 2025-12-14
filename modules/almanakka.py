@@ -80,7 +80,8 @@ global_vars = {
 }
 
 def get_yesterday_log():
-    """Fetches the log from the local path for yesterday's date."""
+    """Fetches the log from the local path for yesterday's date.
+    Filters out bot's own messages to prevent feedback loops in summaries."""
     yesterday = datetime.now() - timedelta(days=1)
     log_date = yesterday.strftime("%Y-%m-%d")
     log_path = os.path.join(log_base_path, f"pul-{log_date}.log")
@@ -89,8 +90,16 @@ def get_yesterday_log():
 
     try:
         with open(log_path, 'r') as log_file:
-            log_content = log_file.read()
-        LOGGER.debug(f"Successfully read log file with {len(log_content)} characters")
+            lines = log_file.readlines()
+
+        # Filter out bot's own messages to prevent summary feedback loop
+        # Bot messages appear as <+kummitus>, <@kummitus>, or < kummitus>
+        filtered_lines = [line for line in lines if '<+kummitus>' not in line
+                          and '<@kummitus>' not in line
+                          and '< kummitus>' not in line]
+
+        log_content = ''.join(filtered_lines)
+        LOGGER.debug(f"Read log file: {len(lines)} lines, {len(filtered_lines)} after filtering bot messages")
         return log_content, log_date
     except FileNotFoundError as e:
         LOGGER.error(f"Log file not found: {e}")
