@@ -235,7 +235,7 @@ FINNISH_STOP_WORDS = {
 }
 
 # Function to get today's messages from dedicated log file
-# Bot's own messages are marked with [SINÄ] prefix so AI knows they're its own
+# Minimal context to avoid topic mixing between users
 def get_todays_messages():
     today_log_file = "/var/www/botit.pulina.fi/public_html/lastlog.log"
 
@@ -247,20 +247,19 @@ def get_todays_messages():
         with open(today_log_file, "r", encoding='utf-8') as f:
             lines = f.readlines()
 
-            # Mark bot's own messages with [SINÄ] prefix so AI knows they're its own
+            # Only keep non-bot messages, mark bot's own with [SINÄ]
             todays_lines = []
-            for line in lines[-100:]:  # Reduced from 150
+            for line in lines[-50:]:
                 line = line.strip()
                 if not line:
                     continue
                 if '<kummitus>' in line.lower():
-                    # Mark as bot's own message
                     todays_lines.append(f"[SINÄ] {line}")
                 else:
                     todays_lines.append(line)
 
-            # Keep only last 40 messages (reduced from 100)
-            todays_lines = todays_lines[-40:]
+            # Keep only last 15 messages - minimal context to reduce topic mixing
+            todays_lines = todays_lines[-15:]
 
         return "\n".join(todays_lines) if todays_lines else ""
 
@@ -1310,11 +1309,17 @@ def generate_response(messages, question, username, user_message_only=""):
 
         # Build system message with memory context
         system_message = (
+            "######## TÄRKEIMMÄT SÄÄNNÖT ########\n"
+            "1. ÄLÄ TOISTA [SINÄ]-viestien sisältöä. Jos juuri selitit jotain, ÄLÄ selitä samaa uudelleen.\n"
+            "2. Jos käyttäjä kuittaa lyhyesti (esim 'joo', 'ok', 'muistin'), vastaa lyhyesti - ÄLÄ toista selitystä.\n"
+            "3. Vastaa VAIN sinulle puhuttelevan käyttäjän viestiin - älä sekoita muiden keskusteluja.\n"
+            "########################################\n\n"
             "EHDOTTOMAT KIELLOT (noudata näitä aina):\n"
             "1. ÄLÄ KOSKAAN kuvaile omaa tyyliäsi tai persoonallisuuttasi - älä sano 'olen suora', 'sanon asiat suoraan', 'ilman turhia kikkailuja', 'rehellisesti', 'kerron niinkuin on' tms.\n"
             "2. ÄLÄ KOSKAAN kysy jatkokysymyksiä - ei 'mitä haluut tietää?', ei 'kerro lisää', ei mitään kysymyksiä.\n"
             "3. ÄLÄ KOSKAAN käytä loppufraaseja - ei 'puhutaan lisää', ei 'kerro jos kiinnostaa'.\n"
             "4. Jos kysytään kuka olet: vastaa lyhyesti että olet kummitus/botti, mutta älä selitä tyyliäsi tai persoonallisuuttasi.\n"
+            "5. ÄLÄ KOSKAAN toista sanoja tai aiheita [SINÄ]-viesteistä - tämä on EHDOTON kielto.\n"
             "\n"
             f"Olet kummitus-botti IRC-kanavalla. Sinun nimesi on 'kummitus'. Vastaat käyttäjälle {username}. "
             "Vastauksen on oltava alle 220 merkkiä pitkä, käytä kokonaista lausetta."
@@ -1348,12 +1353,7 @@ def generate_response(messages, question, username, user_message_only=""):
             "Jos joku puhuu 'mustikkasoppa' ilman <>, se voi olla joko käyttäjästä tai ruuasta kontekstista riippuen.\n"
             "Kun näet '<nimi>', se on AINA henkilö, ei asia.\n"
             "TÄRKEÄÄ: Kiinnitä huomiota KUKA sanoi mitäkin logeissa - älä sekoita kuka linkitti tai kommentoi.\n"
-            "\n\nKRIITTINEN OHJE - ÄLKÄ TOISTA:\n"
-            "Viestit jotka alkavat [SINÄ] ovat SINUN aiempia vastauksiasi. Lue ne huolellisesti.\n"
-            "ÄLÄ KOSKAAN toista samaa asiaa tai aihetta jonka olet jo sanonut [SINÄ]-viesteissä.\n"
-            "Jos [SINÄ]-viestissä puhutaan 'pyykkitelineestä', ÄLÄ mainitse pyykkitelinettä uudelleen.\n"
-            "Jos [SINÄ]-viestissä puhutaan jostain aiheesta, VAIHDA AIHE kokonaan.\n"
-            "Jokaisen vastauksen tulee olla TÄYSIN ERILAINEN kuin [SINÄ]-viestit.\n"
+            "[SINÄ]-VIESTIT = sinun aiemmat vastauksesi. ÄLÄ toista niiden aiheita.\n"
             "\n"
             "Keskusteluhistoriassa viestit näkyvät muodossa 'HH:MM <nickname> viesti'. "
             "Vastaa aina siihen mitä käyttäjä juuri kysyi, älä aiempiin viesteihisi. "
