@@ -208,9 +208,12 @@ def add_mentioned_user(nick):
         save_mentioned_users(mentioned_users)
 
 # Function to check if the user is mentioned in the message
+# Uses word boundaries to avoid matching common words that happen to be nicks
 def find_mentioned_user(message):
     for user in mentioned_users:
-        if user.lower() in message.lower():
+        # Use word boundaries to avoid matching partial words
+        # e.g. "on" shouldn't match in "onko" or "talon"
+        if re.search(r'\b' + re.escape(user) + r'\b', message, re.IGNORECASE):
             return user
     return None
 
@@ -231,7 +234,8 @@ FINNISH_STOP_WORDS = {
     'aha', 'ahaa', 'okei', 'ok', 'hm', 'hmm', 'öö', 'öh', 'aa', 'ah', 'oh', 'noh'
 }
 
-# Function to get today's messages from dedicated log file (INCLUDING bot's own messages)
+# Function to get today's messages from dedicated log file
+# Bot's own messages are marked with [SINÄ] prefix so AI knows they're its own
 def get_todays_messages():
     today_log_file = "/var/www/botit.pulina.fi/public_html/lastlog.log"
 
@@ -243,11 +247,20 @@ def get_todays_messages():
         with open(today_log_file, "r", encoding='utf-8') as f:
             lines = f.readlines()
 
-            # Keep all messages including bot's own, to maintain conversation context
-            todays_lines = [
-                line.strip() for line in lines[-150:]  # Read last 150 lines
-                if line.strip()
-            ][-100:]  # Keep only last 100
+            # Mark bot's own messages with [SINÄ] prefix so AI knows they're its own
+            todays_lines = []
+            for line in lines[-100:]:  # Reduced from 150
+                line = line.strip()
+                if not line:
+                    continue
+                if '<kummitus>' in line.lower():
+                    # Mark as bot's own message
+                    todays_lines.append(f"[SINÄ] {line}")
+                else:
+                    todays_lines.append(line)
+
+            # Keep only last 40 messages (reduced from 100)
+            todays_lines = todays_lines[-40:]
 
         return "\n".join(todays_lines) if todays_lines else ""
 
@@ -1336,10 +1349,11 @@ def generate_response(messages, question, username, user_message_only=""):
             "Kun näet '<nimi>', se on AINA henkilö, ei asia.\n"
             "TÄRKEÄÄ: Kiinnitä huomiota KUKA sanoi mitäkin logeissa - älä sekoita kuka linkitti tai kommentoi.\n"
             "\n\nKRIITTINEN OHJE - ÄLKÄ TOISTA:\n"
-            "Lue keskusteluhistoria huolellisesti. Jos näet '<kummitus> ...' viestejä, ne ovat SINUN aiempia vastauksiasi.\n"
-            "ÄLÄ KOSKAAN toista samaa asiaa kahdesti. Jos olet jo vastannut johonkin, ÄLÄ sano sitä uudelleen.\n"
-            "Jokaisen vastauksen tulee olla TÄYSIN ERILAINEN kuin edelliset. Käytä eri sanoja, eri rakenteita, eri näkökulmia.\n"
-            "Jos huomaat että sanoisit saman asian uudelleen, LOPETA ja sano jotain TÄYSIN MUUTA.\n"
+            "Viestit jotka alkavat [SINÄ] ovat SINUN aiempia vastauksiasi. Lue ne huolellisesti.\n"
+            "ÄLÄ KOSKAAN toista samaa asiaa tai aihetta jonka olet jo sanonut [SINÄ]-viesteissä.\n"
+            "Jos [SINÄ]-viestissä puhutaan 'pyykkitelineestä', ÄLÄ mainitse pyykkitelinettä uudelleen.\n"
+            "Jos [SINÄ]-viestissä puhutaan jostain aiheesta, VAIHDA AIHE kokonaan.\n"
+            "Jokaisen vastauksen tulee olla TÄYSIN ERILAINEN kuin [SINÄ]-viestit.\n"
             "\n"
             "Keskusteluhistoriassa viestit näkyvät muodossa 'HH:MM <nickname> viesti'. "
             "Vastaa aina siihen mitä käyttäjä juuri kysyi, älä aiempiin viesteihisi. "
