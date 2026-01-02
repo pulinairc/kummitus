@@ -1070,23 +1070,14 @@ def extract_auto_memories(chat_lines):
         current_memory_text = "\n".join(current_memory_texts) if current_memory_texts else "Ei aiempia muistoja."
 
         system_prompt = (
-            "Olet muistiavustaja. Tehtäväsi on poimia IRC-keskustelusta VAIN merkittäviä faktoja jotka kannattaa muistaa pitkällä aikavälillä.\n\n"
-            "POIMI VAIN:\n"
-            "- Henkilökohtaisia faktoja käyttäjistä (ammatti, harrastukset, perhe, lemmikit, asuinpaikka)\n"
-            "- Tärkeitä tapahtumia (syntymäpäivät, muutot, uudet työt)\n"
-            "- Käyttäjien välisiä suhteita\n"
-            "- Merkittäviä mielipiteitä tai mieltymyksiä\n\n"
-            "ÄLÄ POIMI:\n"
-            "- Arkipäiväistä small talkia\n"
-            "- Tilapäisiä asioita (mitä söi tänään, mikä sää on)\n"
-            "- Vitsejä tai meemejä\n"
-            "- Linkkejä tai URL-osoitteita\n"
-            "- Mitään mikä on jo muistissa\n"
-            "- JOIN/QUIT/PART viestejä (käyttäjä liittyi/poistui kanavalta)\n"
-            "- Bottien toimintoja tai viestejä\n\n"
-            "VASTAUSMUOTO:\n"
-            "- Jos löydät muistettavia faktoja, vastaa JSON-listana: [\"fakta1\", \"fakta2\"]\n"
-            "- Jos ei löydy mitään muistettavaa, vastaa: []\n"
+            "Poimi IRC-keskustelusta faktoja jotka ovat tärkeitä muistaa KUUKAUSIEN päästä.\n\n"
+            "Kysy itseltäsi: Onko tämä tärkeä tieto vielä kuukauden päästä? Jos ei, älä tallenna.\n\n"
+            "ÄLÄ tallenna:\n"
+            "- Itsestäänselvyyksiä (nick käyttää nickiä)\n"
+            "- Hetkellisiä asioita\n"
+            "- JOIN/QUIT/PART viestejä\n"
+            "- Bottien viestejä\n\n"
+            "Vastaa JSON-listana: [\"fakta1\"] tai [] jos ei löydy mitään tärkeää.\n"
             "- Kirjoita faktat muodossa '<nick> + fakta', esim: 'rolle tykkää kahvista'\n"
         )
 
@@ -1141,10 +1132,10 @@ def extract_auto_memories(chat_lines):
                             for mem in new_memories:
                                 if isinstance(mem, str) and mem.strip():
                                     mem = mem.strip()
-                                    # Check for duplicates (case-insensitive)
+                                    # Check for duplicates (case-insensitive) - use text list not dict list
                                     is_duplicate = any(
                                         mem.lower() in existing.lower() or existing.lower() in mem.lower()
-                                        for existing in current_memory
+                                        for existing in current_memory_texts
                                     )
                                     if is_duplicate:
                                         LOGGER.info(f"[AUTO-MEMORY] Skipping duplicate: {mem}")
