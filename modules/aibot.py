@@ -50,12 +50,11 @@ client = OpenAI()
 # Set OpenAI API key from dotenv or environment variable
 OpenAI.api_key = os.getenv("OPENAI_API_KEY")
 
-# Configuration for API choice - automatically determine based on available keys
-POLLINATIONS_API_KEY = os.getenv("POLLINATIONS_API_KEY")
+# Configuration for API choice
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# Prefer Pollinations if key is set, otherwise use OpenAI
-USE_FREE_API = bool(POLLINATIONS_API_KEY)
+# Use Pollinations anonymous API (no auth needed)
+USE_FREE_API = True
 FREE_API_URL = "https://text.pollinations.ai/openai"
 
 # File paths
@@ -1011,15 +1010,11 @@ def call_free_api(messages, max_tokens=5000, temperature=0.7, frequency_penalty=
                 "max_tokens": max_tokens,
             }
 
-            # Use the actual Pollinations API key if available
-            auth_header = f"Bearer {POLLINATIONS_API_KEY}" if POLLINATIONS_API_KEY else "Bearer dummy-key"
-
             response = requests.post(
                 FREE_API_URL,
                 json=payload,
                 headers={
-                    "Content-Type": "application/json",
-                    "Authorization": auth_header
+                    "Content-Type": "application/json"
                 },
                 timeout=100
             )
@@ -1097,16 +1092,13 @@ def extract_auto_memories(chat_lines):
             "temperature": 0.3
         }
 
-        auth_header = f"Bearer {POLLINATIONS_API_KEY}" if POLLINATIONS_API_KEY else "Bearer dummy-key"
-
-        LOGGER.info(f"[AUTO-MEMORY] Sending request to Pollinations Gemini API (key present: {bool(POLLINATIONS_API_KEY)})")
+        LOGGER.info("[AUTO-MEMORY] Sending request to Pollinations Gemini API (anonymous)")
 
         response = requests.post(
             FREE_API_URL,
             json=payload,
             headers={
-                "Content-Type": "application/json",
-                "Authorization": auth_header
+                "Content-Type": "application/json"
             },
             timeout=15
         )
@@ -1623,8 +1615,7 @@ def aivokuollut_command(bot, trigger):
         response = requests.post(
             FREE_API_URL,
             headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {POLLINATIONS_API_KEY}"
+                "Content-Type": "application/json"
             },
             json={
                 "model": "gemini",
