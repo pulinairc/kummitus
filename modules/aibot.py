@@ -343,18 +343,23 @@ def get_todays_messages():
         with open(today_log_file, "r", encoding='utf-8') as f:
             lines = f.readlines()
 
-            # Only keep non-bot messages, mark bot's own with [SINÄ]
+            # Only keep non-bot messages, mark bot's own with [SINÄ], dedupe bot responses
             todays_lines = []
+            seen_bot_responses = set()
             for line in lines[-40:]:
                 line = line.strip()
                 if not line:
                     continue
                 if '<kummitus>' in line.lower():
+                    # Extract just the message part after the nick
+                    msg_part = line.split('>', 1)[-1].strip() if '>' in line else line
+                    if msg_part in seen_bot_responses:
+                        continue  # Skip duplicate bot response
+                    seen_bot_responses.add(msg_part)
                     todays_lines.append(f"[SINÄ] {line}")
                 else:
                     todays_lines.append(line)
 
-            # Keep only last 15 messages - minimal context to reduce topic mixing
             todays_lines = todays_lines[-30:]
 
         return "\n".join(todays_lines) if todays_lines else ""
