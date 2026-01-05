@@ -121,7 +121,7 @@ def create_summary_with_gpt(log_content):
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {API_KEY}",
                 "HTTP-Referer": "https://github.com/pulinairc/kummitus",
-                "X-Title": "sopel"
+                "X-Title": "kummitus"
             },
             json={
                 "model": API_MODEL,
@@ -176,7 +176,7 @@ def create_short_summary_with_gpt(log_content):
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {API_KEY}",
                 "HTTP-Referer": "https://github.com/pulinairc/kummitus",
-                "X-Title": "sopel"
+                "X-Title": "kummitus"
             },
             json={
                 "model": API_MODEL,

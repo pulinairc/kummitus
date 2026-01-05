@@ -1021,7 +1021,7 @@ def call_api(messages, max_tokens=300, temperature=0.7):
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {API_KEY}",
                     "HTTP-Referer": "https://github.com/pulinairc/kummitus",
-                    "X-Title": "sopel"
+                    "X-Title": "kummitus"
                 },
                 timeout=100
             )
@@ -1108,7 +1108,7 @@ def extract_auto_memories(chat_lines):
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {API_KEY}",
                 "HTTP-Referer": "https://github.com/pulinairc/kummitus",
-                "X-Title": "sopel"
+                "X-Title": "kummitus"
             },
             timeout=15
         )
@@ -1516,7 +1516,7 @@ def aivokuollut_command(bot, trigger):
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {API_KEY}",
                 "HTTP-Referer": "https://github.com/pulinairc/kummitus",
-                "X-Title": "sopel"
+                "X-Title": "kummitus"
             },
             json={
                 "model": API_MODEL,
