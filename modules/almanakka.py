@@ -14,11 +14,18 @@ import os
 import json
 from babel.dates import format_date, format_datetime, format_time
 from sopel import logger
-from openai import OpenAI
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 
 LOGGER = logger.get_logger(__name__)
+
+# Load environment variables
+load_dotenv()
+
+# API Configuration
+API_URL = "https://openrouter.ai/api/v1/chat/completions"
+API_KEY = os.getenv("OPENROUTER_API_KEY")
+API_MODEL = "google/gemini-2.5-flash-lite"
 
 # Cache for holidays
 _holidays_cache = {}
@@ -63,14 +70,6 @@ log_base_path = "/home/rolle/pulina.fi/pulina-days"
 save_path = f"/home/rolle/summaries/{datetime.now().strftime('%Y/%m/%d')}.md"
 names_file = '/home/rolle/.sopel/modules/nimipaivat.json'
 
-# Load environment variables from .env file
-load_dotenv()
-
-# Load OpenAI as client
-client = OpenAI()
-
-# Set OpenAI API key from dotenv or environment variable
-OpenAI.api_key = os.getenv("OPENAI_API_KEY")
 
 # Initialize global vars with yesterday's date to ensure first run works
 yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
@@ -116,13 +115,27 @@ def create_summary_with_gpt(log_content):
     )
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=5000
+        response = requests.post(
+            API_URL,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {API_KEY}",
+                "HTTP-Referer": "https://github.com/pulinairc/kummitus",
+                "X-Title": "sopel"
+            },
+            json={
+                "model": API_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 5000
+            },
+            timeout=120
         )
-        summary = response.choices[0].message.content.strip()
-        return summary
+        if response.status_code == 200:
+            result = response.json()
+            if "choices" in result and len(result["choices"]) > 0:
+                return result["choices"][0]["message"]["content"].strip()
+        LOGGER.error(f"API error: {response.status_code}")
+        return "Summary could not be generated."
     except Exception as e:
         LOGGER.error(f"Failed to generate summary: {e}")
         return "Summary could not be generated."
@@ -150,21 +163,34 @@ def save_summary_to_file(summary, log_date):
     LOGGER.info(f"Summary saved to {file_path}")
 
 def create_short_summary_with_gpt(log_content):
-    """Generates a short summary (under 220 characters) using GPT-4o-mini."""
+    """Generates a short summary (under 220 characters)."""
     prompt = (
         "Kirjoita alle 220 merkkiä lyhyt yhteenveto seuraavasta keskustelusta, tarvittaessa keskity vain kohokohtiin.\n\n"
         f"{log_content}"
     )
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=150
+        response = requests.post(
+            API_URL,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {API_KEY}",
+                "HTTP-Referer": "https://github.com/pulinairc/kummitus",
+                "X-Title": "sopel"
+            },
+            json={
+                "model": API_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 150
+            },
+            timeout=60
         )
-        short_summary = response.choices[0].message.content.strip()
-        return short_summary
-
+        if response.status_code == 200:
+            result = response.json()
+            if "choices" in result and len(result["choices"]) > 0:
+                return result["choices"][0]["message"]["content"].strip()
+        LOGGER.error(f"API error: {response.status_code}")
+        return "Short summary could not be generated."
     except Exception as e:
         LOGGER.error(f"Failed to generate short summary: {e}")
         return "Short summary could not be generated."
