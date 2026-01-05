@@ -25,6 +25,10 @@ LOGGER = logger.get_logger(__name__)
 COOLDOWN_PERIOD = 14400
 last_response_time = None
 
+# Flood protection
+FLOOD_INTERVAL = 3
+user_last_message = {}
+
 # Files
 LOG_FILE = '/home/rolle/.sopel/pulina.log'
 MENTIONED_USERS_FILE = "mentioned_users.json"
@@ -1537,7 +1541,7 @@ def aivokuollut_command(bot, trigger):
 # Sopel trigger function to respond to questions when bot's name is mentioned or in private messages
 @sopel.module.rule(r'(.*)')
 def respond_to_questions(bot, trigger):
-    global last_response_time
+    global last_response_time, user_last_message
 
     # Check if the nickname is "Orvokki" and ignore the message if it is
     if trigger.nick == "Orvokki":
@@ -1550,6 +1554,13 @@ def respond_to_questions(bot, trigger):
     msg_lower = trigger.group(0).lower()
     bot_mentioned = 'kummitu' in msg_lower  # Common stem for all forms
     if bot_mentioned or trigger.is_privmsg:
+        # Flood protection
+        now = time.time()
+        nick = trigger.nick.lower()
+        if nick in user_last_message and (now - user_last_message[nick]) < FLOOD_INTERVAL:
+            bot.say(f"{trigger.nick}: Lähetit liian monta viestiä peräkkäin, odota hetki ja kokeile uudestaan.")
+            return
+        user_last_message[nick] = now
         # Do not reply if the private message is !reload or !restart
         if trigger.is_privmsg and trigger.group(0).startswith("!"):
             return
