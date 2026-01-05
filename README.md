@@ -6,7 +6,7 @@ Current version of the IRC bot kummitus (Finnish for "ghost"). Mostly Finnish st
 
 ```ini
 [Unit]
-Description=Sopel IRC Bot (version 7.1.7, Python 3.9 via pyenv)
+Description=Sopel IRC Bot
 After=syslog.target network.target mongodb.service
 
 [Service]
