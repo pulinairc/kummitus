@@ -105,7 +105,7 @@ def save_memory(memory):
         LOGGER.debug(f"Error saving memory: {e}")
 
 # Free model for consolidation to save tokens
-FREE_MODEL = "mistralai/devstral-2505:free"
+FREE_MODEL = "mistralai/devstral-2512:free"
 
 def call_free_api(prompt, max_tokens=1000):
     """Call free model for consolidation tasks"""
