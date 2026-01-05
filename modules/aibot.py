@@ -1550,8 +1550,8 @@ def respond_to_questions(bot, trigger):
     if trigger.nick == "Orvokki":
         return
 
-    # Auto memory: check every 10 messages for memorable facts (run in background thread)
-    threading.Thread(target=check_auto_memory, daemon=True).start()
+    # Auto memory disabled - was burning too many tokens
+    # threading.Thread(target=check_auto_memory, daemon=True).start()
 
     # Match all Finnish declensions of "kummitus" (kummitusta, kummituksen, kummitukselle, etc.)
     msg_lower = trigger.group(0).lower()
