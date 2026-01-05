@@ -52,10 +52,12 @@ OpenAI.api_key = os.getenv("OPENAI_API_KEY")
 
 # Configuration for API choice
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-# Use Pollinations anonymous API (no auth needed)
+# Use OpenRouter API
 USE_FREE_API = True
-FREE_API_URL = "https://text.pollinations.ai/openai"
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_MODEL = "google/gemini-2.5-flash-lite"
 
 # File paths
 MEMORY_FILE = "memory.json"
@@ -997,24 +999,25 @@ def extract_sender_from_line(line):
     return None
 
 def call_free_api(messages, max_tokens=5000, temperature=0.7, frequency_penalty=0.3, presence_penalty=0.2):
-    """Call the Pollinations API with retry logic"""
+    """Call the OpenRouter API with retry logic"""
     max_retries = 3
     retry_delay = 5  # seconds
 
     for attempt in range(max_retries):
         try:
-            # openai model doesn't support temperature, frequency_penalty, presence_penalty
             payload = {
-                "model": "openai",
+                "model": OPENROUTER_MODEL,
                 "messages": messages,
                 "max_tokens": max_tokens,
+                "temperature": temperature,
             }
 
             response = requests.post(
-                FREE_API_URL,
+                OPENROUTER_API_URL,
                 json=payload,
                 headers={
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}"
                 },
                 timeout=100
             )
@@ -1083,7 +1086,7 @@ def extract_auto_memories(chat_lines):
         )
 
         payload = {
-            "model": "gemini",
+            "model": OPENROUTER_MODEL,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -1092,13 +1095,14 @@ def extract_auto_memories(chat_lines):
             "temperature": 0.3
         }
 
-        LOGGER.info("[AUTO-MEMORY] Sending request to Pollinations Gemini API (anonymous)")
+        LOGGER.info("[AUTO-MEMORY] Sending request to OpenRouter API")
 
         response = requests.post(
-            FREE_API_URL,
+            OPENROUTER_API_URL,
             json=payload,
             headers={
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}"
             },
             timeout=15
         )
@@ -1613,12 +1617,13 @@ def aivokuollut_command(bot, trigger):
 
     try:
         response = requests.post(
-            FREE_API_URL,
+            OPENROUTER_API_URL,
             headers={
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}"
             },
             json={
-                "model": "gemini",
+                "model": OPENROUTER_MODEL,
                 "messages": [
                     {"role": "system", "content": AIVOKUOLLUT_PERSONA},
                     {"role": "user", "content": prompt}
