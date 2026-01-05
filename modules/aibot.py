@@ -1017,7 +1017,8 @@ def call_free_api(messages, max_tokens=5000, temperature=0.7, frequency_penalty=
                 json=payload,
                 headers={
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}"
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "X-Title": "sopel"
                 },
                 timeout=100
             )
@@ -1102,7 +1103,8 @@ def extract_auto_memories(chat_lines):
             json=payload,
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}"
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "X-Title": "sopel"
             },
             timeout=15
         )
@@ -1620,7 +1622,8 @@ def aivokuollut_command(bot, trigger):
             OPENROUTER_API_URL,
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}"
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "X-Title": "sopel"
             },
             json={
                 "model": OPENROUTER_MODEL,
