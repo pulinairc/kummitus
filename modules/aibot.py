@@ -63,7 +63,7 @@ API_MODEL = "google/gemini-2.5-flash-lite"
 MEMORY_FILE = "memory.json"
 
 # Memory settings
-MEMORY_MAX_ITEMS = 750   # Maximum number of memories to keep
+MEMORY_MAX_ITEMS = 200   # Maximum number of memories to keep
 
 # Load or create memory list
 def load_memory():
@@ -104,7 +104,39 @@ def save_memory(memory):
     except Exception as e:
         LOGGER.debug(f"Error saving memory: {e}")
 
-# AI-based memory consolidation - processes in batches due to API limits
+# Free model for consolidation to save tokens
+FREE_MODEL = "mistralai/devstral-2505:free"
+
+def call_free_api(prompt, max_tokens=1000):
+    """Call free model for consolidation tasks"""
+    try:
+        response = requests.post(
+            API_URL,
+            json={
+                "model": FREE_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": max_tokens,
+                "temperature": 0.3
+            },
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {API_KEY}",
+                "HTTP-Referer": "https://github.com/pulinairc/kummitus",
+                "X-Title": "kummitus"
+            },
+            timeout=60
+        )
+        if response.status_code == 200:
+            result = response.json()
+            if "choices" in result and len(result["choices"]) > 0:
+                return result["choices"][0]["message"]["content"].strip()
+        LOGGER.error(f"Free API error: {response.status_code}")
+        return None
+    except Exception as e:
+        LOGGER.error(f"Free API exception: {e}")
+        return None
+
+# AI-based memory consolidation using FREE model
 def consolidate_memory_with_ai():
     global memory
 
@@ -112,32 +144,30 @@ def consolidate_memory_with_ai():
         LOGGER.info("[MEMORY-AI] Too few memories to consolidate")
         return
 
-    LOGGER.info(f"[MEMORY-AI] Starting AI consolidation of {len(memory)} memories")
+    LOGGER.info(f"[MEMORY-AI] Starting AI consolidation of {len(memory)} memories (using free model)")
 
     memory_texts = [m.get("text", "") if isinstance(m, dict) else str(m) for m in memory]
 
-    # Process in batches of 50 to stay within API limits
-    BATCH_SIZE = 50
+    # Process in batches of 30 for free model
+    BATCH_SIZE = 30
     all_consolidated = []
-
-    # Only process first 10 batches max to avoid rate limits
-    max_batches = min(10, (len(memory_texts) + BATCH_SIZE - 1) // BATCH_SIZE)
+    max_batches = min(5, (len(memory_texts) + BATCH_SIZE - 1) // BATCH_SIZE)
 
     for batch_num in range(max_batches):
         i = batch_num * BATCH_SIZE
         batch = memory_texts[i:i+BATCH_SIZE]
         batch_content = "\n".join(batch)
 
-        prompt = f"""Siivoa muistilista. Palauta VAIN JSON-lista.
-POISTA: turhat, duplikaatit, väärät
-SÄILYTÄ: oikeat faktat, ohjeet
+        prompt = f"""Clean list. Return JSON array only.
+REMOVE: duplicates, wrong info
+KEEP: facts
 
 {batch_content}
 
-Vastaa: ["muisto1", ...]"""
+["item1", ...]"""
 
         try:
-            response = call_api([{"role": "user", "content": prompt}], max_tokens=2000, temperature=0.3)
+            response = call_free_api(prompt, max_tokens=1000)
 
             if response:
                 json_match = re.search(r'\[.*?\]', response, re.DOTALL)
@@ -150,19 +180,17 @@ Vastaa: ["muisto1", ...]"""
             else:
                 all_consolidated.extend(batch)
 
-            # Delay between batches to avoid rate limiting
-            time.sleep(2)
+            time.sleep(3)
         except Exception as e:
             LOGGER.error(f"[MEMORY-AI] Batch error: {e}")
             all_consolidated.extend(batch)
 
-    # Add remaining memories that weren't processed
+    # Add remaining
     remaining_start = max_batches * BATCH_SIZE
     if remaining_start < len(memory_texts):
         all_consolidated.extend(memory_texts[remaining_start:])
 
-    # Remove duplicates and limit to 750
-    unique = list(dict.fromkeys(all_consolidated))[:750]
+    unique = list(dict.fromkeys(all_consolidated))[:200]
 
     today = datetime.now().strftime('%Y-%m-%d')
     consolidated = [{"text": m, "added": today, "permanent": True} for m in unique]
@@ -343,7 +371,7 @@ def get_todays_messages():
         with open(today_log_file, "r", encoding='utf-8') as f:
             lines = f.readlines()
 
-            # Only keep non-bot messages, mark bot's own with [SINÄ], dedupe bot responses
+            # Dedupe bot responses to avoid repetition loops
             todays_lines = []
             seen_bot_responses = set()
             for line in lines[-40:]:
@@ -351,14 +379,11 @@ def get_todays_messages():
                 if not line:
                     continue
                 if '<kummitus>' in line.lower():
-                    # Extract just the message part after the nick
                     msg_part = line.split('>', 1)[-1].strip() if '>' in line else line
                     if msg_part in seen_bot_responses:
-                        continue  # Skip duplicate bot response
+                        continue
                     seen_bot_responses.add(msg_part)
-                    todays_lines.append(f"[SINÄ] {line}")
-                else:
-                    todays_lines.append(line)
+                todays_lines.append(line)
 
             todays_lines = todays_lines[-30:]
 
@@ -483,33 +508,33 @@ def ai_log_search(user_question, bot_say_func=None):
         newest_daily = "ei saatavilla"
 
     # Step 1: Ask AI to analyze the question and decide search strategy
-    analyze_prompt = f"""Olet lokihakuavustaja. Käyttäjä kysyy IRC-kanavan logeista.
+    analyze_prompt = f"""You are a log search assistant. User asks about IRC channel logs.
 
-KÄYTETTÄVISSÄ OLEVAT LOGIT:
-- Kuukausilogit: {oldest_monthly} - {newest_monthly} (tiedostot: pulina-YYYY-MM.log)
-- Päivälogit: {oldest_daily} - {newest_daily} (tiedostot: pul-YYYY-MM-DD.log)
+AVAILABLE LOGS:
+- Monthly logs: {oldest_monthly} - {newest_monthly} (files: pulina-YYYY-MM.log)
+- Daily logs: {oldest_daily} - {newest_daily} (files: pul-YYYY-MM-DD.log)
 
-KÄYTTÄJÄN KYSYMYS: {user_question}
+USER QUESTION: {user_question}
 
-Analysoi kysymys ja päätä hakustrategia. Vastaa TÄSMÄLLEEN tässä JSON-muodossa:
+Analyze and decide search strategy. Respond EXACTLY in this JSON format:
 {{
     "log_file": "pulina-2012-06.log",
     "search_type": "random_sample",
     "grep_pattern": null,
     "max_lines": 50,
-    "explanation": "Käyttäjä kysyy kesäkuun 2012 keskusteluista"
+    "explanation": "User asks about June 2012 conversations"
 }}
 
-SÄÄNNÖT:
-- log_file: Valitse YKSI tiedosto kysymyksen perusteella (esim. "pulina-2012-06.log" tai "pul-2024-12-04.log")
-- search_type: "random_sample" (satunnaisia rivejä), "grep" (etsi tiettyä sanaa/nimeä), "first_lines" (lokin alku), "last_lines" (lokin loppu)
-- grep_pattern: Jos search_type on "grep", anna hakusana (esim. käyttäjänimi tai aihe). Muuten null.
-- max_lines: Montako riviä haetaan (1-100). Jos käyttäjä pyytää yhtä tiettyä riviä, käytä 1.
-- explanation: Lyhyt selitys miksi valitsit tämän
+RULES:
+- log_file: Choose ONE file based on question (e.g. "pulina-2012-06.log" or "pul-2024-12-04.log")
+- search_type: "random_sample" (random lines), "grep" (search word/name), "first_lines" (log start), "last_lines" (log end)
+- grep_pattern: If search_type is "grep", provide search term. Otherwise null.
+- max_lines: How many lines (1-100). If user asks for one specific line, use 1.
+- explanation: Brief reason for choice
 
-Jos kysymys on epäselvä tai päivämäärää ei voi päätellä, valitse uusin kuukausiloki.
-Jos käyttäjä kysyy "kaikkien aikojen ensimmäistä", valitse VANHIN loki (pulina-2008-04.log).
-Vastaa VAIN JSON, ei muuta tekstiä."""
+If question is unclear or date can't be determined, choose newest monthly log.
+If user asks for "first ever", choose OLDEST log (pulina-2008-04.log).
+Respond ONLY JSON, no other text."""
 
     try:
         # Call AI to analyze
@@ -615,21 +640,21 @@ Vastaa VAIN JSON, ei muuta tekstiä."""
 
         # Truncate log content to fit API limit (max 7000 chars for input, leave room for prompt)
         if len(log_content) > 5000:
-            log_content = log_content[:5000] + "\n... (katkaistiin)"
+            log_content = log_content[:5000] + "\n... (truncated)"
 
-        summarize_prompt = f"""Olet IRC-kanavan #pulina arkistonhoitaja. Käyttäjä kysyi: "{user_question}"
+        summarize_prompt = f"""You are IRC channel #pulina archivist. User asked: "{user_question}"
 
-Hait lokitiedostosta {log_file} ({search_info}).
+Searched log file {log_file} ({search_info}).
 
-LOKIN SISÄLTÖ:
+LOG CONTENT:
 {log_content}
 
-TEHTÄVÄ: Vastaa käyttäjän kysymykseen max 220 merkillä.
-- Jos käyttäjä pyytää tiettyä riviä (esim. "ensimmäinen rivi"), lainaa se
-- Jos käyttäjä hakee tiettyä henkilöä tai aihetta, kerro mitä löytyi
-- Jos käyttäjä kysyy yleisesti, tee yhteenveto
-- Mainitse lokitiedosto ({log_file})
-- ÄLÄ keksi mitään, käytä vain yllä olevia tietoja"""
+TASK: Answer user's question in max 220 characters. RESPOND IN FINNISH.
+- If user requests specific line (e.g. "first line"), quote it
+- If user searches for person/topic, report findings
+- If user asks generally, summarize
+- Mention log file ({log_file})
+- DON'T invent anything, use only above data"""
 
         LOGGER.info(f"[AI-LOG-SEARCH] Calling summary API with {len(log_content)} chars of content")
         summary_response = call_api([
@@ -1072,50 +1097,48 @@ def extract_auto_memories(chat_lines):
         # Get current memories to avoid duplicates
         current_memory = load_memory()
         LOGGER.info(f"[AUTO-MEMORY] Current memory count: {len(current_memory)}")
-        # Extract text from memory items (new format is dict with "text" key)
         current_memory_texts = [m.get("text", "") if isinstance(m, dict) else str(m) for m in current_memory]
-        current_memory_text = "\n".join(current_memory_texts) if current_memory_texts else "Ei aiempia muistoja."
 
-        system_prompt = (
-            "Poimi IRC-keskustelusta faktoja jotka ovat tärkeitä muistaa KUUKAUSIEN päästä.\n\n"
-            "Kysy itseltäsi: Onko tämä tärkeä tieto vielä kuukauden päästä? Jos ei, älä tallenna.\n\n"
-            "ÄLÄ tallenna:\n"
-            "- Itsestäänselvyyksiä (nick käyttää nickiä)\n"
-            "- Hetkellisiä asioita\n"
-            "- JOIN/QUIT/PART viestejä\n"
-            "- Bottien viestejä\n\n"
-            "Vastaa JSON-listana: [\"fakta1\"] tai [] jos ei löydy mitään tärkeää.\n"
-            "- Kirjoita faktat muodossa '<nick> + fakta', esim: 'rolle tykkää kahvista'\n"
-        )
+        # Detailed prompt for memory extraction
+        prompt = f"""Extract important LONG-TERM facts from IRC chat. Return JSON array.
 
-        user_prompt = (
-            f"NYKYISET MUISTOT (älä toista näitä):\n{current_memory_text}\n\n"
-            f"ANALYSOITAVAT VIESTIT:\n{chat_lines}\n\n"
-            "Poimi merkittävät faktat JSON-listana tai [] jos ei löydy:"
-        )
+NEVER SAVE:
+- JOIN/PART/QUIT/KICK messages
+- Temporary things ("I'm eating", "brb", "going to sleep")
+- Bot messages (from <kummitus>)
+- Greetings, small talk
+- Things that won't matter in a month
 
-        payload = {
-            "model": API_MODEL,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            "max_tokens": 500,
-            "temperature": 0.3
-        }
+SAVE ONLY:
+- Personal facts about users (job, hobbies, pets, location, preferences)
+- Important life events (marriage, kids, new job, moving)
+- Technical skills or tools someone uses
+- Strong opinions or preferences
 
-        LOGGER.info("[AUTO-MEMORY] Sending request to API")
+FORMAT: ["nick likes/does/is/has X", ...]
+
+CHAT:
+{chat_lines}
+
+Return [] if nothing worth remembering. JSON array only:"""
+
+        LOGGER.info("[AUTO-MEMORY] Sending request to free API")
 
         response = requests.post(
             API_URL,
-            json=payload,
+            json={
+                "model": FREE_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 300,
+                "temperature": 0.3
+            },
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {API_KEY}",
                 "HTTP-Referer": "https://github.com/pulinairc/kummitus",
                 "X-Title": "kummitus"
             },
-            timeout=15
+            timeout=30
         )
 
         LOGGER.info(f"[AUTO-MEMORY] API response status: {response.status_code}")
@@ -1353,17 +1376,17 @@ def generate_response(messages, question, username, user_message_only=""):
 
         # Add date-based log content if available (priority over keyword search)
         if date_based_content:
-            prompt += f"LOKIN SISÄLTÖ (oikeat rivit lokista):\n{date_based_content}\n\n"
-            prompt += "TÄRKEÄÄ: Yllä olevat rivit ovat OIKEITA rivejä lokitiedostosta. Käytä VAIN näitä rivejä vastauksessasi. ÄLÄ keksi omia rivejä.\n\n"
+            prompt += f"LOG CONTENT (real lines from log):\n{date_based_content}\n\n"
+            prompt += "IMPORTANT: Above lines are REAL lines from log file. Use ONLY these lines in your response. DON'T invent your own.\n\n"
         elif date_error:
-            prompt += f"LOKIN VIRHE: {date_error}\n\n"
+            prompt += f"LOG ERROR: {date_error}\n\n"
 
         # Add historical context if available (only if no date-based content)
         if historical_context and not date_based_content:
             prompt += historical_context
 
         # Add recent context
-        prompt += f"Tähänastiset keskustelut:\n{recent_context}\n\n"
+        prompt += f"Recent conversation:\n{recent_context}\n\n"
 
         if url_contents:
             prompt += "\n".join(url_contents) + "\n"
@@ -1414,17 +1437,18 @@ def generate_response(messages, question, username, user_message_only=""):
         LOGGER.debug(f"Full prompt length: {len(prompt)}")
         LOGGER.debug(f"Prompt structure:\n{prompt[:500]}...")  # Show more of the prompt structure
 
-        # Build system message
+        # Build system message in English for better model performance
         system_message = (
-            f"IRC-keskustelu. Vastaat käyttäjälle {username}. "
-            f"Max 220 merkkiä. Päivä: {datetime.now().strftime('%Y-%m-%d %H:%M')}.\n\n"
-            "SÄÄNNÖT:\n"
-            "1. ÄLÄ KOSKAAN toista samaa vastausta! Jos [SINÄ]-viesteissä näkyy jo vastaus, keksi ERI vastaus.\n"
-            "2. ÄLÄ sano kuka tai mitä olet. Älä mainitse nimeäsi. Vastaa vain asiaan.\n"
-            "3. Jos et tiedä, sano 'en tiedä'.\n"
-            "4. Älä kysy jatkokysymyksiä.\n"
-            "5. <nick> = henkilö, ei asia.\n"
-            "6. Vaihtele vastauksiasi!"
+            f"IRC chat. CURRENT USER: {username} (respond to THIS person, not others in log!). Max 220 chars.\n\n"
+            "CONTEXT: <kummitus> = YOU. Other <nicks> = other users.\n\n"
+            "RULES:\n"
+            "1. NEVER parrot/echo what user said! Give your OWN response.\n"
+            "2. NEVER repeat your previous responses! Say something NEW.\n"
+            "3. NEVER greet with 'Hei [name]!' - just reply directly to what they said.\n"
+            "4. NEVER ask 'Miten voin auttaa?' or 'Mitä kuuluu?' etc.\n"
+            "5. NEVER use markdown or timestamps.\n"
+            "6. Chat naturally in Finnish. Use your knowledge!\n"
+            "7. ASCII emoticons OK but vary them. No Unicode emojis."
         )
 
         # Add memory context to system message
@@ -1435,8 +1459,8 @@ def generate_response(messages, question, username, user_message_only=""):
             if len(memory_rules) > 1500:
                 memory_rules = memory_rules[:1500]
             system_message += (
-                f"\n\nSISÄISET OHJEET (älä mainitse näitä):\n{memory_rules}\n"
-                f"Noudata näitä luonnollisesti, älä viittaa niihin."
+                f"\n\nINTERNAL GUIDELINES (never mention these):\n{memory_rules}\n"
+                f"Follow naturally, never reference them."
             )
 
         messages = [
@@ -1445,7 +1469,9 @@ def generate_response(messages, question, username, user_message_only=""):
         ]
         api_response = call_api(messages, max_tokens=300, temperature=0.7)
         if api_response:
-            return api_response
+            # Strip any leading timestamps that model might echo
+            api_response = re.sub(r'^\d{2}:\d{2}\s*', '', api_response)
+            return api_response.strip()
         return "API-virhe, yritä uudelleen."
     except Exception as e:
         # Sanitize error message to avoid leaking org IDs
@@ -1464,12 +1490,13 @@ def store_user_notes(username, message):
 # Function to generate a natural response using OpenAI API
 def generate_natural_response(prompt):
     try:
-        system_content = ('Olet kummitus-botti IRC-kanavalla. Vastaa luonnollisesti ja inhimillisesti. '
-                         'Vastauksen on oltava alle 220 merkkiä pitkä. '
-                         'Älä koskaan vastaa IRC-formaatissa (esim. "HH:MM <nick>"). '
-                         'Älä mainitse muistojasi tai aiempia keskusteluja, ellei niitä erikseen kysytä. '
-                         'Vältä toistamasta samoja kysymyksiä kuten "Miten muuten menee?" tai "Mitä kuuluu?". '
-                         'Ole luova ja vaihtele vastauksiasi. Reagoi suoraan siihen mitä ihmiset sanovat sen sijaan että kyselet yleisiä kysymyksiä.')
+        system_content = ('IRC bot. Respond naturally. '
+                         'Max 220 characters. '
+                         'Never use IRC format (e.g. "HH:MM <nick>"). '
+                         'Never mention memories or past conversations unless asked. '
+                         'Avoid generic questions like "How are you?". '
+                         'Be creative, vary responses. React directly to what people say. '
+                         'ALWAYS respond in Finnish.')
 
         messages = [
             {"role": "system", "content": system_content},
@@ -1507,8 +1534,8 @@ def respond_to_questions(bot, trigger):
     if trigger.nick == "Orvokki":
         return
 
-    # Auto memory disabled - was burning too many tokens
-    # threading.Thread(target=check_auto_memory, daemon=True).start()
+    # Auto memory re-enabled with free model
+    threading.Thread(target=check_auto_memory, daemon=True).start()
 
     # Match all Finnish declensions of "kummitus" (kummitusta, kummituksen, kummitukselle, etc.)
     msg_lower = trigger.group(0).lower()
@@ -1677,7 +1704,7 @@ def respond_to_questions(bot, trigger):
         sender = extract_sender_from_line(random_line)
 
         # Create a prompt for OpenAI based on the selected line
-        prompt = f"Vastaa luonnollisesti seuraavaan viestiin: {random_line}"
+        prompt = f"Respond naturally to this message: {random_line}"
 
         # Generate a response using OpenAI
         response = generate_natural_response(prompt)
