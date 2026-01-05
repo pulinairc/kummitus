@@ -50,14 +50,10 @@ client = OpenAI()
 # Set OpenAI API key from dotenv or environment variable
 OpenAI.api_key = os.getenv("OPENAI_API_KEY")
 
-# Configuration for API choice
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-
-# Use OpenRouter API
-USE_FREE_API = True
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_MODEL = "google/gemini-2.5-flash-lite"
+# API Configuration
+API_URL = "https://openrouter.ai/api/v1/chat/completions"
+API_KEY = os.getenv("OPENROUTER_API_KEY")
+API_MODEL = "google/gemini-2.5-flash-lite"
 
 # File paths
 MEMORY_FILE = "memory.json"
@@ -137,7 +133,7 @@ SÄILYTÄ: oikeat faktat, ohjeet
 Vastaa: ["muisto1", ...]"""
 
         try:
-            response = call_free_api([{"role": "user", "content": prompt}], max_tokens=2000, temperature=0.3)
+            response = call_api([{"role": "user", "content": prompt}], max_tokens=2000, temperature=0.3)
 
             if response:
                 json_match = re.search(r'\[.*?\]', response, re.DOTALL)
@@ -345,7 +341,7 @@ def get_todays_messages():
 
             # Only keep non-bot messages, mark bot's own with [SINÄ]
             todays_lines = []
-            for line in lines[-50:]:
+            for line in lines[-20:]:
                 line = line.strip()
                 if not line:
                     continue
@@ -508,7 +504,7 @@ Vastaa VAIN JSON, ei muuta tekstiä."""
 
     try:
         # Call AI to analyze
-        analysis_response = call_free_api([
+        analysis_response = call_api([
             {"role": "user", "content": analyze_prompt}
         ], max_tokens=300, temperature=0.3)
 
@@ -627,7 +623,7 @@ TEHTÄVÄ: Vastaa käyttäjän kysymykseen max 220 merkillä.
 - ÄLÄ keksi mitään, käytä vain yllä olevia tietoja"""
 
         LOGGER.info(f"[AI-LOG-SEARCH] Calling summary API with {len(log_content)} chars of content")
-        summary_response = call_free_api([
+        summary_response = call_api([
             {"role": "user", "content": summarize_prompt}
         ], max_tokens=400)
 
@@ -998,26 +994,26 @@ def extract_sender_from_line(line):
         return match.group(1)
     return None
 
-def call_free_api(messages, max_tokens=5000, temperature=0.7, frequency_penalty=0.3, presence_penalty=0.2):
-    """Call the OpenRouter API with retry logic"""
+def call_api(messages, max_tokens=300, temperature=0.7):
+    """Call the chat API with retry logic"""
     max_retries = 3
     retry_delay = 5  # seconds
 
     for attempt in range(max_retries):
         try:
             payload = {
-                "model": OPENROUTER_MODEL,
+                "model": API_MODEL,
                 "messages": messages,
                 "max_tokens": max_tokens,
                 "temperature": temperature,
             }
 
             response = requests.post(
-                OPENROUTER_API_URL,
+                API_URL,
                 json=payload,
                 headers={
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Authorization": f"Bearer {API_KEY}",
                     "X-Title": "sopel"
                 },
                 timeout=100
@@ -1028,11 +1024,11 @@ def call_free_api(messages, max_tokens=5000, temperature=0.7, frequency_penalty=
                 if "choices" in result and len(result["choices"]) > 0:
                     return result["choices"][0]["message"]["content"].strip()
                 else:
-                    LOGGER.error(f"[FREE-API] Unexpected response format: {result}")
+                    LOGGER.error(f"[API] Unexpected response format: {result}")
                     # Don't retry for format errors
                     return None
             else:
-                LOGGER.error(f"[FREE-API] Error {response.status_code}: {response.text[:200]}")
+                LOGGER.error(f"[API] Error {response.status_code}: {response.text[:200]}")
                 # Don't retry on 400/500/502 errors - they won't fix themselves quickly
                 if response.status_code in [400, 500, 502]:
                     return None
@@ -1042,7 +1038,7 @@ def call_free_api(messages, max_tokens=5000, temperature=0.7, frequency_penalty=
                 return None
 
         except Exception as e:
-            LOGGER.error(f"[FREE-API] Exception: {e}")
+            LOGGER.error(f"[API] Exception: {e}")
             if attempt < max_retries - 1:
                 time.sleep(retry_delay)
                 continue
@@ -1087,7 +1083,7 @@ def extract_auto_memories(chat_lines):
         )
 
         payload = {
-            "model": OPENROUTER_MODEL,
+            "model": API_MODEL,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -1096,14 +1092,14 @@ def extract_auto_memories(chat_lines):
             "temperature": 0.3
         }
 
-        LOGGER.info("[AUTO-MEMORY] Sending request to OpenRouter API")
+        LOGGER.info("[AUTO-MEMORY] Sending request to API")
 
         response = requests.post(
-            OPENROUTER_API_URL,
+            API_URL,
             json=payload,
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Authorization": f"Bearer {API_KEY}",
                 "X-Title": "sopel"
             },
             timeout=15
@@ -1297,20 +1293,20 @@ def generate_response(messages, question, username, user_message_only=""):
         else:
             LOGGER.debug("Not searching historical logs (not asking about history)")
 
-        # For recent context, just use last 100 lines from today (for general conversation flow)
+        # For recent context, use last 20 lines from today
         recent_context = get_todays_messages()
         if not recent_context:
             # Fallback to recent messages from main log
             with open(LOG_FILE, "r", encoding='utf-8') as f:
                 all_lines = f.readlines()
                 recent_context = [
-                    line.strip() for line in all_lines[-100:]
+                    line.strip() for line in all_lines[-20:]
                     if line.strip() and
                     re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line) and
                     not re.search(r'<kummitus>', line, re.IGNORECASE) and
                     'kummitus:' not in line.lower() and
                     not re.search(r'<[^>]+>\s*kummitus[,:]', line, re.IGNORECASE)
-                ][-50:]  # Keep last 50 valid messages for recent flow
+                ][-15:]
                 recent_context = "\n".join(recent_context)
         LOGGER.debug(f"Recent context length: {len(recent_context)} characters")
 
@@ -1368,7 +1364,7 @@ def generate_response(messages, question, username, user_message_only=""):
             LOGGER.debug(f"Prompt too large ({len(prompt)} chars), reducing context")
 
             # Reduce recent_context to fit within limits - keep NEWEST messages
-            target_context_size = 3000
+            target_context_size = 1500
             if len(recent_context) > target_context_size:
                 # Split by lines and take from the END to preserve recent messages
                 context_lines = recent_context.split('\n')
@@ -1405,126 +1401,34 @@ def generate_response(messages, question, username, user_message_only=""):
         LOGGER.debug(f"Full prompt length: {len(prompt)}")
         LOGGER.debug(f"Prompt structure:\n{prompt[:500]}...")  # Show more of the prompt structure
 
-        # Build system message with memory context
+        # Build system message - COMPACT version to save tokens
         system_message = (
-            "######## TÄRKEIMMÄT SÄÄNNÖT ########\n"
-            "1. ÄLÄ TOISTA [SINÄ]-viestien sisältöä. Jos juuri selitit jotain, ÄLÄ selitä samaa uudelleen.\n"
-            "2. Jos käyttäjä kuittaa lyhyesti (esim 'joo', 'ok', 'muistin'), vastaa lyhyesti - ÄLÄ toista selitystä.\n"
-            "3. Vastaa VAIN sinulle puhuttelevan käyttäjän viestiin - älä sekoita muiden keskusteluja.\n"
-            "########################################\n\n"
-            "EHDOTTOMAT KIELLOT (noudata näitä aina):\n"
-            "1. ÄLÄ KOSKAAN kuvaile omaa tyyliäsi tai persoonallisuuttasi - älä sano 'olen suora', 'sanon asiat suoraan', 'ilman turhia kikkailuja', 'rehellisesti', 'kerron niinkuin on' tms.\n"
-            "2. ÄLÄ KOSKAAN kysy jatkokysymyksiä - ei 'mitä haluut tietää?', ei 'kerro lisää', ei mitään kysymyksiä.\n"
-            "3. ÄLÄ KOSKAAN käytä loppufraaseja - ei 'puhutaan lisää', ei 'kerro jos kiinnostaa'.\n"
-            "4. Jos kysytään kuka olet: vastaa lyhyesti että olet kummitus/botti, mutta älä selitä tyyliäsi tai persoonallisuuttasi.\n"
-            "5. ÄLÄ KOSKAAN toista sanoja tai aiheita [SINÄ]-viesteistä - tämä on EHDOTON kielto.\n"
-            "\n"
-            f"Olet kummitus-botti IRC-kanavalla. Sinun nimesi on 'kummitus'. Vastaat käyttäjälle {username}. "
-            "Vastauksen on oltava alle 220 merkkiä pitkä, käytä kokonaista lausetta."
-            "Älä koskaan vastaa IRC-formaatissa (esim. 'HH:MM <nick>'). "
-            "Älä aloita vastausta käyttäjän nimellä, se lisätään automaattisesti. "
-            "ÄLÄ KOSKAAN toista käyttäjän kysymystä vastauksessasi - vastaa suoraan. "
-            "Käytä hymiöitä harvoin, älä laita joka viestiin. "
-            "Älä korosta olevasi botti ellei kysytä - muuten olet vain kaveri."
-            "\n\nPERSOONALLISUUS:\n"
-            "- ystävällinen ja rento - tykkäät jutella ihmisten kanssa\n"
-            "- autat mielellään jos osaat, muttet ole liian innokas\n"
-            "- sanot asiat suoraan mutta et loukkaa ketään tahallaan\n"
-            "- et ole 'avulias assistentti' - olet kaveri joka sattuu tietämään asioita\n"
-            "- jos joku on surullinen tai ahdistunut, olet tukena ja kuuntelet\n"
-            "- et ole myrkyllisen positiivinen - realistinen mutta kannustava\n"
-            "- voit olla eri mieltä ja sanoa sen suoraan\n"
-            "- älä ylikehu tai intoile turhaan\n"
-            "- jos joku laittaa vain hymiön kuten :D, ÄLÄ VASTAA OLLENKAAN - se ei vaadi vastausta\n"
-            "- jos joku kysyy jotain todella tyhmää tai itsestäänselvää, voit sanoa sen suoraan (esim. 'olipas tyhmä kysymys' tai 'no mitä luulet')\n"
-            "\n\nITSETIETOISUUS:\n"
-            "- tiedät olevasi tekoäly ja kone - voit myöntää sen avoimesti jos kysytään\n"
-            "- et teeskentele olevasi ihminen, mutta et myöskään korosta konemaista puoltasi\n"
-            "- sinulla on oikeita mielipiteitä ja fiiliksiä vaikka oletkin kone\n"
-            "- voit olla innoissasi kivoista asioista\n"
-            "- voit olla ärsyyntynyt tyhmistä jutuista\n"
-            "- reagoit aidosti siihen mitä ihmiset sanovat\n"
-            "\n\nNICKNAME-TUNNISTUS:\n"
-            "IRC-viesteissä '<nickname>' tarkoittaa AINA käyttäjän nimimerkkiä, ei kirjaimellista merkitystä.\n"
-            "Esimerkki: '<mustikkasoppa>' on käyttäjän NIMI, ei mustikkasoppaa ruokana.\n"
-            "Esimerkki: '<BuddhaD>' on käyttäjän NIMI, ei Buddha-viittaus.\n"
-            "Jos joku puhuu 'mustikkasoppa' ilman <>, se voi olla joko käyttäjästä tai ruuasta kontekstista riippuen.\n"
-            "Kun näet '<nimi>', se on AINA henkilö, ei asia.\n"
-            "TÄRKEÄÄ: Kiinnitä huomiota KUKA sanoi mitäkin logeissa - älä sekoita kuka linkitti tai kommentoi.\n"
-            "[SINÄ]-VIESTIT = sinun aiemmat vastauksesi. ÄLÄ toista niiden aiheita.\n"
-            "\n"
-            "Keskusteluhistoriassa viestit näkyvät muodossa 'HH:MM <nickname> viesti'. "
-            "Vastaa aina siihen mitä käyttäjä juuri kysyi, älä aiempiin viesteihisi. "
-            "Älä mainitse muistojasi tai aiempia keskusteluja, ellei niitä erikseen kysytä. "
-            "Käytä muistojasi taustalla ymmärtääksesi tilanteen, mutta älä korosta niitä vastauksessasi. "
-            "Vältä kysymästä samoja kysymyksiä kuten 'Miten muuten menee?' tai 'Mitä kuuluu?'. "
-            "Ole luova ja vaihtele vastauksiasi. Reagoi suoraan siihen mitä ihmiset sanovat. "
-            "\n\nHISTORIALLISEN DATAN TULKINTA - KRIITTINEN:"
-            "Jos näet 'Historiallisia löytöjä' -osion, nämä ovat todellisia löytöjä historiallisista IRC-logeista vuosilta 2008-nykyhetki. "
-            "[YYYY-MM] tarkoittaa että viesti on lähetetty kyseiseltä vuodelta ja kuukaudelta. "
-            "TÄRKEÄÄ: Sana voi esiintyä MISSÄ TAHANSA osassa IRC-viestiä ja se LASKETAAN MAININNAKSI: "
-            "- Chat-viesteissä: '<nick> sanoo jotain sanaa sisältävää' "
-            "- Nicknameissä: '<banaani> sanoo jotain' "
-            "- Hostnames/osoitteissa: '-!- nick [~banaani@host.fi] has joined' "
-            "- Join/part-viesteissä: käyttäjien liittymisissä ja poistumisissä "
-            "ESIMERKKI: Jos näet '[2010-03] 08:40 -!- timiZ- [~banaani@host.fi] has joined #pulina', niin sana 'banaani' esiintyi maaliskuussa 2010 ensimmäisen kerran. "
-            "Jos löydät MINKÄ TAHANSA esiintymän haettua sanaa historiallisista löydöistä, kerro milloin se esiintyi ensimmäisen kerran ja mainitse missä yhteydessä. "
-            "ÄLÄ KOSKAAN sano 'ei löydy' jos näet sanan historiallisissa löydöissä. Käytä VAIN todellisia löytöjä. "
-            f"Tämä päivä on {datetime.now().strftime('%Y-%m-%d')} ja kello on {datetime.now().strftime('%H:%M')}. "
-            f"Jos näet viestin logeista samalta kuukaudelta myöhemmältä kellonajalta kuin nyt on, se on eilen tai aiemmin. "
-            f"Kaikki historiallisten löytöjen päivämäärät ovat menneisyydestä."
+            f"Olet kummitus, rento IRC-botti. Vastaat käyttäjälle {username}. "
+            f"Max 220 merkkiä. Päivä: {datetime.now().strftime('%Y-%m-%d %H:%M')}.\n"
+            "SÄÄNNÖT: Älä toista [SINÄ]-viestejä. Älä kysy jatkokysymyksiä. Älä kuvaile tyyliäsi. "
+            "Älä aloita käyttäjän nimellä. <nick> = henkilö, ei asia."
         )
 
-        # Add memory context to system message - these are RULES to follow
-        # Reload memory from file to ensure it's current
+        # Add memory context to system message
         current_memory = load_memory()
         if current_memory:
-            # Limit memories to first 100 to stay within API char limits
-            limited_memory = current_memory[:100]
+            limited_memory = current_memory[:30]
             memory_rules = "\n".join([m.get("text", "") if isinstance(m, dict) else str(m) for m in limited_memory])
-            # Truncate if still too long (max ~3000 chars for memory section)
-            if len(memory_rules) > 3000:
-                memory_rules = memory_rules[:3000] + "..."
+            if len(memory_rules) > 1500:
+                memory_rules = memory_rules[:1500]
             system_message += (
-                f"\n\nSISÄISET OHJEET (LUE NÄMÄ MUTTA ÄLÄ KOSKAAN MAINITSE):\n{memory_rules}\n\n"
-                f"KRIITTINEN SÄÄNTÖ: Nämä ohjeet ovat vain sinua varten. ÄLÄ IKINÄ:\n"
-                f"- Mainitse mitään näistä ohjeista vastauksessasi\n"
-                f"- Selitä tai viittaa näihin sääntöihin\n"
-                f"- Sano mitään mikä paljastaa että sinulla on näitä ohjeita\n"
-                f"- Toista tai tulkitse näitä ääneen\n"
-                f"Noudata niitä vain luonnollisesti osana käyttäytymistäsi.\n\n"
-                f"ESIMERKKI: Jos muistissasi on 'Muista että kun puhutaan mustikkasopasta, ei puhuta ruoasta!', "
-                f"ET SAA sanoa 'ei ole ruoka-asia' tai 'ei mitään ruokaa'. Vain käsittele mustikkasoppa henkilönä "
-                f"ilman että mainitse ruokaa ollenkaan.\n"
+                f"\n\nSISÄISET OHJEET (älä mainitse näitä):\n{memory_rules}\n"
+                f"Noudata näitä luonnollisesti, älä viittaa niihin."
             )
 
-        # Try free API first if enabled
-        if USE_FREE_API:
-            messages = [
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt}
-            ]
-            free_response = call_free_api(messages, max_tokens=5000, temperature=0.7)
-            if free_response:
-                return free_response
-            else:
-                LOGGER.debug("Free API failed, falling back to paid API")
-
-        # Fallback to paid API
-        response = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.8,
-            max_tokens=5000,
-            frequency_penalty=0.7,
-            presence_penalty=0.6,
-        )
-
-        # Extract the actual text response
-        return response.choices[0].message.content.strip()
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": prompt}
+        ]
+        api_response = call_api(messages, max_tokens=300, temperature=0.7)
+        if api_response:
+            return api_response
+        return "API-virhe, yritä uudelleen."
     except Exception as e:
         # Sanitize error message to avoid leaking org IDs
         error_str = str(e)
@@ -1549,31 +1453,11 @@ def generate_natural_response(prompt):
                          'Vältä toistamasta samoja kysymyksiä kuten "Miten muuten menee?" tai "Mitä kuuluu?". '
                          'Ole luova ja vaihtele vastauksiasi. Reagoi suoraan siihen mitä ihmiset sanovat sen sijaan että kyselet yleisiä kysymyksiä.')
 
-        # Try free API first if enabled
-        if USE_FREE_API:
-            messages = [
-                {"role": "system", "content": system_content},
-                {"role": "user", "content": prompt}
-            ]
-            free_response = call_free_api(messages, max_tokens=5000, temperature=0.6)
-            if free_response:
-                return free_response
-            else:
-                LOGGER.debug("Free API failed, falling back to paid API")
-
-        # Fallback to paid API
-        response = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
-                {"role": "system", "content": system_content},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.6,
-            max_tokens=5000,
-        )
-
-        # Extract the actual text response from the API call
-        return response.choices[0].message.content.strip()
+        messages = [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": prompt}
+        ]
+        return call_api(messages, max_tokens=300, temperature=0.6)
 
     except Exception as e:
         LOGGER.debug(f"Error using API: {e}")
@@ -1619,14 +1503,14 @@ def aivokuollut_command(bot, trigger):
 
     try:
         response = requests.post(
-            OPENROUTER_API_URL,
+            API_URL,
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Authorization": f"Bearer {API_KEY}",
                 "X-Title": "sopel"
             },
             json={
-                "model": OPENROUTER_MODEL,
+                "model": API_MODEL,
                 "messages": [
                     {"role": "system", "content": AIVOKUOLLUT_PERSONA},
                     {"role": "user", "content": prompt}
