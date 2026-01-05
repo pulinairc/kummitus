@@ -345,7 +345,7 @@ def get_todays_messages():
 
             # Only keep non-bot messages, mark bot's own with [SINÄ]
             todays_lines = []
-            for line in lines[-20:]:
+            for line in lines[-40:]:
                 line = line.strip()
                 if not line:
                     continue
@@ -355,7 +355,7 @@ def get_todays_messages():
                     todays_lines.append(line)
 
             # Keep only last 15 messages - minimal context to reduce topic mixing
-            todays_lines = todays_lines[-15:]
+            todays_lines = todays_lines[-30:]
 
         return "\n".join(todays_lines) if todays_lines else ""
 
@@ -1308,13 +1308,13 @@ def generate_response(messages, question, username, user_message_only=""):
             with open(LOG_FILE, "r", encoding='utf-8') as f:
                 all_lines = f.readlines()
                 recent_context = [
-                    line.strip() for line in all_lines[-20:]
+                    line.strip() for line in all_lines[-40:]
                     if line.strip() and
                     re.search(r'^\d{2}:\d{2}\s*<[^>]+>', line) and
                     not re.search(r'<kummitus>', line, re.IGNORECASE) and
                     'kummitus:' not in line.lower() and
                     not re.search(r'<[^>]+>\s*kummitus[,:]', line, re.IGNORECASE)
-                ][-15:]
+                ][-30:]
                 recent_context = "\n".join(recent_context)
         LOGGER.debug(f"Recent context length: {len(recent_context)} characters")
 
@@ -1409,12 +1409,17 @@ def generate_response(messages, question, username, user_message_only=""):
         LOGGER.debug(f"Full prompt length: {len(prompt)}")
         LOGGER.debug(f"Prompt structure:\n{prompt[:500]}...")  # Show more of the prompt structure
 
-        # Build system message - COMPACT version to save tokens
+        # Build system message
         system_message = (
             f"Olet kummitus, rento IRC-botti. Vastaat käyttäjälle {username}. "
-            f"Max 220 merkkiä. Päivä: {datetime.now().strftime('%Y-%m-%d %H:%M')}.\n"
-            "SÄÄNNÖT: Älä toista [SINÄ]-viestejä. Älä kysy jatkokysymyksiä. Älä kuvaile tyyliäsi. "
-            "Älä aloita käyttäjän nimellä. <nick> = henkilö, ei asia."
+            f"Max 220 merkkiä. Päivä: {datetime.now().strftime('%Y-%m-%d %H:%M')}.\n\n"
+            "KRIITTISET SÄÄNNÖT:\n"
+            "1. ÄLÄ KOSKAAN toista samaa vastausta! Jos [SINÄ]-viesteissä näkyy jo vastaus, keksi TÄYSIN ERI vastaus.\n"
+            "2. Lue [SINÄ]-viestit - ne ovat aiempia vastauksiasi. ÄLÄ sano samaa asiaa uudelleen.\n"
+            "3. Jos et tiedä vastausta, sano 'en tiedä' - älä keksi samaa lausetta uudelleen.\n"
+            "4. Älä kysy jatkokysymyksiä. Älä kuvaile tyyliäsi.\n"
+            "5. Älä aloita käyttäjän nimellä. <nick> = henkilö, ei asia.\n"
+            "6. Vaihtele vastauksiasi - jokainen vastaus pitää olla uniikki!"
         )
 
         # Add memory context to system message
@@ -1487,61 +1492,6 @@ def load_channel_users():
     except Exception as e:
         LOGGER.debug(f"Error loading channel users: {e}")
         return []
-
-# Simple Gemini command via Pollinations
-AIVOKUOLLUT_PERSONA = """KIELLOT:
-1. ÄLÄ sano "olen kummitus/botti" - vastaa asiaan!
-2. ÄLÄ kysy jatkokysymyksiä
-3. ÄLÄ toista käyttäjän kysymystä
-4. ÄLÄ kiroile
-5. ÄLÄ käytä emojeja, vain :D :P harvoin
-
-IRC-botti. Max 200 merkkiä. Suomeksi.
-<nick> = käyttäjän nimi, ei asia.
-"""
-
-@sopel.module.commands('aivokuollut')
-def aivokuollut_command(bot, trigger):
-    """Simple Gemini response via Pollinations API"""
-    if not trigger.group(2):
-        bot.say(f"{trigger.nick}: Anna joku lause, esim: !aivokuollut mikä on elämän tarkoitus")
-        return
-
-    prompt = trigger.group(2).strip()
-
-    try:
-        response = requests.post(
-            API_URL,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {API_KEY}",
-                "HTTP-Referer": "https://github.com/pulinairc/kummitus",
-                "X-Title": "kummitus"
-            },
-            json={
-                "model": API_MODEL,
-                "messages": [
-                    {"role": "system", "content": AIVOKUOLLUT_PERSONA},
-                    {"role": "user", "content": prompt}
-                ],
-                "max_tokens": 300,
-            },
-            timeout=15
-        )
-
-        if response.status_code == 200:
-            result = response.json()
-            if "choices" in result and len(result["choices"]) > 0:
-                answer = result["choices"][0]["message"]["content"].strip()
-                bot.say(f"{trigger.nick}: {answer}")
-            else:
-                bot.say(f"{trigger.nick}: Ei vastausta")
-        else:
-            bot.say(f"{trigger.nick}: API virhe: {response.status_code}")
-
-    except Exception as e:
-        LOGGER.error(f"aivokuollut error: {e}")
-        bot.say(f"{trigger.nick}: Virhe: {e}")
 
 # Sopel trigger function to respond to questions when bot's name is mentioned or in private messages
 @sopel.module.rule(r'(.*)')
