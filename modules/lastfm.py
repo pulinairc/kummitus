@@ -9,6 +9,11 @@ from sopel.module import commands, example
 from bs4 import BeautifulSoup
 import json
 import urllib
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+LASTFM_API_KEY = os.getenv("LASTFM_API_KEY")
 
 
 def get_lastfm_username(args, db_nick):
@@ -21,8 +26,7 @@ def get_lastfm_username(args, db_nick):
 
 def get_np_info(username):
     username = web.quote(username)
-    api_key = "782c02b1c96ae181d83850f050509103"
-    recent_tracks = web.get("http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&format=json&user=%s&api_key=%s" % (username, api_key))
+    recent_tracks = web.get("http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&format=json&user=%s&api_key=%s" % (username, LASTFM_API_KEY))
 
     #now playing track, or most recently scrobbled track
     now_playing = json.loads(recent_tracks)
@@ -38,7 +42,7 @@ def get_np_info(username):
     artist = now_playing['artist']['#text']
 
     # why the fuck doesnt this work with web.get() ???
-    track_page = urllib.request.urlopen("http://ws.audioscrobbler.com/2.0/?method=track.getInfo&format=json&artist=%s&track=%s&username=%s&api_key=%s" % (web.quote(artist), web.quote(track), username, api_key))
+    track_page = urllib.request.urlopen("http://ws.audioscrobbler.com/2.0/?method=track.getInfo&format=json&artist=%s&track=%s&username=%s&api_key=%s" % (web.quote(artist), web.quote(track), username, LASTFM_API_KEY))
     track_info = json.loads(track_page.read().decode())['track']
     user_playcount = "0"
     if 'userplaycount' in track_info:
