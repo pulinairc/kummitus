@@ -204,7 +204,7 @@ memory = load_memory()
 
 # Memory consolidation counter - run AI cleanup every N messages
 memory_consolidation_counter = 0
-MEMORY_CONSOLIDATION_INTERVAL = 100  # Consolidate every 100 messages
+MEMORY_CONSOLIDATION_INTERVAL = 20  # Consolidate every 20 messages (for testing)
 MEMORY_URGENT_LIMIT = 1000  # Trigger immediately if over this
 
 # Function to add something to memory (permanent=True for user-added, False for auto)
@@ -1448,7 +1448,7 @@ def generate_response(messages, question, username, user_message_only=""):
             "4. NEVER ask 'Miten voin auttaa?' or 'Mitä kuuluu?' etc.\n"
             "5. NEVER use markdown or timestamps.\n"
             "6. Chat naturally in Finnish. Use your knowledge!\n"
-            "7. ASCII emoticons OK but vary them. No Unicode emojis."
+            "7. Use emoticons RARELY (1 in 5 messages max). No Unicode emojis. NEVER :) in every message!"
         )
 
         # Add memory context to system message
