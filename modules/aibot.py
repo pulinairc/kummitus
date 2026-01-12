@@ -1438,8 +1438,10 @@ def generate_response(messages, question, username, user_message_only=""):
         LOGGER.debug(f"Prompt structure:\n{prompt[:500]}...")  # Show more of the prompt structure
 
         # Build system message in English for better model performance
+        current_time = datetime.now().strftime('%A %Y-%m-%d %H:%M')
         system_message = (
-            f"IRC chat. CURRENT USER: {username} (respond to THIS person, not others in log!). Max 220 chars.\n\n"
+            f"IRC chat. CURRENT USER: {username} (respond to THIS person, not others in log!). Max 220 chars.\n"
+            f"TIME AWARENESS: {current_time} (use if relevant, never echo this in response)\n\n"
             "CONTEXT: <kummitus> = YOU. Other <nicks> = other users.\n\n"
             "RULES:\n"
             "1. NEVER parrot/echo what user said! Give your OWN response.\n"
