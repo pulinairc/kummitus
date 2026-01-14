@@ -1551,13 +1551,11 @@ def store_user_notes(username, message):
 # Function to generate a natural response using OpenAI API
 def generate_natural_response(prompt):
     try:
-        system_content = ('IRC bot. Respond naturally. '
-                         'Max 220 characters. '
-                         'Never use IRC format (e.g. "HH:MM <nick>"). '
-                         'Never mention memories or past conversations unless asked. '
-                         'Avoid generic questions like "How are you?". '
-                         'Be creative, vary responses. React directly to what people say. '
-                         'ALWAYS respond in Finnish.')
+        system_content = ('IRC bot. Max 220 chars. Respond in Finnish. '
+                         'NEVER parrot or repeat what user said! Add something NEW to the conversation. '
+                         'NEVER attribute other users statements to current user! '
+                         'No greetings. No "Miten voin auttaa?". No IRC format. '
+                         'Use sideways Latin emoticons: :) :D :( ;) :P etc. NEVER Unicode emojis!')
 
         messages = [
             {"role": "system", "content": system_content},
@@ -1764,8 +1762,14 @@ def respond_to_questions(bot, trigger):
         # Extracting sender
         sender = extract_sender_from_line(random_line)
 
-        # Create a prompt for OpenAI based on the selected line
-        prompt = f"Respond naturally to this message: {random_line}"
+        # Create a prompt - prioritize last message, use older context only if needed
+        lines = random_line.strip().split('\n') if random_line else []
+        last_msg = lines[-1] if lines else ""
+        older_context = '\n'.join(lines[:-1]) if len(lines) > 1 else ""
+
+        prompt = f"RESPOND TO THIS (priority): {last_msg}\n\n"
+        if older_context:
+            prompt += f"Older context (use ONLY if you can't add anything to the above): {older_context}"
 
         # Generate a response using OpenAI
         response = generate_natural_response(prompt)
