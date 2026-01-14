@@ -1445,7 +1445,7 @@ def generate_response(messages, question, username, user_message_only=""):
             prompt += historical_context
 
         # Add recent context
-        prompt += f"BACKGROUND (other users' chat - for context only, not to respond to):\n{recent_context}\n\n"
+        prompt += f"CHAT HISTORY (remember this, but focus response on current user):\n{recent_context}\n\n"
 
         if url_contents:
             prompt += "\n".join(url_contents) + "\n"
