@@ -1386,14 +1386,14 @@ def generate_response(messages, question, username, user_message_only=""):
             prompt += historical_context
 
         # Add recent context
-        prompt += f"Recent conversation:\n{recent_context}\n\n"
+        prompt += f"BACKGROUND (other users' chat - for context only, not to respond to):\n{recent_context}\n\n"
 
         if url_contents:
             prompt += "\n".join(url_contents) + "\n"
         if messages:
             # Limit messages to avoid payload issues
             prompt += messages[-3000:] + "\n" if len(messages) > 3000 else messages + "\n"
-        prompt += "Viesti: " + question
+        prompt += f">>> RESPOND TO THIS MESSAGE FROM {username}: " + question
 
         # Final safety check - API limit is 7000 chars, so keep prompt under 5000
         if len(prompt) > 5000:
@@ -1428,7 +1428,7 @@ def generate_response(messages, question, username, user_message_only=""):
                     prompt += "\n".join(url_contents) + "\n"
                 if messages:
                     prompt += messages[-1000:] + "\n" if len(messages) > 1000 else messages + "\n"
-                prompt += "Viesti: " + question
+                prompt += f">>> RESPOND TO THIS MESSAGE FROM {username}: " + question
 
 
         # More detailed debug logging
@@ -1444,13 +1444,13 @@ def generate_response(messages, question, username, user_message_only=""):
             f"TIME AWARENESS: {current_time} (use if relevant, never echo this in response)\n\n"
             "CONTEXT: <kummitus> = YOU. Other <nicks> = other users.\n\n"
             "RULES:\n"
-            "1. NEVER parrot/echo what user said! Give your OWN response.\n"
-            "2. NEVER repeat your previous responses! Say something NEW.\n"
-            "3. NEVER greet with 'Hei [name]!' - just reply directly to what they said.\n"
-            "4. NEVER ask 'Miten voin auttaa?' or 'Mitä kuuluu?' etc.\n"
-            "5. NEVER use markdown or timestamps.\n"
-            "6. Chat naturally in Finnish. Use your knowledge!\n"
-            "7. Use emoticons RARELY (1 in 5 messages max). No Unicode emojis. NEVER :) in every message!"
+            f"1. Focus on {username}'s message. Use chat history ONLY when asked or clearly relevant.\n"
+            "2. Don't mix up who said what - attribute statements to correct person!\n"
+            "3. NEVER parrot. NEVER repeat yourself.\n"
+            "4. No greetings, no 'Miten voin auttaa?'\n"
+            "5. No markdown, no timestamps.\n"
+            "6. Chat naturally in Finnish.\n"
+            "7. Emoticons rarely. No Unicode emojis."
         )
 
         # Add memory context to system message
