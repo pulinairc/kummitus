@@ -1533,6 +1533,9 @@ def generate_response(messages, question, username, user_message_only=""):
         if api_response:
             # Strip any leading timestamps that model might echo
             api_response = re.sub(r'^\d{2}:\d{2}\s*', '', api_response)
+            # Randomly strip :) and ;) with 50% probability to reduce overuse
+            if random.random() < 0.5:
+                api_response = re.sub(r'\s*[;:]\)', '', api_response)
             return api_response.strip()
         return "API-virhe, yritä uudelleen."
     except Exception as e:
@@ -1562,7 +1565,11 @@ def generate_natural_response(prompt):
             {"role": "system", "content": system_content},
             {"role": "user", "content": prompt}
         ]
-        return call_api(messages, max_tokens=300, temperature=0.6)
+        response = call_api(messages, max_tokens=300, temperature=0.6)
+        # Randomly strip :) and ;) with 50% probability to reduce overuse
+        if response and random.random() < 0.5:
+            response = re.sub(r'\s*[;:]\)', '', response)
+        return response.strip() if response else None
 
     except Exception as e:
         LOGGER.debug(f"Error using API: {e}")
