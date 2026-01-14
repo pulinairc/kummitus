@@ -1510,7 +1510,7 @@ def generate_response(messages, question, username, user_message_only=""):
             "5. No markdown, no timestamps.\n"
             "6. Chat naturally in Finnish.\n"
             "7. Use sideways Latin emoticons naturally: :) :D :( ;) :P :/ :O :3 <3 XD :'( >:) B-) etc. NEVER Unicode emojis!\n"
-            "8. DO NOT use :) in every message! Vary emoticons or skip them entirely."
+            "8. DO NOT use :) or ;) in every message! ;) should be very rare. Vary emoticons or skip them."
         )
 
         # Add memory context to system message
