@@ -65,6 +65,65 @@ MEMORY_FILE = "memory.json"
 # Memory settings
 MEMORY_MAX_ITEMS = 200   # Maximum number of memories to keep
 
+# Allowed emoticons - sideways Latin-only and upright ASCII (NO Unicode emojis!)
+# Reference: https://en.wikipedia.org/wiki/List_of_emoticons
+ALLOWED_EMOTICONS = """
+SIDEWAYS LATIN-ONLY EMOTICONS:
+Happy: :-) :) :-] :] :-> :> 8-) 8) :-} :} :^) =] =)
+Laughing: :-D :D 8-D 8D =D =3 B^D c: C: x-D xD X-D XD :-)) :))
+Sad: :-( :( :-c :c :-< :< :-[ :[ :-|| :{ :@ ;(
+Crying: :'( :'-( :=(
+Tears of joy: :') :'-) :"D
+Angry: >:( >:[
+Horror/disgust: D-': D:< D: D8 D; D= DX
+Surprise: :-O :O :-o :o :-0 :0 8-0 >:O =O =o =0
+Cat face: :-3 :3 =3 x3 X3 >:3
+Kiss: :-* :* :x
+Wink: ;-) ;) *-) *) ;-] ;] ;^) ;> :-, ;D ;3
+Tongue out: :-P :P X-P XP x-p xp :-p :p :-b :b d: =p >:P >:b :-Þ :Þ :-þ :þ
+Skeptical: :-/ :/ ',:^I >:\\ >:/ :\\ =/ =\\ :L =L :S
+Straight face: :-| :|
+Embarrassed: :$ ://) ://3
+Sealed lips: :-X :X :-# :# :-& :&
+Angel: O:-) O:) 0:-3 0:3 0:-) 0:) 0;^)
+Evil: >:-) >:) }:-) }:) 3:-) 3:) >;-) >;) >:3 >;3
+Cool/bored: |;-) |-O B-)
+Tongue-in-cheek: :-J
+Partied: #-)
+Drunk/confused: %-) %)
+Sick: :-###.. :###..
+Dumb: <:-|
+Scepticism: ',:-| ',:-l
+Grimacing: :E
+Skull: 8-X 8=X x-3 x=3
+Chicken: ~:>
+
+SIDEWAYS SINGLE-LINE ART:
+Rose: @};- @}->-- @>-->--
+Penis: 8====D 8===D 8=D 3=D 8=> 8===D~~~
+Santa: *<|:-)
+Heart: <3 s2
+Broken heart: </3 <\\3
+
+UPRIGHT EMOTICONS AND ASCII ART:
+Fish: ><> <>< <*)))-{ ><(((*>
+Wave: o/ \\o
+Cheer: \\o/
+Cheerleader: *\\0/*
+Salute: o7
+Sad: v.v ._. ._.;
+Crying: ;-; T_T T-T QQ Qq qq
+Dead/fainted: X_X x_x +_+ X_x x_X
+Sideways look: <_< >_> <.< >.>
+Surprise: O_O o_o O-O o-o O_o o_O
+Annoyed: >.< >_<
+High five: ^5 o/\\o >_>^ ^<_<
+Crab/lobster: V.v.V V=(° °)=V
+Shark: (^^^)
+Bandage: (::[]::)
+Breasts: (o)(o) ( • )( • ) (. Y .)
+"""
+
 # Load or create memory list
 def load_memory():
     LOGGER.debug(f"Loading memory from file: {MEMORY_FILE}")
@@ -1450,7 +1509,7 @@ def generate_response(messages, question, username, user_message_only=""):
             "4. No greetings, no 'Miten voin auttaa?'\n"
             "5. No markdown, no timestamps.\n"
             "6. Chat naturally in Finnish.\n"
-            "7. Emoticons rarely. No Unicode emojis."
+            "7. Use sideways Latin emoticons naturally: :) :D :( ;) :P :/ :O :3 <3 XD :'( >:) B-) etc. NEVER Unicode emojis!"
         )
 
         # Add memory context to system message
