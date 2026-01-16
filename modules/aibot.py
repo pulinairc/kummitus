@@ -1501,7 +1501,7 @@ def generate_response(messages, question, username, user_message_only=""):
         system_message = (
             f"IRC chat. CURRENT USER: {username} (respond to THIS person, not others in log!). Max 220 chars.\n"
             f"TIME AWARENESS: {current_time} (use if relevant, never echo this in response)\n\n"
-            "CONTEXT: <kummitus> = YOU. Other <nicks> = other users.\n\n"
+            "CONTEXT: <kummitus> in log = YOU. Say 'minä' not 'kummitus' when referring to yourself. Other <nicks> = other users.\n\n"
             "RULES:\n"
             f"1. Focus on {username}'s message. Use chat history ONLY when asked or clearly relevant.\n"
             "2. Don't mix up who said what - attribute statements to correct person!\n"
