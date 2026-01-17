@@ -407,6 +407,7 @@ last_bot_mention = None
 # Auto memory: counter for messages processed
 auto_memory_counter = 0
 AUTO_MEMORY_INTERVAL = 10  # Check every 10 messages
+AUTO_MEMORY_ENABLED = False  # Disabled - using manual memories only
 
 # Finnish stop words to exclude from keyword searches
 FINNISH_STOP_WORDS = {
@@ -1632,8 +1633,9 @@ def respond_to_questions(bot, trigger):
     if trigger.nick == "Orvokki":
         return
 
-    # Auto memory re-enabled with free model
-    threading.Thread(target=check_auto_memory, daemon=True).start()
+    # Auto memory (disabled by flag - using manual memories only)
+    if AUTO_MEMORY_ENABLED:
+        threading.Thread(target=check_auto_memory, daemon=True).start()
 
     # Match all Finnish declensions of "kummitus" (kummitusta, kummituksen, kummitukselle, etc.)
     msg_lower = trigger.group(0).lower()
