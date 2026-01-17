@@ -57,7 +57,8 @@ OpenAI.api_key = os.getenv("OPENAI_API_KEY")
 # API Configuration
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 API_KEY = os.getenv("OPENROUTER_API_KEY")
-API_MODEL = "openai/gpt-5-nano"
+API_MODEL = "google/gemini-3-flash-preview"
+API_MODEL_LITE = "google/gemini-2.5-flash-lite"  # For helper/analysis tasks
 
 # File paths
 MEMORY_FILE = "memory.json"
@@ -599,7 +600,7 @@ Respond ONLY JSON, no other text."""
         # Call AI to analyze
         analysis_response, api_error = call_api([
             {"role": "user", "content": analyze_prompt}
-        ], max_tokens=300, temperature=0.3)
+        ], max_tokens=300, temperature=0.3, model=API_MODEL_LITE)
 
         if not analysis_response:
             LOGGER.error("[AI-LOG-SEARCH] AI analysis failed")
@@ -718,7 +719,7 @@ TASK: Answer user's question in max 220 characters. RESPOND IN FINNISH.
         LOGGER.info(f"[AI-LOG-SEARCH] Calling summary API with {len(log_content)} chars of content")
         summary_response, api_error = call_api([
             {"role": "user", "content": summarize_prompt}
-        ], max_tokens=400)
+        ], max_tokens=400, model=API_MODEL_LITE)
 
         if not summary_response:
             LOGGER.error(f"[AI-LOG-SEARCH] Summary API returned empty response")
@@ -1102,17 +1103,18 @@ def sanitize_error(error_text):
         error_text = error_text[:150] + "..."
     return error_text
 
-def call_api(messages, max_tokens=300, temperature=0.7):
+def call_api(messages, max_tokens=300, temperature=0.7, model=None):
     """Call the chat API with retry logic (5s, then 10s delays)
     Returns tuple: (response_text, error_info) where error_info is None on success
     """
     retry_delays = [5, 10]  # Progressive delays: 5s, then 10s
     last_error = None
+    use_model = model or API_MODEL
 
     for attempt in range(len(retry_delays) + 1):  # 3 total attempts
         try:
             payload = {
-                "model": API_MODEL,
+                "model": use_model,
                 "messages": messages,
                 "max_tokens": max_tokens,
                 "temperature": temperature,
@@ -1134,8 +1136,16 @@ def call_api(messages, max_tokens=300, temperature=0.7):
 
             if response.status_code == 200:
                 result = response.json()
+                LOGGER.debug(f"[API] Response: {str(result)[:500]}")
                 if "choices" in result and len(result["choices"]) > 0:
-                    return (result["choices"][0]["message"]["content"].strip(), None)
+                    content = result["choices"][0]["message"]["content"]
+                    content = content.strip() if content else ""
+                    finish_reason = result["choices"][0].get("finish_reason", "")
+                    LOGGER.debug(f"[API] Content: {content[:200] if content else '(empty)'}, finish: {finish_reason}")
+                    if not content:
+                        # Model returned empty content (e.g., used all tokens on reasoning)
+                        return (None, f"tyhjä vastaus (finish: {finish_reason})")
+                    return (content, None)
                 else:
                     LOGGER.error(f"[API] Unexpected response format: {result}")
                     return (None, "unexpected response format")

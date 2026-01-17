@@ -25,3 +25,4 @@ modules/paikat.json
 ._.DS_Store
 .DS_Store
 mentioned_users.json
+test_api.py
