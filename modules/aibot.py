@@ -57,7 +57,7 @@ OpenAI.api_key = os.getenv("OPENAI_API_KEY")
 # API Configuration
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 API_KEY = os.getenv("OPENROUTER_API_KEY")
-API_MODEL = "google/gemini-2.5-flash-lite"
+API_MODEL = "z-ai/glm-4.5-air:free"
 
 # File paths
 MEMORY_FILE = "memory.json"
@@ -597,7 +597,7 @@ Respond ONLY JSON, no other text."""
 
     try:
         # Call AI to analyze
-        analysis_response = call_api([
+        analysis_response, api_error = call_api([
             {"role": "user", "content": analyze_prompt}
         ], max_tokens=300, temperature=0.3)
 
@@ -716,13 +716,14 @@ TASK: Answer user's question in max 220 characters. RESPOND IN FINNISH.
 - DON'T invent anything, use only above data"""
 
         LOGGER.info(f"[AI-LOG-SEARCH] Calling summary API with {len(log_content)} chars of content")
-        summary_response = call_api([
+        summary_response, api_error = call_api([
             {"role": "user", "content": summarize_prompt}
         ], max_tokens=400)
 
         if not summary_response:
             LOGGER.error(f"[AI-LOG-SEARCH] Summary API returned empty response")
-            return f"Löysin {log_file} tietoa mutta yhteenvedon luonti epäonnistui (API-virhe).", log_file
+            error_msg = f" ({api_error})" if api_error else ""
+            return f"Löysin {log_file} tietoa mutta yhteenvedon luonti epäonnistui{error_msg}.", log_file
 
         return summary_response, log_file
 
@@ -1087,12 +1088,28 @@ def extract_sender_from_line(line):
         return match.group(1)
     return None
 
-def call_api(messages, max_tokens=300, temperature=0.7):
-    """Call the chat API with retry logic"""
-    max_retries = 3
-    retry_delay = 5  # seconds
+def sanitize_error(error_text):
+    """Remove sensitive info from error messages"""
+    if not error_text:
+        return "tuntematon virhe"
+    error_text = str(error_text)
+    # Remove API keys, org IDs, and other sensitive info
+    error_text = re.sub(r'org-[a-zA-Z0-9]+', '[org-redacted]', error_text)
+    error_text = re.sub(r'sk-[a-zA-Z0-9]+', '[key-redacted]', error_text)
+    error_text = re.sub(r'Bearer [a-zA-Z0-9\-_]+', 'Bearer [redacted]', error_text)
+    # Limit length
+    if len(error_text) > 150:
+        error_text = error_text[:150] + "..."
+    return error_text
 
-    for attempt in range(max_retries):
+def call_api(messages, max_tokens=300, temperature=0.7):
+    """Call the chat API with retry logic (5s, then 10s delays)
+    Returns tuple: (response_text, error_info) where error_info is None on success
+    """
+    retry_delays = [5, 10]  # Progressive delays: 5s, then 10s
+    last_error = None
+
+    for attempt in range(len(retry_delays) + 1):  # 3 total attempts
         try:
             payload = {
                 "model": API_MODEL,
@@ -1118,29 +1135,32 @@ def call_api(messages, max_tokens=300, temperature=0.7):
             if response.status_code == 200:
                 result = response.json()
                 if "choices" in result and len(result["choices"]) > 0:
-                    return result["choices"][0]["message"]["content"].strip()
+                    return (result["choices"][0]["message"]["content"].strip(), None)
                 else:
                     LOGGER.error(f"[API] Unexpected response format: {result}")
-                    # Don't retry for format errors
-                    return None
+                    return (None, "unexpected response format")
             else:
+                last_error = f"HTTP {response.status_code}"
                 LOGGER.error(f"[API] Error {response.status_code}: {response.text[:200]}")
-                # Don't retry on 400/500/502 errors - they won't fix themselves quickly
-                if response.status_code in [400, 500, 502]:
-                    return None
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
+                # Don't retry on 400 errors - they won't fix themselves
+                if response.status_code == 400:
+                    return (None, sanitize_error(f"HTTP 400: {response.text[:100]}"))
+                if attempt < len(retry_delays):
+                    LOGGER.info(f"[API] Retry {attempt+1} after {retry_delays[attempt]}s...")
+                    time.sleep(retry_delays[attempt])
                     continue
-                return None
+                return (None, sanitize_error(f"HTTP {response.status_code}"))
 
         except Exception as e:
+            last_error = str(e)
             LOGGER.error(f"[API] Exception: {e}")
-            if attempt < max_retries - 1:
-                time.sleep(retry_delay)
+            if attempt < len(retry_delays):
+                LOGGER.info(f"[API] Retry {attempt+1} after {retry_delays[attempt]}s...")
+                time.sleep(retry_delays[attempt])
                 continue
-            return None
+            return (None, sanitize_error(str(e)))
 
-    return None
+    return (None, sanitize_error(last_error))
 
 def extract_auto_memories(chat_lines):
     """Use Gemini via Pollinations to extract memorable facts from chat lines"""
@@ -1529,7 +1549,7 @@ def generate_response(messages, question, username, user_message_only=""):
             {"role": "system", "content": system_message},
             {"role": "user", "content": prompt}
         ]
-        api_response = call_api(messages, max_tokens=300, temperature=0.7)
+        api_response, api_error = call_api(messages, max_tokens=300, temperature=0.7)
         if api_response:
             # Strip any leading timestamps that model might echo
             api_response = re.sub(r'^\d{2}:\d{2}\s*', '', api_response)
@@ -1537,7 +1557,8 @@ def generate_response(messages, question, username, user_message_only=""):
             if random.random() < 0.5:
                 api_response = re.sub(r'\s*[;:]\)', '', api_response)
             return api_response.strip()
-        return "API-virhe, yritä uudelleen."
+        error_msg = api_error if api_error else "tuntematon virhe"
+        return f"API-virhe: {error_msg}"
     except Exception as e:
         # Sanitize error message to avoid leaking org IDs
         error_str = str(e)
@@ -1565,7 +1586,7 @@ def generate_natural_response(prompt):
             {"role": "system", "content": system_content},
             {"role": "user", "content": prompt}
         ]
-        response = call_api(messages, max_tokens=300, temperature=0.6)
+        response, api_error = call_api(messages, max_tokens=300, temperature=0.6)
         # Randomly strip :) and ;) with 50% probability to reduce overuse
         if response and random.random() < 0.5:
             response = re.sub(r'\s*[;:]\)', '', response)
