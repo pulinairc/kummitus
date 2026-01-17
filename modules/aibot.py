@@ -57,7 +57,7 @@ OpenAI.api_key = os.getenv("OPENAI_API_KEY")
 # API Configuration
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 API_KEY = os.getenv("OPENROUTER_API_KEY")
-API_MODEL = "z-ai/glm-4.5-air:free"
+API_MODEL = "openai/gpt-5-nano"
 
 # File paths
 MEMORY_FILE = "memory.json"
