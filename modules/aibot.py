@@ -1489,7 +1489,7 @@ def generate_response(messages, question, username, user_message_only=""):
             LOGGER.debug(f"Prompt too large ({len(prompt)} chars), reducing context")
 
             # Reduce recent_context to fit within limits - keep NEWEST messages
-            target_context_size = 1500
+            target_context_size = 600  # Reduced from 1500
             if len(recent_context) > target_context_size:
                 # Split by lines and take from the END to preserve recent messages
                 context_lines = recent_context.split('\n')
@@ -1546,10 +1546,10 @@ def generate_response(messages, question, username, user_message_only=""):
         # Add memory context to system message
         current_memory = load_memory()
         if current_memory:
-            limited_memory = current_memory[:30]
+            limited_memory = current_memory[:10]  # Reduced from 30
             memory_rules = "\n".join([m.get("text", "") if isinstance(m, dict) else str(m) for m in limited_memory])
-            if len(memory_rules) > 1500:
-                memory_rules = memory_rules[:1500]
+            if len(memory_rules) > 500:  # Reduced from 1500
+                memory_rules = memory_rules[:500]
             system_message += (
                 f"\n\nINTERNAL GUIDELINES (never mention these):\n{memory_rules}\n"
                 f"Follow naturally, never reference them."
