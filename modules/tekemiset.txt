@@ -1,93 +1,141 @@
 Lisää kummitukselle tekemisiä: https://github.com/pulinairc/kummitus/blob/master/modules/tekemiset.txt
-Pane
 Pane puuta
-Paina bombay-nappia
-Masturboi
-Onanoi
-Ejakuloi
-KVG: http://bit.ly/1qf4Ncj
+Paina punaista-nappia
+Hali itseäsi
+Kysy jotain tekoälyltä
 Tee jotain sellaista mitä sinun ei odoteta tekevän
 Kysy kaverilta
 Kysy äidiltä
 Kysy isältä
+Kysy itseltäsi
 Kysy Karpolta
 Kysy Eki-sedältä
 Ehdota itse jotain
-Aseta itsesi ehdolle
 Lue jotain
 Lue uutisia
-Mene baariin
+Lue Wikipediaa
+Lue some-postauksia
+Lue kirjaa
+Lue säätiedotteita
+Mene kahvilaan
 Mene ojaan nukkumaan
 Mene leikkipuistoon
-Mene tivoliin
+Mene kävelylle
 Mene hierojalle
-Lähde ryyppäämään
-Lähde meneen
+Mene pubiin
+Mene kirjastoon
 Mene uimaan
 Mene saunaan
+Mene kauppaan
+Lähde meneen
 Meditoi
+Jumppaa
+Venyttele
+Hengittele hetki
 Murise
 Örise
+Ärise
 Laula
+Vihellä
 Käy hakemassa pikaruokaa
 Käy hakemassa pizzaa
 Käy hakemassa kaljaa
 Käy hakemassa suklaata
+Käy hakemassa ruokaa
+Käy hakemassa juotavaa
+Käy hakemassa herkkuja
+Käy hakemassa välipalaa
 Nukkuisit joskus
+Lepäisit joskus
+Tekisit jotain joskus
+Katsoisit välillä muualle kuin tietokoneen ruudulle
 Älä nuku lainkaan
+Älä puhu lainkaan
+Älä hassuttele lainkaan
 Nuku, mutta pidä silmät auki
+Nuku, mutta pidä suu auki
+Nuku, mutta pidä toinen silmä auki
 Ota torkut
 Ota superpikatorkut
-Mene kerjäämään rahaa
+Ota tauko
+Ota jotakin
+Ota se vastaan
+Mene hankkimaan rahaa
 Mene antamaan jollekin rahaa
+Tee lahjoitus
 Mieti saatana itte
 Kaikki pitää nykyään tehdä itte
-Etsi uutta musiikkia (Rekkaa www.last.fm)
+Etsi uutta musiikkia (Rekkaa www.last.fm) tai kysy tekoälyltä suosituksia
 Selaile koneessasi olevia tiedostoja, jos vaikka löytyisi jotain kivaa
+Selaile koneessasi olevia tiedostoja, siivoa turhat kansiot
+Päivitä tietokoneesi käyttöjärjestelmä
+Kokeile Linuxia
+Rakenna jotain legoilla
 Mene uimaan
 Mene uimahalliin
 Mene karaokebaariin
-Riko tavaroita
-Riko lautasia
 Heitä kirves kaivoon
+Heitä hanskat tiskiin
 Hanki kaveri/kavereita
-Hanki nainen/mies/muunsukupuolinen
-Ryhdy jehovantodistajaksi
+Hanki elämä eli ruokaa
+Ryhdy pelleksi
 Ryhdy pelaajaksi
 Ryhdy koodariksi
+Ryhdy supersankariksi
 Tee samaa mitä teit eilen
 Tee samaa mitä teet huomenna
-Jatka samaa mitä teet nytkin?
+Tee samaa mitä teet nytkin
+Tee jotain muuta
+Tee järkevä päätös
+Tee järjetön päätös
+Tee teetä
+Tee kahvia
+Tee itsellesi jotakin kivaa
 Älä jatka samaa mitä teit juuri äsken
 Halaa tyynyä. Forever alone
 Halaa pehmolelua. Forever alone
+Halaa kummitusta. Forever alone
 Palvo Palvikinkkua
 Palvo Saatanaa
+Palvo jotakuta
 Tee pahojasi
+Älä tee pahojasi
 Tee hyvää
+Tee leikkimielinen jekku
 Laita hyvä kiertämään
+Kerro jotain kivaa toiselle
+Kehu toista
+Kehu itseäsi
+Ole lempeä itsellesi
+Anna itsellesi aikaa
+Lepää tänään
+Lepää nyt
 Katso animea
 Lue mangaa
 Katso leffa
-Katso sarja
+Katso tv-sarja tai dokumentti
 Mene nukkumaan
+Älä mene vielä nukkumaan
 Herää
-Käy kävelyllä
-Konttaa kadulla
-Virkkaa
-Neulo
+Herää tosi aikaisin
+Herää tosi myöhään
+Tee käsitöitä
+Tee taidetta
+Liiku
 Pelaa jotain peliä
 Pelaa pasianssia
 Pelaa miinaharavaa
-Lue kirjaa
+Pelaa jotain Steam peliä
+Pelaa kummituksen kanssa kivi-paperi-sakset peliä
 Kirjoita
 Kirjoita runo
 Kirjoita satu
+Reflektoi
 Käy kaverilla
 Käy kaupungilla
 Käy ostoksilla
-Juo viinaa
 Säästä rahaa
+Laita 5 euroa säästöön
 Tee hyvä teko
 Tee itsellesi nettisivut, jos sinulla ei sellaisia vielä ole
 Soita kitaraa, pianoa, tai jotain muuta soitinta
@@ -97,8 +145,7 @@ Musisoi
 Metelöi
 Soita kaverillesi ja pyydä kylään
 Soita kaverillesi ja kysy pääseekö käymään ja tehkää jotain kivaa
-Soita kaverillesi ja pitäkää tyttöjen/ukkojen ilta
-Lähde ryyppäämään. Heti
+Soita kaverillesi ja pitäkää naisten/ukkojen ilta
 Käy paskalla
 Käy kusella
 Käy suihkussa
@@ -106,31 +153,33 @@ Lue vitsejä. !vitsi
 Runkkaa
 Runkkaa lisää
 Katso pornoa
-Katso PornHubista jotain
 Mene töihin
 Mene oikeisiin töihin
 Koodaa pythonia
 Koodaa javaa
 Koodaa C++:aa
-Koodaa kobolia
 Kuuntele black metallia
 Kuuntele death metallia
 Kuuntele folkkia
 Kuuntele Rihannaa
 Kuuntele Sannia
-Juo kaljaa
 Juo mehua
+Juo vettä
+Juo maitoa
+Juo kahvia
+Juo teetä
 Hali kaveria tai nallea. Nyt.
 Hali itseäsi. Nyt.
 Pyydä äiti kylään
 Pyydä isä käymään
-Lähde isän kanssa kalalle
-Lähde kaverin kanssa kalalle
 Lähde kylille
 Lähde festareille tai keikalle. Tsekkaa onko livemusaa kaupungilla
 Pyydä kaveri kylään
 Leiki lemmikkisi kanssa
+Juttele tekoälyn kanssa
+Kysy tekoälyltä jotakin
 Irkkaa
+Irkkaa lisää
 Katso telkkaria
 Katso jotain sarjaa
 NO IRKKAA
@@ -138,43 +187,56 @@ Käy happihyppelyllä
 Käy ajelulla
 Jumppaa
 Joogaa
-Koodaa, jos et osaa: opettele. On olemassa codeacademya ja treehousea siihenkin tarkoitukseen
+Koodaa, jos et osaa: opettele
 Tee nettisivuja, jos et osaa: opettele
-Bloggaa Pulinaan http://www.pulina.fi/blogi
 Bloggaa. Jos ei ole blogia, tee sellainen
 Kuuntele musiikkia ja surffaa netissä (stumbleupon on hyvä paikka randomsurffaukseen: http://www.stumbleupon.com)
 http://www.ircquotes.net/
 No kysy vaikka rollelta
 Kysy sopalta
-Lue uutisia: http://www.ampparit.com/ 
+Kysy kummitukselta
+Lue uutisia: http://www.ampparit.com/ tai http://high.fi/
 Lue iltalehteä: http://www.iltalehti.fi 
+Lue Ilta-Sanomia: https://www.is.fi/
+Lue Hesaria: https://www.hs.fi/
 Nuku vähän
+Nuku vielä vähän lisää
 Juo limsaa. Jos ei ole: osta
+Juo fantaa
+Juo cokista
+Juo appelsiinimehua
+Juo vettä
 Pelaa, jos ei ole peliä hanki tai kysy muilta
 Katso kelloa. Jos se on liikaa, mene nukkumaan
+Katso kelloa. Jos se on liian vähän, mene takaisin nukkumaan
 Hmm... keksi itte
+Hmm... pyydä kummitusta keksimään jotakin
 Opiskele jotain hyödyllistä
+Opiskele jotain hyödytöntä
 Opettele uusi taito
+Opettele uusi kieli
 Hae opiskelemaan toiselle paikkakunnalle
 Hae opiskelemaan
 Laske matematiikkaa
 Lue kvanttifysikkaa
-Asenna linux
-Asenna Windows
-Käy tekemässä heräteostoksia
-Törsää
-Käy Ebayssa tai Amazonissa
-Tee samaa mitä nytkin
 Asenna Linux
+Asenna Windows
+Lataa netistä uusi taustakuva puhelimeen tai työpöydälle
+Käy tekemässä heräteostoksia
+Osta Ikeasta jotain
+Tilaa netistä jotain
+Törsää
+Säästä
+Käy Ebayssa tai Amazonissa
 Tee jotain uutta
 Tee jotain vanhaa
 Lepäile
 Koomaile
+Chillaa
 Ota rennosti
 Ota iisisti
 Minäkö se aina joudun keksimään SULLE tekemistä? Mitä vittua? Keksi välillä ihan itte! Ei voi olla niin tylsää. Saatana
 Onpa sulla huono mielikuvitus
-Kirjoita satu
 Kerro muille irkkaajille vitsi. NYT
 Tsekkaa mitä muuta kivaa minä voin tehdä hyväksesi: http://pulina.fi/komennot
 Random-irkkikuvia: http://peikko.us/pics
@@ -183,12 +245,16 @@ Etkö muka oikeasti keksi mitään tekemistä? nyt vittu oikeesti. Mahtaa olla t
 Tee jotain uutta
 Repäise ja lähde vaikka maailmanympärimatkalle
 Mene paskalle ja jatka sieltä irkkaamista
+Mene kuselle ja jatka siellä irkkaamista
+Mene paskalle, mutta jätä puhelin muualle
+Mene kuselle, mutta jätä puhelin muualle
+Vähennä ruutuaikaa
 Ainako pitäis keksiä..
 !do !do !do !do !do !do !do !do !do !do !do !do ?do
 Do re mi fa sol..
 Do or do not, there's no try
 Mene ja tiedä
-Keksi tekemistä ittelles
+Keksi tekemistä itsellesi
 Keksi tekemistä muille
 Auta mummo kadun yli
 Soita mummolle
@@ -197,51 +263,57 @@ Soita isälle
 Soita tädille
 Soita sedälle
 Soita papalle
-Lähde ukin kanssa ryyppäämään
-Juo mummon rahat
-Neulo
-Nussi
 Syöpöttele
 Juopottele
 Vinguta Visaa
 Mene laivalle
-Suunnittele ulkomaanreissu
+Käy Tallinnassa
+Käy ravintolassa
+Käy Mäkkärissä
+Käy Hesessä
+Käy Subilla
+Suunnittele ulkomaanreissua
+Suunnittele kotimaanreissua
 Pelaa xboxia
 Pelaa pleikkaa
+Pelaa nintendolla
 Pelaa retropelejä
 Tee musiikkia
-Tweettaa
+Tuuttaa
+Rekisteröidy Mastodon käyttäjäksi (mementomori.social)
 Feisbuukkaa
 Trollaa irkissä
 Mene nukkumaan
 Ota päikkärit
-Ota päikkärit (eli päiväkaljat)
-Vedä päiväkännit
-Juo siideriä
-Juo viiniä
 Koodaa jottai
 Kirjoita kirja
 Kirjoita bloggaus
+Kirjoita somepostaus
 No en minä tiiä
 Koodaa tekoäly
+Pyydä tekoälyä koodaamaan
 Auta minun kehittämisessä: https://github.com/pulinairc/kummitus
 Perusta pulinamiitti
 Tapaa muita irkkaajia
 Tee ex-tempore reissu jonnekin, vaikka stadiin
+Tee ex-tempore reissu jonnekin, vaikka tampereelle
 Soita parhaalle kaverille
 Katso todo-listaasi ja tyhjennä sitä
 Pese hampaat. Miks? miks ei?
-Tee oluttilaus netistä
-Mene Alkoon
-Käytä huumeita
-Polta kannabista
-Päivitä Instagram
+Pese hampaat
+Tee nettitilaus
+Päivitä sometili
 Ota selfie ittestäs ja linkkaa se kanavalle
-Mene hierontaan
+Ota selfie ja jaa se someen
+Ota selfie, mutta älä näytä kuvaa kenellekään
+Mene hierojalle
+Mene avantoon
+Mene saunaan
 Auta rollea jossain
-Anna rahaa rollelle
+Anna kahvirahaa rollelle
 Perusta yritys
 Perusta kevytyritys
+Perusta bändi
 Tienaa rahaa (fiverr.com, freelancer.com)
 Koodaa teema WordPressille
 Koodaa lisäosa WordPressille
@@ -249,38 +321,50 @@ Asenna Heroes of Might and Magic III (saa myös puhelimelle https://builds.vcmi.
 Kokkaile
 Tee ruokaa
 Leivo leivos
+Tee keksejä
+Tee kuivakakku
+Tee täytekakku
+Tee makea piirakka
+Tee suolainen piirakka
 Tee panimokierros
 Käy Tampereella
 Käy Jyväskylässä
-Ideoi mitä uutta kummitukseen voisi kehittää
-Katso Netflixistä: https://www.netflix.com/title/80189221
-Katso Netflixistä: https://www.netflix.com/title/80210932
-Katso Netflixistä: https://www.netflix.com/title/80158148
-Katso Netflixistä: https://www.netflix.com/title/70264888
-Katso Netflixistä: https://www.netflix.com/title/70264888
-Lue vitsejä: !vitsi
-Ideoi mitä uutta kummitukseen voisi kehittää
+Käy Turussa
 Juo teetä
+Juo lisää teetä
 Punnitse itsesi
-Juo lisää kaljaa
-Heitä veivi
+Juo vähemmän kaljaa
 Kuuntele mitä asiaa ystävälläsi on
-Asenna puhelimeen Telegram ja liity #pulina-ryhmään
+Asenna puhelimeen Signal
 Deletoi kaikki
 Heitä tietokone ikkunasta ulos
+Heitä puhelin ikkunasta ulos
+Heitä tyyny ikkunasta ulos
+Heitä kummitus ikkunasta ulos
 Ole positiivinen
 Katso !sää
-Katso !horo
+Katso !rj
 Hiippaile naapurin oven takana
+Hiippaile kotonasi
 Sano naapurille 'kukkuu'
+Sano ohikulkijalle 'kukkuu'
 Tervehdi kummitusta
+Laula kummitukselle
+Vitsaile kummitukselle
+Kerro hauska juttu kummitukselle
+Reagoi dramaattisesti kummituksen vastaukseen
 Lähetä kirje joulupukille
+Reklamoi virheellinen tuote tai palvelu
 Laula joululauluja
 Kuuntele räppiä
 Tee slaavikyykky
+Tee kyykky
+Tee puolen minuutin lankku
 Itsu sykkyrässä
 Rentoudu ja katso Netflixiä tai jotain vastaavaa
 Makaa lattialla ja katso kattoon
+Makaa sängyssä ja katso kattoon
+Makaa sohvalla ja katso kattoon
 Mieti ittees
 Surkuttele
 Harrasta seksiä
@@ -289,23 +373,30 @@ Soita veljelle
 Soita siskolle
 Mene lenkille
 Mene kävelylenkille
-Mene järvelle
-Käy kalalla
 Katso hentaita
 Katso random YouTube-videoita
-Kalsarikännit!
-Tee veivilista Todoistiin
 Katso onko Todoistissa (tai todolistalla) tekemättömiä tehtäviä ja tee niitä
 Korjaa jotain rikkinäistä, jos et osaa, opettele
+Heitä rikkinäiset tavarat roskiin
 Siivoa
-Laita tiskit
+Siikoa vaatekaappi
+Siivoa peilikaappi
+Kerää pyykit
+Pese pyykkiä
+Laita tiskit koneeseen
+Laita pyykit koneeseen
 Imuroi
 Luuttua lattiat
 Puistele matot
+Pese verhot tai suihkuverho
 Kyllä maailmassa tekemätöntä työtä riittää, riittää kun metsään katsoo, mene tekemään risusavottaa
 Lue WikiPediaa
 Lue historiaa
+Lue elämäkerta
 Katso sotaelokuva
 Katso komediaelokuva
 Lähde reppureissailemaan
 Lähde liftausreissulle Eurooppaan
+Lataa puhelin
+Lataa älykello
+Vastaa emojilla
