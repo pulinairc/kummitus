@@ -165,7 +165,7 @@ def save_summary_to_file(summary, log_date):
 def create_short_summary_with_gpt(log_content):
     """Generates a short summary (max 200 characters)."""
     prompt = (
-        "Summarize this IRC chat log. Write in Finnish. "
+        "Summarize this IRC chat log. Write in Finnish. Plain text only, no markdown, no backticks, no formatting. "
         "CRITICAL: Response MUST be under 200 characters due to IRC message limit. "
         "Anything over 200 characters will be cut off and lost.\n\n"
         f"{log_content}"
