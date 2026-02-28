@@ -1141,6 +1141,8 @@ def call_api(messages, max_tokens=300, temperature=0.7, model=None):
                 if "choices" in result and len(result["choices"]) > 0:
                     content = result["choices"][0]["message"]["content"]
                     content = content.strip() if content else ""
+                    # Strip leaked thinking/reasoning tokens from Gemini models
+                    content = re.sub(r'^(\s*thought\s*\n?)+', '', content, flags=re.IGNORECASE).strip()
                     finish_reason = result["choices"][0].get("finish_reason", "")
                     LOGGER.debug(f"[API] Content: {content[:200] if content else '(empty)'}, finish: {finish_reason}")
                     if not content:
