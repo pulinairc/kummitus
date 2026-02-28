@@ -171,31 +171,42 @@ def create_short_summary_with_gpt(log_content):
         f"{log_content}"
     )
 
-    try:
-        response = requests.post(
-            API_URL,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {API_KEY}",
-                "HTTP-Referer": "https://github.com/pulinairc/kummitus",
-                "X-Title": "kummitus"
-            },
-            json={
-                "model": API_MODEL,
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 150
-            },
-            timeout=60
-        )
-        if response.status_code == 200:
-            result = response.json()
-            if "choices" in result and len(result["choices"]) > 0:
-                return result["choices"][0]["message"]["content"].strip()
-        LOGGER.error(f"API error: {response.status_code}")
-        return "Short summary could not be generated."
-    except Exception as e:
-        LOGGER.error(f"Failed to generate short summary: {e}")
-        return "Short summary could not be generated."
+    retry_delays = [5, 10]
+    for attempt in range(len(retry_delays) + 1):
+        try:
+            response = requests.post(
+                API_URL,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {API_KEY}",
+                    "HTTP-Referer": "https://github.com/pulinairc/kummitus",
+                    "X-Title": "kummitus"
+                },
+                json={
+                    "model": API_MODEL,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 150
+                },
+                timeout=60
+            )
+            if response.status_code == 200:
+                result = response.json()
+                if "choices" in result and len(result["choices"]) > 0:
+                    content = result["choices"][0]["message"]["content"].strip()
+                    if content:
+                        return content
+            LOGGER.error(f"[SUMMARY] API error (attempt {attempt+1}): {response.status_code} {response.text[:200]}")
+            if attempt < len(retry_delays):
+                import time
+                time.sleep(retry_delays[attempt])
+                continue
+        except Exception as e:
+            LOGGER.error(f"[SUMMARY] Exception (attempt {attempt+1}): {e}")
+            if attempt < len(retry_delays):
+                import time
+                time.sleep(retry_delays[attempt])
+                continue
+    return None
 
 def post_summary_to_channel(bot, short_summary):
     """Posts a short summary to the IRC channel at midnight."""
@@ -334,8 +345,10 @@ def run_schedule(bot):
                 if log_content:
                     summary = create_summary_with_gpt(log_content)
                     short_summary = create_short_summary_with_gpt(log_content)
-                    save_summary_to_file(summary, log_date)
-                    bot.say(f"Eilen kanavalla keskusteltua: {short_summary}", '#pulina')
+                    if summary:
+                        save_summary_to_file(summary, log_date)
+                    if short_summary:
+                        bot.say(f"Eilen kanavalla keskusteltua: {short_summary}", '#pulina')
 
                 # Name day message
                 day = now.strftime("%d")
