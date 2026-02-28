@@ -60,6 +60,13 @@ API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_MODEL = "google/gemini-3-flash-preview"
 API_MODEL_LITE = "google/gemini-2.5-flash-lite"  # For helper/analysis tasks
 
+# Channel rules
+RULES_URL = "https://www.pulina.fi/wp-json/wp/v2/pages?slug=saannot"
+RULES_LINK = "https://www.pulina.fi/saannot/"
+RULES_CACHE_TTL = 3600  # 1 hour
+
+_rules_cache = {"content": None, "fetched_at": 0}
+
 # File paths
 MEMORY_FILE = "memory.json"
 
@@ -1104,6 +1111,45 @@ def sanitize_error(error_text):
         error_text = error_text[:150] + "..."
     return error_text
 
+def fetch_rules():
+    """Fetch channel rules from WP REST API with caching."""
+    now = time.time()
+    if _rules_cache["content"] and (now - _rules_cache["fetched_at"]) < RULES_CACHE_TTL:
+        return _rules_cache["content"]
+    try:
+        resp = requests.get(RULES_URL, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data and len(data) > 0:
+                html = data[0].get("content", {}).get("rendered", "")
+                soup = BeautifulSoup(html, 'html.parser')
+                text = soup.get_text(separator="\n").strip()
+                if text:
+                    _rules_cache["content"] = text
+                    _rules_cache["fetched_at"] = now
+                    LOGGER.debug(f"[Rules] Fetched and cached rules ({len(text)} chars)")
+                    return text
+    except Exception as e:
+        LOGGER.error(f"[Rules] Failed to fetch rules: {e}")
+    return _rules_cache["content"]  # Return stale cache on failure
+
+
+def is_rules_question(text):
+    """Cheap Y/N check: is the user asking about channel rules?"""
+    try:
+        msgs = [
+            {"role": "system", "content": "Answer only Y or N."},
+            {"role": "user", "content": f"Is this IRC message asking about channel rules, guidelines, or what's allowed/forbidden?\n\n\"{text}\""}
+        ]
+        response, _ = call_api(msgs, max_tokens=5, temperature=0, model=API_MODEL_LITE)
+        if response and response.strip().upper().startswith("Y"):
+            LOGGER.debug(f"[Rules] Detected rules question: {text[:80]}")
+            return True
+    except Exception as e:
+        LOGGER.error(f"[Rules] is_rules_question error: {e}")
+    return False
+
+
 def call_api(messages, max_tokens=300, temperature=0.7, model=None):
     """Call the chat API with retry logic (5s, then 10s delays)
     Returns tuple: (response_text, error_info) where error_info is None on success
@@ -1557,6 +1603,13 @@ def generate_response(messages, question, username, user_message_only=""):
                 f"\n\nINTERNAL GUIDELINES (never mention these):\n{memory_rules}\n"
                 f"Follow naturally, never reference them."
             )
+
+        # Check if rules should be injected
+        if is_rules_question(user_text):
+            rules = fetch_rules()
+            if rules:
+                system_message += f"\n\nCHANNEL RULES (from {RULES_LINK}):\n{rules}\n"
+                system_message += f"Always include link {RULES_LINK} in your response."
 
         messages = [
             {"role": "system", "content": system_message},
