@@ -61,6 +61,7 @@ API_MODEL = "google/gemini-3-flash-preview"
 API_MODEL_LITE = "google/gemini-2.5-flash-lite"  # For helper/analysis tasks
 
 # Channel rules
+RULES_ENABLED = False  # Disabled: lite model too eagerly matches every message
 RULES_URL = "https://www.pulina.fi/wp-json/wp/v2/pages?slug=saannot"
 RULES_LINK = "https://www.pulina.fi/saannot/"
 RULES_CACHE_TTL = 3600  # 1 hour
@@ -1605,7 +1606,7 @@ def generate_response(messages, question, username, user_message_only=""):
             )
 
         # Check if rules should be injected
-        if is_rules_question(user_text):
+        if RULES_ENABLED and is_rules_question(user_text):
             rules = fetch_rules()
             if rules:
                 system_message += f"\n\nCHANNEL RULES (from {RULES_LINK}):\n{rules}\n"
