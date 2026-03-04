@@ -58,7 +58,7 @@ OpenAI.api_key = os.getenv("OPENAI_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_MODEL = "google/gemini-3-flash-preview"
-API_MODEL_LITE = "google/gemini-2.5-flash-lite"  # For helper/analysis tasks
+API_MODEL_LITE = "google/gemini-3.1-flash-lite-preview"  # For helper/analysis tasks
 
 # Channel rules
 RULES_ENABLED = False  # Disabled: lite model too eagerly matches every message
