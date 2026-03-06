@@ -25,7 +25,7 @@ load_dotenv()
 # API Configuration
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 API_KEY = os.getenv("OPENROUTER_API_KEY")
-API_MODEL = "google/gemini-2.5-flash-lite"
+API_MODEL = "google/gemini-3.1-flash-lite-preview"
 
 # Cache for holidays
 _holidays_cache = {}
@@ -109,9 +109,13 @@ def get_yesterday_log():
 
 def create_summary_with_gpt(log_content):
     prompt = (
-        "IRC-keskustelu: \n\n"
+        "Alla on IRC-kanavan keskusteluloki yhdeltä päivältä. "
+        "Lokin muoto on: HH:MM <nick> viesti — jokainen <nick> on eri henkilö.\n\n"
         f"{log_content}\n\n"
-        "Ole hyvä ja tiivistä keskustelu mahdollisimman kattavasti niin, että ulkopuolinen saa hyvän kuvan siitä mitä päivän aikana on tapahtunut. Tiivistelmä markdown-muodossa selkeästi jäsenneltynä ja tarvittaessa otsikoituna. Otsikoiden jälkeen tyhjä rivi ja vain ensimmäinen kirjain isolla."
+        "Tiivistä keskustelu mahdollisimman kattavasti niin, että ulkopuolinen saa hyvän kuvan päivän tapahtumista. "
+        "Ryhmittele aihepiireittäin ja mainitse kunkin aiheen kohdalla ketkä nickit osallistuivat keskusteluun ja kuka sanoi mitäkin. "
+        "Älä sekoita nickejä keskenään — varmista että attribuoit mielipiteet ja aiheet oikeille henkilöille. "
+        "Tiivistelmä markdown-muodossa selkeästi jäsenneltynä ja tarvittaessa otsikoituna. Otsikoiden jälkeen tyhjä rivi ja vain ensimmäinen kirjain isolla."
     )
 
     try:
@@ -165,10 +169,12 @@ def save_summary_to_file(summary, log_date):
 def create_short_summary_with_gpt(log_content):
     """Generates a short summary (max 200 characters)."""
     prompt = (
-        "Summarize this IRC chat log. Write in Finnish. Plain text only, no markdown, no backticks, no formatting. "
+        "Below is an IRC chat log. Format: HH:MM <nick> message — each <nick> is a different person.\n\n"
+        f"{log_content}\n\n"
+        "Summarize in one sentence in Finnish. Mention key nicks and what each discussed. "
+        "Plain text only, no markdown, no backticks, no formatting. "
         "CRITICAL: Response MUST be under 200 characters due to IRC message limit. "
-        "Anything over 200 characters will be cut off and lost.\n\n"
-        f"{log_content}"
+        "Anything over 200 characters will be cut off and lost."
     )
 
     retry_delays = [5, 10]
@@ -209,7 +215,7 @@ def create_short_summary_with_gpt(log_content):
     return None
 
 def post_summary_to_channel(bot, short_summary):
-    """Posts a short summary to the IRC channel at midnight."""
+    """Posts a short summary to the IRC channel in the morning."""
     message = f"Eilen kanavalla keskusteltua: {short_summary}"
     bot.say(message, '#pulina')
     LOGGER.info(f"Posted short summary to #pulina: {message}")
@@ -340,15 +346,6 @@ def run_schedule(bot):
             LOGGER.debug("Midnight time window active")
             if global_vars['last_midnight_run'] != current_day:
                 LOGGER.info(f"Sending midnight message for {current_day}")
-                # Get yesterday's log and create summaries
-                log_content, log_date = get_yesterday_log()
-                if log_content:
-                    summary = create_summary_with_gpt(log_content)
-                    short_summary = create_short_summary_with_gpt(log_content)
-                    if summary:
-                        save_summary_to_file(summary, log_date)
-                    if short_summary:
-                        bot.say(f"Eilen kanavalla keskusteltua: {short_summary}", '#pulina')
 
                 # Name day message
                 day = now.strftime("%d")
@@ -377,6 +374,16 @@ def run_schedule(bot):
             LOGGER.debug("Morning time window active")
             if global_vars['last_morning_run'] != current_day:
                 LOGGER.info(f"Sending morning message for {current_day}")
+
+                # Generate and post yesterday's summary
+                log_content, log_date = get_yesterday_log()
+                if log_content:
+                    summary = create_summary_with_gpt(log_content)
+                    short_summary = create_short_summary_with_gpt(log_content)
+                    if summary:
+                        save_summary_to_file(summary, log_date)
+                    if short_summary:
+                        bot.say(f"Eilen kanavalla keskusteltua: {short_summary}", '#pulina')
 
                 day = now.strftime("%d")
                 month = now.strftime("%m")
