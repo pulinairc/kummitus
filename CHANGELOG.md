@@ -1,3 +1,25 @@
+### 2.4.0: 2026-03-07
+
+* Focus short summary on topics instead of nick roll call
+
+### 2.3.0: 2026-03-06
+
+* Move daily summary from midnight to morning (06:00)
+* Improve summary prompts with nick attribution and topic grouping
+* Update model to gemini-3.1-flash-lite-preview
+
+### 2.2.0: 2026-03-02
+
+* Disable channel rules feature via flag (lite model too eager)
+* Add channel rules feature: fetch from WP API, cache, and inject on relevant questions
+* Add retry logic to summary, skip posting on failure
+* Strip leaked thinking tokens from Gemini responses
+
+### 2.1.0: 2026-02-13
+
+* Fix summary: no markdown or formatting in output
+* Fix summary prompt: English, strict 200 char limit for IRC
+
 ### 2.0.0: 2026-01-22
 
 * Add GitHub Actions for automatic releases and deployment
