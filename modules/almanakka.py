@@ -171,7 +171,7 @@ def create_short_summary_with_gpt(log_content):
     prompt = (
         "Below is an IRC chat log. Format: HH:MM <nick> message — each <nick> is a different person.\n\n"
         f"{log_content}\n\n"
-        "Summarize in one sentence in Finnish. Mention key nicks and what each discussed. "
+        "Summarize in one sentence in Finnish. Focus on the main topics discussed, only mention nicks when particularly relevant. "
         "Plain text only, no markdown, no backticks, no formatting. "
         "CRITICAL: Response MUST be under 200 characters due to IRC message limit. "
         "Anything over 200 characters will be cut off and lost."
