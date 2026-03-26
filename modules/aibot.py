@@ -1713,11 +1713,11 @@ def respond_to_questions(bot, trigger):
                 bot.say(f"{trigger.nick}: Pidetään tauko. Voit jatkaa klo {resume_time}. Katso kohta 10: https://www.pulina.fi/saannot")
                 user_flood_warned[nick] = True
             return
-        # Check per-minute limit
-        recent = [t for t in user_message_times[nick] if now - t < 60]
+        # Check per-minute limit (2 min cooldown)
+        recent = [t for t in user_message_times[nick] if now - t < 120]
         if len(recent) >= FLOOD_MAX_PER_MINUTE:
             if not user_flood_warned.get(nick):
-                resume_time = datetime.fromtimestamp(recent[0] + 60).strftime('%H:%M')
+                resume_time = datetime.fromtimestamp(recent[0] + 120).strftime('%H:%M')
                 bot.say(f"{trigger.nick}: Pidetään tauko. Voit jatkaa klo {resume_time}. Katso kohta 10: https://www.pulina.fi/saannot")
                 user_flood_warned[nick] = True
             return
