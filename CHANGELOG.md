@@ -1,3 +1,7 @@
+### 2.5.0: 2026-03-26
+
+* Add per-user flood protection: max 3/min and 8/hour with warning message
+
 ### 2.4.0: 2026-03-07
 
 * Focus short summary on topics instead of nick roll call

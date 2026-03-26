@@ -25,9 +25,11 @@ LOGGER = logger.get_logger(__name__)
 COOLDOWN_PERIOD = 14400
 last_response_time = None
 
-# Flood protection
-FLOOD_INTERVAL = 3
-user_last_message = {}
+# Flood protection: max 3 per minute, max 8 per hour
+FLOOD_MAX_PER_MINUTE = 3
+FLOOD_MAX_PER_HOUR = 8
+user_message_times = {}
+user_flood_warned = {}
 
 # Files
 LOG_FILE = '/home/rolle/.sopel/pulina.log'
@@ -1697,13 +1699,31 @@ def respond_to_questions(bot, trigger):
     msg_lower = trigger.group(0).lower()
     bot_mentioned = 'kummitu' in msg_lower  # Common stem for all forms
     if bot_mentioned or trigger.is_privmsg:
-        # Flood protection
+        # Flood protection: max 3/min and 8/hour per user
         now = time.time()
         nick = trigger.nick.lower()
-        if nick in user_last_message and (now - user_last_message[nick]) < FLOOD_INTERVAL:
-            bot.say(f"{trigger.nick}: Lähetit liian monta viestiä peräkkäin, odota hetki ja kokeile uudestaan.")
+        if nick not in user_message_times:
+            user_message_times[nick] = []
+        # Clean old entries (older than 1 hour)
+        user_message_times[nick] = [t for t in user_message_times[nick] if now - t < 3600]
+        # Check hourly limit
+        if len(user_message_times[nick]) >= FLOOD_MAX_PER_HOUR:
+            if not user_flood_warned.get(nick):
+                resume_time = datetime.fromtimestamp(user_message_times[nick][0] + 3600).strftime('%H:%M')
+                bot.say(f"{trigger.nick}: Pidetään tauko. Voit jatkaa klo {resume_time}. Katso kohta 10: https://www.pulina.fi/saannot")
+                user_flood_warned[nick] = True
             return
-        user_last_message[nick] = now
+        # Check per-minute limit
+        recent = [t for t in user_message_times[nick] if now - t < 60]
+        if len(recent) >= FLOOD_MAX_PER_MINUTE:
+            if not user_flood_warned.get(nick):
+                resume_time = datetime.fromtimestamp(recent[0] + 60).strftime('%H:%M')
+                bot.say(f"{trigger.nick}: Pidetään tauko. Voit jatkaa klo {resume_time}. Katso kohta 10: https://www.pulina.fi/saannot")
+                user_flood_warned[nick] = True
+            return
+        # Reset warning flag when user is within limits
+        user_flood_warned[nick] = False
+        user_message_times[nick].append(now)
         # Do not reply if the private message is !reload or !restart
         if trigger.is_privmsg and trigger.group(0).startswith("!"):
             return
