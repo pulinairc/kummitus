@@ -29,8 +29,14 @@ def randomline(bot, trigger):
         match = re.match(r'^\d{2}:\d{2}\s+<[^>]+>\s+(.+)$', line)
         if match:
             line = match.group(1)
-        # Skip lines that are just URLs or too short
-        if len(line) < 3:
+        # Skip commands, bot mentions, URLs-only, mode changes, too short
+        if line.startswith('!') or line.startswith('.'):
+            continue
+        if 'kummitus' in line.lower():
+            continue
+        if line.startswith('http://') or line.startswith('https://'):
+            continue
+        if len(line) < 5:
             continue
         bot.say(line)
         return
