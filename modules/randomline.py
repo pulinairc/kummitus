@@ -28,11 +28,14 @@ def randomline(bot, trigger):
         # Parse live log format: "HH:MM <nick> message"
         match = re.match(r'^\d{2}:\d{2}\s+<([^>]+)>\s+(.+)$', line)
         if match:
-            nick = match.group(1).lstrip('+@')
+            nick = match.group(1).lstrip('+@ ')
             if nick.lower() == 'kummitus':
                 continue
             line = match.group(2)
-        # Skip commands, bot mentions, URLs-only, mode changes, too short
+        elif re.match(r'^\d{2}:\d{2}\s', line):
+            # Log line but not a message (names list, mode change, etc.)
+            continue
+        # Skip commands, bot mentions, URLs-only, too short
         if line.startswith('!') or line.startswith('.'):
             continue
         if 'kummitus' in line.lower():
