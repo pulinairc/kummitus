@@ -26,9 +26,12 @@ def randomline(bot, trigger):
         if line.startswith('---') or '-!-' in line:
             continue
         # Parse live log format: "HH:MM <nick> message"
-        match = re.match(r'^\d{2}:\d{2}\s+<[^>]+>\s+(.+)$', line)
+        match = re.match(r'^\d{2}:\d{2}\s+<([^>]+)>\s+(.+)$', line)
         if match:
-            line = match.group(1)
+            nick = match.group(1).lstrip('+@')
+            if nick.lower() == 'kummitus':
+                continue
+            line = match.group(2)
         # Skip commands, bot mentions, URLs-only, mode changes, too short
         if line.startswith('!') or line.startswith('.'):
             continue
