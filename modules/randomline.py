@@ -42,7 +42,10 @@ def randomline(bot, trigger):
             continue
         if line.startswith('http://') or line.startswith('https://'):
             continue
-        if len(line) < 5:
+        # Strip "nick: " prefix from replies
+        line = re.sub(r'^[A-Za-z0-9_\-\[\]]+:\s+', '', line)
+        # Skip too short or just emoticons/reactions
+        if len(line) < 10:
             continue
         bot.say(line)
         return
