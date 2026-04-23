@@ -84,7 +84,7 @@ Kummitus muistuttaa: Älä unohda kahvikuppia mikroon
 Kahvi: Koska vesi yksinään on tylsää
 Kahvi haluaa kaveriksi pullaa
 Kahvi+kirja = täydellinen match
-CTRL+K: Tee kahvia
+CTRL+K: Tee kah via
 Kahvi.exe on lakannut toimimasta... Odota, ei, se on melkein täydellinen!
 Kahviin yhdistetään... ✓ Yhteys muodostettu
 HP palautettu: +50 (kiitos kahvin)
@@ -106,3 +106,5 @@ Kahvi, kumppaneista parhain
 Nyt on kovat kofeiinipärinät
 Vielä yksi kahvi
 Mustana ja vahvana, niin kuin sydämesi
+Kuppi tummaa kahvia
+Kuppi vetistä kahvia
