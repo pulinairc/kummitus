@@ -1153,9 +1153,35 @@ def is_rules_question(text):
     return False
 
 
-def call_api(messages, max_tokens=300, temperature=0.7, model=None):
+# English assistant openers that mean the model ran on past its answer
+DRIFT_OPENERS = re.compile(
+    r"(Of course[!,]|Sure thing[!,]|Sure[!,] here|Certainly[!,]|Absolutely[!,]|"
+    r"Here (?:are|is) the steps|I'd be happy to|As an AI language model)",
+    re.IGNORECASE,
+)
+
+def trim_drift(content, finish_reason):
+    """Cut run-on tails: off-topic English continuations and mid-sentence truncation."""
+    # IRC replies are one line, drop anything after a newline
+    content = content.split("\n", 1)[0].strip()
+
+    match = DRIFT_OPENERS.search(content)
+    if match and match.start() >= 40:
+        LOGGER.warning(f"[API] Drift tail trimmed at char {match.start()}")
+        content = content[:match.start()].rstrip()
+
+    if finish_reason == "length" and len(content) > 220:
+        cut = max(content.rfind(c, 0, 300) for c in ".!?")
+        if cut > 60:
+            LOGGER.warning("[API] Truncated tail trimmed to last full sentence")
+            content = content[:cut + 1]
+
+    return content.strip()
+
+def call_api(messages, max_tokens=300, temperature=0.7, model=None, irc_reply=False):
     """Call the chat API with retry logic (5s, then 10s delays)
     Returns tuple: (response_text, error_info) where error_info is None on success
+    irc_reply=True enforces a single-line reply and trims model run-on.
     """
     retry_delays = [5, 10]  # Progressive delays: 5s, then 10s
     last_error = None
@@ -1168,9 +1194,12 @@ def call_api(messages, max_tokens=300, temperature=0.7, model=None):
                 "messages": messages,
                 "max_tokens": max_tokens,
                 "temperature": temperature,
-                "frequency_penalty": 0.7,
-                "presence_penalty": 0.6,
+                # High penalties suppress the stop token and cause off-topic run-on
+                "frequency_penalty": 0.2,
+                "presence_penalty": 0.2,
             }
+            if irc_reply:
+                payload["stop"] = ["\n\n"]
 
             response = requests.post(
                 API_URL,
@@ -1193,6 +1222,8 @@ def call_api(messages, max_tokens=300, temperature=0.7, model=None):
                     # Strip leaked thinking/reasoning tokens from Gemini models
                     content = re.sub(r'^(\s*thought\s*\n?)+', '', content, flags=re.IGNORECASE).strip()
                     finish_reason = result["choices"][0].get("finish_reason", "")
+                    if irc_reply and content:
+                        content = trim_drift(content, finish_reason)
                     LOGGER.debug(f"[API] Content: {content[:200] if content else '(empty)'}, finish: {finish_reason}")
                     if not content:
                         # Model returned empty content (e.g., used all tokens on reasoning)
@@ -1618,7 +1649,7 @@ def generate_response(messages, question, username, user_message_only=""):
             {"role": "system", "content": system_message},
             {"role": "user", "content": prompt}
         ]
-        api_response, api_error = call_api(messages, max_tokens=300, temperature=0.7)
+        api_response, api_error = call_api(messages, max_tokens=300, temperature=0.7, irc_reply=True)
         if api_response:
             # Strip any leading timestamps that model might echo
             api_response = re.sub(r'^\d{2}:\d{2}\s*', '', api_response)
@@ -1655,7 +1686,7 @@ def generate_natural_response(prompt):
             {"role": "system", "content": system_content},
             {"role": "user", "content": prompt}
         ]
-        response, api_error = call_api(messages, max_tokens=300, temperature=0.6)
+        response, api_error = call_api(messages, max_tokens=300, temperature=0.6, irc_reply=True)
         # Randomly strip :) and ;) with 50% probability to reduce overuse
         if response and random.random() < 0.5:
             response = re.sub(r'\s*[;:]\)', '', response)
