@@ -65,10 +65,82 @@ def get_today_holiday():
     holidays = get_finnish_holidays()
     return holidays.get(today)
 
+def nth_weekday(year, month, weekday, n):
+    """Date of the nth given weekday in a month (Mon=0 ... Sun=6)"""
+    first = datetime(year, month, 1)
+    offset = (weekday - first.weekday()) % 7
+    return first + timedelta(days=offset + 7 * (n - 1))
+
+def get_movable_flag_day(now):
+    """Flag days that fall on a weekday rather than a fixed date"""
+    # Äitienpäivä, toukokuun toinen sunnuntai
+    if now.month == 5 and now.day == nth_weekday(now.year, 5, 6, 2).day:
+        return ["äitienpäivä"], True
+
+    # Kaatuneitten muistopäivä, toukokuun kolmas sunnuntai
+    if now.month == 5 and now.day == nth_weekday(now.year, 5, 6, 3).day:
+        return ["kaatuneitten muistopäivä"], True
+
+    # Suomen lipun päivä, juhannuspäivä eli 20.-26.6. välinen lauantai
+    if now.month == 6 and 20 <= now.day <= 26 and now.weekday() == 5:
+        return ["Suomen lipun päivä", "juhannuspäivä"], True
+
+    # Isänpäivä, marraskuun toinen sunnuntai
+    if now.month == 11 and now.day == nth_weekday(now.year, 11, 6, 2).day:
+        return ["isänpäivä"], True
+
+    return None, False
+
+def get_today_flag_day(now=None):
+    """Names of today's flag day plus whether it is an official one.
+    A movable and a fixed flag day can land on the same date, so both are merged.
+    """
+    if now is None:
+        now = datetime.now()
+
+    names, official = get_movable_flag_day(now)
+    names = list(names) if names else []
+
+    try:
+        with open(flag_days_file, 'r') as filehandle:
+            flag_days = json.loads(filehandle.read())
+    except Exception as e:
+        LOGGER.error(f"Failed to read flag days: {e}")
+        flag_days = {}
+
+    entry = flag_days.get(now.strftime("%m-%d"))
+    if entry:
+        names += [n for n in entry['names'] if n not in names]
+        official = official or entry.get('official', False)
+
+    return (names or None), official
+
+def build_flag_day_sentence(now, holiday):
+    """Flag day sentence, or empty when today is not one.
+    Names already covered by the holiday name are dropped to avoid repeating it.
+    """
+    names, official = get_today_flag_day(now)
+    if not names:
+        return ''
+
+    if holiday:
+        holiday_lower = holiday.lower()
+        names = [n for n in names if n.lower() not in holiday_lower]
+
+    liputetaan = 'Tänään liputetaan' if official else 'Tänään liputetaan vakiintuneen tavan mukaan'
+    if not names:
+        return f' {liputetaan}!'
+
+    # "sekä" avoids a second "ja" when a name already contains one
+    conjunction = ' sekä ' if any(' ja ' in n for n in names) else ' ja '
+    reason = names[0] if len(names) == 1 else conjunction.join([', '.join(names[:-1]), names[-1]])
+    return f' {liputetaan}, koska on {reason}.'
+
 # Define base paths
 log_base_path = "/home/rolle/pulina.fi/pulina-days"
 save_path = f"/home/rolle/summaries/{datetime.now().strftime('%Y/%m/%d')}.md"
 names_file = '/home/rolle/.sopel/modules/nimipaivat.json'
+flag_days_file = '/home/rolle/.sopel/modules/liputuspaivat.json'
 
 
 # Initialize global vars with yesterday's date to ensure first run works
@@ -361,10 +433,11 @@ def run_schedule(bot):
 
                 # Check for holiday
                 holiday = get_today_holiday()
+                flag_day = build_flag_day_sentence(now, holiday)
                 if holiday:
-                    bot.say(f'Päivä vaihtui! Tänään on \x02{holiday}\x0F, {findate}. Nimipäiviään viettävät: {namedaynames_commalist}.', '#pulina')
+                    bot.say(f'Päivä vaihtui! Tänään on \x02{holiday}\x0F, {findate}. Nimipäiviään viettävät: {namedaynames_commalist}.{flag_day}', '#pulina')
                 else:
-                    bot.say(f'Päivä vaihtui! Tänään on \x02{findate}\x0F. Nimipäiviään viettävät: {namedaynames_commalist}.', '#pulina')
+                    bot.say(f'Päivä vaihtui! Tänään on \x02{findate}\x0F. Nimipäiviään viettävät: {namedaynames_commalist}.{flag_day}', '#pulina')
 
                 global_vars['last_midnight_run'] = current_day
                 LOGGER.info("Midnight message sent successfully")
@@ -407,6 +480,8 @@ def run_schedule(bot):
                     message = f'Huomenta aamuvirkut! Tänään on \x02{holiday}\x0F, {findate}. Nimipäiviään viettävät: {namedaynames_commalist}.'
                 else:
                     message = f'Huomenta aamuvirkut! Tänään on \x02{findate}\x0F. Nimipäiviään viettävät: {namedaynames_commalist}.'
+
+                message += build_flag_day_sentence(now, holiday)
 
                 if temp_current is not None and temp_min is not None and temp_max is not None:
                     message += f' Ulkona on nyt {temp_current}°C, tänään kylmimmillään {temp_min}°C ja lämpimimmillään {temp_max}°C. Kivaa päivää!'
