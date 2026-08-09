@@ -26,3 +26,4 @@ modules/paikat.json
 .DS_Store
 mentioned_users.json
 test_api.py
+modules/liputuspaivat_cache.json

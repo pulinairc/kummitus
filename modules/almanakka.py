@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 import requests
 import datetime
 import os
+import re
 import json
 from babel.dates import format_date, format_datetime, format_time
 from sopel import logger
@@ -30,6 +31,32 @@ API_MODEL = "google/gemini-3.1-flash-lite-preview"
 # Cache for holidays
 _holidays_cache = {}
 _holidays_cache_year = None
+
+# Flag day source. There is no government API, so the Sisäministeriö-sourced
+# Wikipedia list is parsed and cached instead of hardcoding dates.
+FLAG_DAYS_API = "https://fi.wikipedia.org/w/api.php"
+FLAG_DAYS_UA = "kummitus-ircbot/1.0 (https://github.com/pulinairc/kummitus; roni@dude.fi)"
+FLAG_DAYS_TTL_DAYS = 30
+
+FINNISH_MONTHS = {
+    'tammikuuta': 1, 'helmikuuta': 2, 'maaliskuuta': 3, 'huhtikuuta': 4,
+    'toukokuuta': 5, 'kesäkuuta': 6, 'heinäkuuta': 7, 'elokuuta': 8,
+    'syyskuuta': 9, 'lokakuuta': 10, 'marraskuuta': 11, 'joulukuuta': 12,
+}
+
+FLAG_DAY_TIERS = {
+    'Viralliset liputuspäivät': 'virallinen',
+    'Vakiintuneet liputuspäivät': 'vakiintunut',
+    'Suositellut liputuspäivät': 'suositeltu',
+}
+
+FLAG_DAY_RANK = {'suositeltu': 1, 'vakiintunut': 2, 'virallinen': 3}
+
+FLAG_DAY_PHRASE = {
+    'virallinen': 'Tänään liputetaan',
+    'vakiintunut': 'Tänään liputetaan vakiintuneen tavan mukaan',
+    'suositeltu': 'Tänään liputetaan suosituksen mukaan',
+}
 
 def get_finnish_holidays(year=None):
     """Fetch Finnish public holidays from Nager.Date API"""
@@ -71,55 +98,186 @@ def nth_weekday(year, month, weekday, n):
     offset = (weekday - first.weekday()) % 7
     return first + timedelta(days=offset + 7 * (n - 1))
 
+def last_weekday(year, month, weekday):
+    """Date of the last given weekday in a month"""
+    nxt = datetime(year + (month == 12), (month % 12) + 1, 1)
+    last = nxt - timedelta(days=1)
+    return last - timedelta(days=(last.weekday() - weekday) % 7)
+
 def get_movable_flag_day(now):
-    """Flag days that fall on a weekday rather than a fixed date"""
+    """Flag days defined by weekday rather than date. These are set by statute,
+    so they are computed instead of fetched.
+    """
     # Äitienpäivä, toukokuun toinen sunnuntai
     if now.month == 5 and now.day == nth_weekday(now.year, 5, 6, 2).day:
-        return ["äitienpäivä"], True
+        return ['äitienpäivä'], 'virallinen'
 
     # Kaatuneitten muistopäivä, toukokuun kolmas sunnuntai
     if now.month == 5 and now.day == nth_weekday(now.year, 5, 6, 3).day:
-        return ["kaatuneitten muistopäivä"], True
+        return ['kaatuneitten muistopäivä'], 'virallinen'
 
     # Suomen lipun päivä, juhannuspäivä eli 20.-26.6. välinen lauantai
     if now.month == 6 and 20 <= now.day <= 26 and now.weekday() == 5:
-        return ["Suomen lipun päivä", "juhannuspäivä"], True
+        return ['Suomen lipun päivä', 'juhannuspäivä'], 'virallinen'
+
+    # Suomen luonnon päivä, elokuun viimeinen lauantai
+    if now.month == 8 and now.day == last_weekday(now.year, 8, 5).day:
+        return ['Suomen luonnon päivä'], 'vakiintunut'
 
     # Isänpäivä, marraskuun toinen sunnuntai
     if now.month == 11 and now.day == nth_weekday(now.year, 11, 6, 2).day:
-        return ["isänpäivä"], True
+        return ['isänpäivä'], 'virallinen'
 
-    return None, False
+    return [], None
+
+def _strip_markup(line):
+    """Reduce a wikitext bullet to plain text"""
+    line = re.sub(r'<ref[^>]*/>', '', line)
+    line = re.sub(r'<ref.*?</ref>', '', line, flags=re.S)
+    line = re.sub(r'<[^>]+>', '', line)
+    line = re.sub(r'\{\{.*?\}\}', '', line, flags=re.S)
+    line = re.sub(r'\[\[[^\]|]*\|([^\]]*)\]\]', r'\1', line)
+    line = re.sub(r'\[\[([^\]]*)\]\]', r'\1', line)
+    return line.replace("\'\'\'", '').replace("\'\'", '')
+
+def _normalise_name(name):
+    """Trim and convert essive case, "Kalevalan päivänä" -> "Kalevalan päivä" """
+    name = re.sub(r'\s+', ' ', name).strip(' ,.;:*')
+    name = re.sub(r'päivänä\b', 'päivä', name)
+    name = re.sub(r'\bvappuna\b', 'vappu', name)
+    return name.strip(' ,.;:')
+
+def parse_flag_days(wikitext):
+    """Parse the Sisäministeriö-sourced list into {"MM-DD": {names, tier}}"""
+    days, tier, finnish_flag = {}, None, False
+
+    for raw in wikitext.split('\n'):
+        h2 = re.match(r'^==\s*([^=].*?)\s*==\s*$', raw)
+        if h2:
+            # Later sections list Ahvenanmaa and Sami flag days, which are not ours
+            finnish_flag = 'Suomen lipulla' in h2.group(1)
+            tier = None
+            continue
+
+        h3 = re.match(r'^===\s*(.*?)\s*===\s*$', raw)
+        if h3:
+            tier = FLAG_DAY_TIERS.get(h3.group(1))
+            continue
+
+        if not (finnish_flag and tier) or not raw.startswith('*') or raw.startswith('**'):
+            continue
+
+        line = _strip_markup(raw.lstrip('*').strip())
+
+        # "viimeksi 1. maaliskuuta 2024" is a past occurrence, not a recurring date
+        if 'viimeksi' in line:
+            continue
+        # Weekday-defined days are computed by get_movable_flag_day instead
+        if re.search(r'(toisena|kolmantena|viimeisenä|lauantaina|sunnuntaina)', line):
+            continue
+
+        match = re.search(r'(\d{1,2})\.\s*(' + '|'.join(FINNISH_MONTHS) + r')', line)
+        if not match:
+            continue
+        day, month = int(match.group(1)), FINNISH_MONTHS[match.group(2)]
+
+        text = line[:match.start()] + ' ' + line[match.end():]
+        text = re.sub(r'\([^)]*\)', '', text)
+        text = re.sub(r'\d{1,2}\.\s*[\u2013-]\s*', '', text)
+
+        names = [_normalise_name(part) for part in text.split(',')]
+        names = [n for n in names
+                 if len(n) > 3
+                 and 'syntymäpäivä' not in n
+                 and not re.match(r'^[\d\s.\u2013-]*$', n)]
+
+        if names:
+            days['%02d-%02d' % (month, day)] = {'names': names, 'tier': tier}
+
+    return days
+
+def fetch_flag_days():
+    """Fetch and parse the flag day list from Wikipedia"""
+    response = requests.get(
+        FLAG_DAYS_API,
+        params={
+            'action': 'parse',
+            'page': 'Luettelo Suomen liputuspäivistä',
+            'prop': 'wikitext',
+            'format': 'json',
+            'formatversion': '2',
+        },
+        headers={'User-Agent': FLAG_DAYS_UA},
+        timeout=20,
+    )
+    response.raise_for_status()
+    days = parse_flag_days(response.json()['parse']['wikitext'])
+
+    # A structural change upstream would silently empty the list, so sanity check
+    if len(days) < 15:
+        raise ValueError('parsed only %d flag days, expected at least 15' % len(days))
+
+    return days
+
+def load_flag_days():
+    """Flag days from cache, refreshed from Wikipedia when stale.
+    Falls back to the last good cache so a failed fetch never drops a flag day.
+    """
+    cache, cached_at = None, None
+    if os.path.exists(flag_days_cache):
+        try:
+            with open(flag_days_cache, 'r') as filehandle:
+                blob = json.loads(filehandle.read())
+            cache = blob['days']
+            cached_at = datetime.strptime(blob['fetched'], '%Y-%m-%d')
+        except Exception as e:
+            LOGGER.error('Flag day cache unreadable: %s' % e)
+
+    if cache and cached_at and (datetime.now() - cached_at).days < FLAG_DAYS_TTL_DAYS:
+        return cache
+
+    try:
+        days = fetch_flag_days()
+        with open(flag_days_cache, 'w') as filehandle:
+            filehandle.write(json.dumps(
+                {'fetched': datetime.now().strftime('%Y-%m-%d'), 'days': days},
+                ensure_ascii=False, indent=2))
+        LOGGER.info('Refreshed %d flag days from Wikipedia' % len(days))
+        return days
+    except Exception as e:
+        LOGGER.error('Flag day fetch failed: %s' % e)
+
+    if cache:
+        LOGGER.warning('Using stale flag day cache from %s' % cached_at)
+        return cache
+
+    LOGGER.warning('No flag day data available, omitting from announcement')
+    return {}
 
 def get_today_flag_day(now=None):
-    """Names of today's flag day plus whether it is an official one.
+    """Today's flag day names plus its tier.
     A movable and a fixed flag day can land on the same date, so both are merged.
     """
     if now is None:
         now = datetime.now()
 
-    names, official = get_movable_flag_day(now)
-    names = list(names) if names else []
+    names, tier = get_movable_flag_day(now)
+    names = list(names)
 
-    try:
-        with open(flag_days_file, 'r') as filehandle:
-            flag_days = json.loads(filehandle.read())
-    except Exception as e:
-        LOGGER.error(f"Failed to read flag days: {e}")
-        flag_days = {}
-
-    entry = flag_days.get(now.strftime("%m-%d"))
+    entry = load_flag_days().get(now.strftime('%m-%d'))
     if entry:
         names += [n for n in entry['names'] if n not in names]
-        official = official or entry.get('official', False)
+        # The stronger obligation wins when two flag days share a date
+        if tier is None or FLAG_DAY_RANK.get(entry['tier'], 0) > FLAG_DAY_RANK.get(tier, 0):
+            tier = entry['tier']
 
-    return (names or None), official
+    return names, tier
 
 def build_flag_day_sentence(now, holiday):
     """Flag day sentence, or empty when today is not one.
     Names already covered by the holiday name are dropped to avoid repeating it.
     """
-    names, official = get_today_flag_day(now)
+    names, tier = get_today_flag_day(now)
     if not names:
         return ''
 
@@ -127,20 +285,20 @@ def build_flag_day_sentence(now, holiday):
         holiday_lower = holiday.lower()
         names = [n for n in names if n.lower() not in holiday_lower]
 
-    liputetaan = 'Tänään liputetaan' if official else 'Tänään liputetaan vakiintuneen tavan mukaan'
+    liputetaan = FLAG_DAY_PHRASE.get(tier, FLAG_DAY_PHRASE['vakiintunut'])
     if not names:
-        return f' {liputetaan}!'
+        return ' %s!' % liputetaan
 
     # "sekä" avoids a second "ja" when a name already contains one
     conjunction = ' sekä ' if any(' ja ' in n for n in names) else ' ja '
     reason = names[0] if len(names) == 1 else conjunction.join([', '.join(names[:-1]), names[-1]])
-    return f' {liputetaan}, koska on {reason}.'
+    return ' %s, koska on %s.' % (liputetaan, reason)
 
 # Define base paths
 log_base_path = "/home/rolle/pulina.fi/pulina-days"
 save_path = f"/home/rolle/summaries/{datetime.now().strftime('%Y/%m/%d')}.md"
 names_file = '/home/rolle/.sopel/modules/nimipaivat.json'
-flag_days_file = '/home/rolle/.sopel/modules/liputuspaivat.json'
+flag_days_cache = '/home/rolle/.sopel/modules/liputuspaivat_cache.json'
 
 
 # Initialize global vars with yesterday's date to ensure first run works
