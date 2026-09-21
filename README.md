@@ -1,6 +1,8 @@
 # kummitus IRC bot
 
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+![Build](https://img.shields.io/github/actions/workflow/status/pulinairc/kummitus/deploy.yml?style=for-the-badge&logo=githubactions&logoColor=white)
+![Version](https://img.shields.io/github/v/release/pulinairc/kummitus?style=for-the-badge&logo=github&logoColor=white)
 
 Current version of the IRC bot kummitus (Finnish for "ghost").<br>
 Mostly Finnish stuff.

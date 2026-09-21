@@ -1,10 +1,11 @@
-### 2.5.1: 2026-09-21
+### 2.6.0: 2026-09-21
 
 * Let model choose who to address
 * Add Finnish flag days to daily announcements
 * Fetch flag days from live source
 * Trim model run-on in IRC replies
 * Fix summary 404 with stable model and fallback
+* Add build and version badges to README
 
 ### 2.5.0: 2026-03-26
 
