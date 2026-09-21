@@ -1,6 +1,13 @@
 # kummitus IRC bot
 
-Current version of the IRC bot kummitus (Finnish for "ghost"). Mostly Finnish stuff. Based on [Sopel IRC Bot](https://github.com/sopel-irc/) that is written on Python.
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+
+Current version of the IRC bot kummitus (Finnish for "ghost").<br>
+Mostly Finnish stuff.
+
+Based on [Sopel IRC Bot](https://github.com/sopel-irc/) that is written on Python.
+
+<img width="128" height="128" alt="image" src="https://github.com/user-attachments/assets/dc48b684-d9a9-42a8-8fe9-16222925d5dc" />
 
 ## Systemd service
 
