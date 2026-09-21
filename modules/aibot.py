@@ -9,6 +9,7 @@ import json
 import os
 from datetime import datetime, timedelta
 from sopel import logger
+from sopel.tools import Identifier
 import random
 import time
 import re
@@ -60,7 +61,15 @@ OpenAI.api_key = os.getenv("OPENAI_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_MODEL = "google/gemini-3-flash-preview"
-API_MODEL_LITE = "google/gemini-3.1-flash-lite-preview"  # For helper/analysis tasks
+API_MODEL_LITE = "google/gemini-3.1-flash-lite"  # For helper/analysis tasks
+
+# A 404 from OpenRouter means no endpoint matched the account data policy, not a
+# bad request. Preview models are often AI Studio only, so retry on a stable sibling.
+MODEL_FALLBACKS = {
+    "google/gemini-3.1-flash-lite-preview": "google/gemini-3.1-flash-lite",
+    "google/gemini-3.1-flash-lite": "google/gemini-2.5-flash-lite",
+    "google/gemini-3-flash-preview": "google/gemini-3.5-flash",
+}
 
 # Channel rules
 RULES_ENABLED = False  # Disabled: lite model too eagerly matches every message
@@ -1235,6 +1244,11 @@ def call_api(messages, max_tokens=300, temperature=0.7, model=None, irc_reply=Fa
             else:
                 last_error = f"HTTP {response.status_code}"
                 LOGGER.error(f"[API] Error {response.status_code}: {response.text[:200]}")
+                if response.status_code == 404 and use_model in MODEL_FALLBACKS:
+                    fallback = MODEL_FALLBACKS[use_model]
+                    LOGGER.warning(f"[API] {use_model} unavailable (404), falling back to {fallback}")
+                    use_model = fallback
+                    continue
                 # Don't retry on 400 errors - they won't fix themselves
                 if response.status_code == 400:
                     return (None, sanitize_error(f"HTTP 400: {response.text[:100]}"))
@@ -1623,7 +1637,10 @@ def generate_response(messages, question, username, user_message_only=""):
             "5. No markdown, no timestamps.\n"
             "6. Chat naturally in Finnish.\n"
             "7. Use sideways Latin emoticons naturally: :) :D :( ;) :P :/ :O :3 <3 XD :'( >:) B-) etc. NEVER Unicode emojis!\n"
-            "8. DO NOT use :) or ;) in every message! ;) should be very rare. Vary emoticons or skip them."
+            "8. DO NOT use :) or ;) in every message! ;) should be very rare. Vary emoticons or skip them.\n"
+            "9. ADDRESSING: start the reply with the nick you are speaking to, then a colon. "
+            f"Normally that is {username}. If {username} asks you to tell, say or relay something "
+            "to someone else, use THAT person's nick instead. Only use nicks seen in the chat history."
         )
 
         # Add memory context to system message
@@ -1699,6 +1716,32 @@ def generate_natural_response(prompt):
 def format_cooldown_time(seconds):
     minutes, seconds = divmod(seconds, 60)
     return f"{int(minutes)} minutes {int(seconds)} seconds"
+
+# A leading "nick:" is honoured only when that nick is really in the channel,
+# so ordinary text like "Muista: ..." is never mistaken for an address.
+ADDRESSEE_RE = re.compile(r'^(?!https?:)([a-zA-Z0-9_\-\[\]\\^{}|`]+)\s*:\s*')
+
+def split_addressee(bot, trigger, response):
+    """Return (nick to address, response) letting the model pick the recipient."""
+    match = ADDRESSEE_RE.match(response)
+    if not match:
+        return trigger.nick, response
+
+    candidate = match.group(1)
+    rest = response[match.end():].strip()
+    if not rest:
+        return trigger.nick, response
+
+    if candidate.lower() == bot.nick.lower():
+        return trigger.nick, rest
+
+    channel = bot.channels.get(trigger.sender)
+    if channel:
+        user = channel.users.get(Identifier(candidate))
+        if user is not None:
+            return user.nick, rest
+
+    return trigger.nick, response
 
 # Add new function to parse nicknames from HTML file
 def load_channel_users():
@@ -1878,8 +1921,7 @@ def respond_to_questions(bot, trigger):
         # Strip "kummitus:" or "<kummitus>" from the response if it appears
         response = response.replace("kummitus:", "").replace("<kummitus>", "").strip()
 
-        # Remove any nickname prefixes that the AI might have added (but not URLs like https:)
-        response = re.sub(r'^(?!https?:)[a-zA-Z0-9_\-\[\]\\^{}|]+:\s*', '', response)
+        addressee, response = split_addressee(bot, trigger, response)
 
         # Log bot messages to the log file
         timestamp = datetime.now().strftime('%H:%M')
@@ -1889,8 +1931,7 @@ def respond_to_questions(bot, trigger):
         # Store a note from the user's question
         store_user_notes(trigger.nick, user_message)
 
-        # Prepend the user's nickname to the response
-        final_response = f"{trigger.nick}: {response}"
+        final_response = f"{addressee}: {response}"
 
         # Send the response back to the channel or user
         bot.say(final_response, trigger.sender)

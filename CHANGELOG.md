@@ -1,3 +1,11 @@
+### 2.5.1: 2026-09-21
+
+* Let model choose who to address
+* Add Finnish flag days to daily announcements
+* Fetch flag days from live source
+* Trim model run-on in IRC replies
+* Fix summary 404 with stable model and fallback
+
 ### 2.5.0: 2026-03-26
 
 * Add per-user flood protection: max 3/min and 8/hour with warning message
