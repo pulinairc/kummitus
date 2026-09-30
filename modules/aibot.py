@@ -26,11 +26,12 @@ LOGGER = logger.get_logger(__name__)
 COOLDOWN_PERIOD = 14400
 last_response_time = None
 
-# Flood protection: max 3 per minute, max 8 per hour
-FLOOD_MAX_PER_MINUTE = 3
+# Flood protection: max 3 per 2 min, max 8 per hour, always a 2 min break
+FLOOD_MAX_PER_2MIN = 3
 FLOOD_MAX_PER_HOUR = 8
+FLOOD_BREAK_SECONDS = 120
 user_message_times = {}
-user_flood_warned = {}
+user_flood_until = {}
 
 # Files
 LOG_FILE = '/home/rolle/.sopel/pulina.log'
@@ -1773,31 +1774,29 @@ def respond_to_questions(bot, trigger):
     msg_lower = trigger.group(0).lower()
     bot_mentioned = 'kummitu' in msg_lower  # Common stem for all forms
     if bot_mentioned or trigger.is_privmsg:
-        # Flood protection: max 3/min and 8/hour per user
+        # Flood protection: hitting either limit costs a flat 2 min break
         now = time.time()
         nick = trigger.nick.lower()
-        if nick not in user_message_times:
+
+        break_until = user_flood_until.get(nick, 0)
+        if now < break_until:
+            return
+        if break_until:
+            # Break served, forget the old history so it cannot trigger again
+            user_flood_until.pop(nick, None)
             user_message_times[nick] = []
-        # Clean old entries (older than 1 hour)
-        user_message_times[nick] = [t for t in user_message_times[nick] if now - t < 3600]
-        # Check hourly limit
-        if len(user_message_times[nick]) >= FLOOD_MAX_PER_HOUR:
-            if not user_flood_warned.get(nick):
-                resume_time = datetime.fromtimestamp(user_message_times[nick][0] + 3600).strftime('%H:%M')
-                bot.say(f"{trigger.nick}: Pidetään tauko. Voit jatkaa klo {resume_time}. Katso kohta 10: https://www.pulina.fi/saannot")
-                user_flood_warned[nick] = True
+
+        times = [t for t in user_message_times.get(nick, []) if now - t < 3600]
+        recent = [t for t in times if now - t < FLOOD_BREAK_SECONDS]
+
+        if len(times) >= FLOOD_MAX_PER_HOUR or len(recent) >= FLOOD_MAX_PER_2MIN:
+            user_flood_until[nick] = now + FLOOD_BREAK_SECONDS
+            resume_time = datetime.fromtimestamp(now + FLOOD_BREAK_SECONDS).strftime('%H:%M')
+            bot.say(f"{trigger.nick}: Pidetään 2 minuutin tauko. Voit jatkaa klo {resume_time}. Katso kohta 10: https://www.pulina.fi/saannot")
             return
-        # Check per-minute limit (2 min cooldown)
-        recent = [t for t in user_message_times[nick] if now - t < 120]
-        if len(recent) >= FLOOD_MAX_PER_MINUTE:
-            if not user_flood_warned.get(nick):
-                resume_time = datetime.fromtimestamp(recent[0] + 120).strftime('%H:%M')
-                bot.say(f"{trigger.nick}: Pidetään tauko. Voit jatkaa klo {resume_time}. Katso kohta 10: https://www.pulina.fi/saannot")
-                user_flood_warned[nick] = True
-            return
-        # Reset warning flag when user is within limits
-        user_flood_warned[nick] = False
-        user_message_times[nick].append(now)
+
+        times.append(now)
+        user_message_times[nick] = times
         # Do not reply if the private message is !reload or !restart
         if trigger.is_privmsg and trigger.group(0).startswith("!"):
             return

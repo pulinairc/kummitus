@@ -1,3 +1,7 @@
+### 2.6.1: 2026-09-30
+
+* Always use 2 minute flood break
+
 ### 2.6.0: 2026-09-21
 
 * Let model choose who to address
