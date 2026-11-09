@@ -1,3 +1,11 @@
+### 2.7.0: 2026-11-09
+
+* Add media info module for image links
+* Describe images with cheap vision model
+* Block private and loopback URLs
+* Let aibot read linked media and pages
+* Resolve links posted by other users
+
 ### 2.6.1: 2026-09-30
 
 * Always use 2 minute flood break

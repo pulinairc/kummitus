@@ -44,6 +44,12 @@ OUTPUT_FILE_PATH = os.path.join(OUTPUT_FILE_DIR, "muisti.txt")
 
 # Constants
 MAX_URL_SIZE = 10 * 1024 * 1024  # 10MB limit for URL content
+MEDIA_CACHE_FILE = '/home/rolle/.sopel/media_cache.json'
+
+# A question can point at a link somebody else posted, without repeating the URL
+LINK_REFERENCE = re.compile(
+    r'(linkki\w*|linkin|linkist\w*|urli\w*|\burl\b|sivu\w*|artikkeli\w*|'
+    r'kuva\w*|video\w*|tiivist\w*|yhteenve\w*|jutun|juttu\w*)', re.IGNORECASE)
 
 # Configuration
 HISTORICAL_LOG_DIR = "/home/rolle/pulina.fi/pul"  # Monthly logs from 2008
@@ -1417,6 +1423,58 @@ def check_auto_memory():
         else:
             LOGGER.info(f"[AUTO-MEMORY] Log file not found: {today_log_file}")
 
+_mediainfo_module = None
+
+def _mediainfo():
+    """Load the sibling module by path, not via sys.path."""
+    global _mediainfo_module
+    if _mediainfo_module is None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            'mediainfo', '/home/rolle/.sopel/modules/mediainfo.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _mediainfo_module = module
+    return _mediainfo_module
+
+def media_facts(url):
+    """What mediainfo already learned about a media link, free of charge.
+    Describes it once when the link predates the cache.
+    """
+    entry = None
+    try:
+        with open(MEDIA_CACHE_FILE, 'r') as handle:
+            entry = json.loads(handle.read()).get(url)
+    except Exception:
+        pass
+
+    if not entry:
+        try:
+            entry = _mediainfo().describe_media(url)
+        except Exception as e:
+            LOGGER.debug(f"Media lookup failed for {url}: {e}")
+            return None
+
+    if not entry:
+        return None
+
+    facts = ", ".join(p for p in (entry.get('type'), entry.get('size'),
+                                  entry.get('dimensions')) if p)
+    text = f"{entry.get('label', 'Media')} ({facts})"
+    if entry.get('description'):
+        text += f". Sisältö: {entry['description']}"
+    return text
+
+def recent_context_urls(context):
+    """URLs seen in channel context, newest first."""
+    ordered, seen = [], set()
+    for url in reversed(re.findall(r'https?://\S+', context or '')):
+        clean = url.rstrip('.,;:!?)]}\'"<>')
+        if clean not in seen:
+            seen.add(clean)
+            ordered.append(clean)
+    return ordered
+
 def fetch_url_content(url):
     try:
         headers = {
@@ -1476,9 +1534,16 @@ def generate_response(messages, question, username, user_message_only=""):
 
         # Limit recent context to fewer messages
         lastlines = get_last_lines(message=question)
+        url_context = lastlines or ""
         if lastlines:
             # Limit to last 10 lines max
             lastlines = "\n".join(lastlines.split("\n")[-10:])
+
+        # "tiivista tama linkki" carries no URL, so take the latest one from the channel
+        if not urls and LINK_REFERENCE.search(user_message_only or question):
+            urls = recent_context_urls(url_context)[:1]
+            if urls:
+                LOGGER.debug(f"Resolved referenced link from context: {urls[0]}")
 
         # OPTIMIZED: Only search full history if user asks about logs/history
         user_text = user_message_only if user_message_only else question
@@ -1552,6 +1617,10 @@ def generate_response(messages, question, username, user_message_only=""):
         # Get URL content with reasonable limits to avoid payload issues
         url_contents = []
         for url in urls[:3]:  # Limit to 3 URLs
+            facts = media_facts(url)
+            if facts:
+                url_contents.append(f"Media osoitteessa {url}: {facts}")
+                continue
             content = fetch_url_content(url)
             if content:
                 # Limit content to avoid payload issues
