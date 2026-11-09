@@ -27,3 +27,4 @@ modules/paikat.json
 mentioned_users.json
 test_api.py
 modules/liputuspaivat_cache.json
+media_cache.json
