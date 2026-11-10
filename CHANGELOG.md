@@ -1,3 +1,10 @@
+### 2.7.1: 2026-11-10
+
+* Rewrite !matka as travel module
+* Show car, bike, walk and flight times
+* Parse inflected place names with AI
+* Remove dead vaelimatka.org lookup
+
 ### 2.7.0: 2026-11-09
 
 * Add media info module for image links
