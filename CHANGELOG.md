@@ -1,3 +1,7 @@
+### 2.9.0: 2026-11-11
+
+* Add Pulina account application notices
+
 ### 2.8.1: 2026-11-11
 
 * Add video resolution, length and description
