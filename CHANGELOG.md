@@ -1,3 +1,7 @@
+### 2.8.1: 2026-11-11
+
+* Add video resolution, length and description
+
 ### 2.8.0: 2026-11-11
 
 * Upgrade to Sopel 8 and Python 3.12

@@ -3,11 +3,14 @@ mediainfo.py - Describe media links posted on the channel
 Copyright 2026, Roni "rolle" Laukkarinen
 Licensed under the Eiffel Forum License 2.
 """
+import base64
 import ipaddress
 import json
 import os
 import re
+import shutil
 import socket
+import subprocess
 import time
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse
 
@@ -41,6 +44,9 @@ PAGE_HOSTS = (
     'imgur.com', 'ibb.co', 'imgbb.com', 'postimg.cc', 'postimages.org',
     'prnt.sc', 'snipboard.io', 'gyazo.com', 'lightshot.com', 'flickr.com',
 )
+
+VIDEO_TIMEOUT = 30
+FRAME_WIDTH = 640
 
 LABELS = {'image': 'Kuva', 'video': 'Video', 'audio': 'Ääni', 'pdf': 'PDF'}
 
@@ -280,6 +286,52 @@ def save_cache(cache):
     return cache
 
 
+def clock(seconds):
+    s = int(round(seconds))
+    h, m = divmod(s // 60, 60)
+    return '%d:%02d:%02d' % (h, m, s % 60) if h else '%d:%02d' % (m, s % 60)
+
+
+def ffmpeg_args(url):
+    # Only the web: ffmpeg must not be talked into reading local files.
+    return ['-protocol_whitelist', 'https,http,tls,tcp', '-rw_timeout', '15000000', '-i', url]
+
+
+def video_facts(url):
+    """Size, length and a still from the start of a video, when ffmpeg is on the server."""
+    facts = {}
+    if not shutil.which('ffprobe'):
+        return facts
+    try:
+        out = subprocess.run(
+            ['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries',
+             'stream=width,height:format=duration', '-of', 'json'] + ffmpeg_args(url),
+            capture_output=True, timeout=VIDEO_TIMEOUT, check=False).stdout
+        info = json.loads(out or b'{}')
+        stream = (info.get('streams') or [{}])[0]
+        if stream.get('width') and stream.get('height'):
+            facts['dimensions'] = '%dx%d' % (stream['width'], stream['height'])
+        duration = float((info.get('format') or {}).get('duration') or 0)
+        if duration:
+            facts['duration'] = clock(duration)
+    except Exception as e:
+        LOGGER.debug('[MEDIA] ffprobe failed for %s: %s' % (url, e))
+        return facts
+    if not shutil.which('ffmpeg'):
+        return facts
+    try:
+        at = min(1.0, duration / 10) if duration else 0
+        still = subprocess.run(
+            ['ffmpeg', '-v', 'error', '-ss', '%.2f' % at] + ffmpeg_args(url) +
+            ['-frames:v', '1', '-vf', 'scale=%d:-2' % FRAME_WIDTH, '-f', 'image2', '-c:v', 'mjpeg', 'pipe:1'],
+            capture_output=True, timeout=VIDEO_TIMEOUT, check=False).stdout
+        if still:
+            facts['description'] = describe_image('data:image/jpeg;base64,' + base64.b64encode(still).decode())
+    except Exception as e:
+        LOGGER.debug('[MEDIA] Still failed for %s: %s' % (url, e))
+    return facts
+
+
 def describe_media(url):
     """Build the facts for one media URL, reusing the cache when possible."""
     cache = load_cache()
@@ -305,9 +357,12 @@ def describe_media(url):
         'size': human_size(size),
         'dimensions': '%dx%d' % (width, height) if width and height else None,
         'description': describe_image(final) if kind == 'image' else None,
+        'duration': None,
         'url': final,
         'ts': time.time(),
     }
+    if kind == 'video':
+        entry.update(video_facts(final))
     cache[url] = entry
     save_cache(cache)
     return entry
@@ -315,7 +370,7 @@ def describe_media(url):
 
 def format_line(entry):
     parts = [entry['type'], entry.get('size'), entry.get('dimensions'),
-             entry.get('description')]
+             entry.get('duration'), entry.get('description')]
     return '\x02%s:\x0F %s' % (entry['label'], ' • '.join(p for p in parts if p))
 
 
