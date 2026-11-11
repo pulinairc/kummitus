@@ -1,4 +1,4 @@
-### [Unreleased]
+### 2.7.2: 2026-11-11
 
 * Fix Dropbox image links without a description
 
