@@ -1,3 +1,4 @@
+import os
 # coding=utf-8
 """
 chatbot.py
@@ -12,7 +13,7 @@ def chatbot(bot, trigger):
     from wit import Wit
     import logging
 
-    access_token = 'FJYQ5PXLNLCNVFOAQ2X2HKIXC4IVXV2O'
+    access_token = os.getenv('WIT_TOKEN', '')
     client = Wit(access_token)
 
     query = trigger.group(1)
