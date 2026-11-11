@@ -1,3 +1,7 @@
+### 2.10.1: 2026-11-12
+
+* Change YouTube separators to center dots
+
 ### 2.10.0: 2026-11-12
 
 * Add YouTube title, uploader, date, views and likes

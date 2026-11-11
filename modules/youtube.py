@@ -82,7 +82,7 @@ def oembed_line(vid):
     if r.status_code != 200:
         return None
     o = r.json()
-    return '%s | lataaja: %s | YouTube' % (o['title'], o['author_name'])
+    return '%s · lataaja: %s · YouTube' % (o['title'], o['author_name'])
 
 
 def describe(vid):
@@ -92,7 +92,7 @@ def describe(vid):
     if not details:
         status = ((player or {}).get('playabilityStatus') or {}).get('status')
         if status in ('ERROR', 'LOGIN_REQUIRED', 'UNPLAYABLE'):
-            return 'Yksityinen tai poistettu video | YouTube'
+            return 'Yksityinen tai poistettu video · YouTube'
         return oembed_line(vid)
 
     micro = (player.get('microformat') or {}).get('playerMicroformatRenderer') or {}
@@ -110,7 +110,7 @@ def describe(vid):
     if likes:
         parts.append('%s tykkäystä' % number(likes.group(1)))
     parts.append('YouTube')
-    return ' | '.join(p for p in parts if p)
+    return ' · '.join(p for p in parts if p)
 
 
 @sopel.module.rule(r'(?u).*(?:youtube\.com|youtu\.be)/\S+')
