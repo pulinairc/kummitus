@@ -8,7 +8,8 @@
 from __future__ import unicode_literals, absolute_import, print_function, division
 
 import re
-from sopel import web, tools, __version__
+from sopel import tools, __version__
+from sopel.tools import web
 from sopel.module import commands, rule, example
 from sopel.config.types import ValidatedAttribute, ListAttribute, StaticSection
 
@@ -172,7 +173,7 @@ def check_callbacks(bot, trigger, url, run=True):
     # Check if it matches the exclusion list first
     matched = any(regex.search(url) for regex in bot.memory['url_exclude'])
     # Then, check if there's anything in the callback list
-    for regex, function in tools.iteritems(bot.memory['url_callbacks']):
+    for regex, function in bot.memory['url_callbacks'].items():
         match = regex.search(url)
         if match:
             # Always run ones from @url; they don't run on their own.

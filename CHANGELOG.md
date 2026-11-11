@@ -1,3 +1,11 @@
+### 2.8.0: 2026-11-11
+
+* Upgrade to Sopel 8 and Python 3.12
+* Patch vulnerable dependencies
+* Drop unused aiohttp, praw and geoip2
+* Replace removed sopel.web helpers
+* Fix reminders and apua on Sopel 8
+
 ### 2.7.2: 2026-11-11
 
 * Fix Dropbox image links without a description

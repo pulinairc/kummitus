@@ -6,11 +6,16 @@ Licensed under the Eiffel Forum License 2.
 http://sopel.chat/
 """
 from sopel.module import commands, rate, example
-from sopel import web
+import requests
 from bs4 import BeautifulSoup
 from urllib.parse import quote
 from urllib.request import urlopen
 import re
+
+
+def fetch(url):
+    """Sopel 8 dropped sopel.web.get; this keeps its UTF-8 decoding."""
+    return requests.get(url, timeout=20, headers={'User-Agent': 'Sopel (https://sopel.chat)'}).content.decode('utf-8', 'replace')
 
 maatunnus = {"bg": "1", "ee": "2", "en": "3", "es": "4",
              "ep": "5", "it": "6", "el": "7", "lat": "8",
@@ -55,7 +60,7 @@ def sanakirja(bot, trigger):
     url = "http://www.sanakirja.org/search.php?q=%s&l=%s&l2=%s \
         &dont_switch_languages" % (quote(hakusana),
                                    maatunnus[lahdekieli], maatunnus[kohdekieli])
-    soup = BeautifulSoup(web.get(url))
+    soup = BeautifulSoup(fetch(url))
     output = ""
     # Valitsee vaan kaannokset eika mitaan genetiivei yms.
     pysaytys = 0

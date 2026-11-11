@@ -25,7 +25,7 @@ def setup(bot):
     help_prefix = bot.config.core.help_prefix
 
 
-@rule('$nick' '(?i)(help|doc) +([A-Za-z]+)(?:\?+)?$')
+@rule('(?i)$nick' '(help|doc) +([A-Za-z]+)(?:\?+)?$')
 @example('!apua tell')
 @commands('apua', 'commands')
 @priority('low')
@@ -42,7 +42,7 @@ def help(bot, trigger):
             if len(bot.doc[name][0]) + (1 if bot.doc[name][1] else 0) > threshold:
                 if trigger.nick != trigger.sender:  # don't say that if asked in private
                     bot.reply('The documentation for this command is too long; I\'m sending it to you in a private message.')
-                msgfun = lambda l: bot.msg(trigger.nick, l)
+                msgfun = lambda l: bot.say(l, trigger.nick)
             else:
                 msgfun = bot.reply
 
@@ -99,7 +99,7 @@ def create_list(bot, msg):
     return result['url']
 
 
-@rule('$nick' r'(?i)apua(?:[?!]+)?$')
+@rule('(?i)$nick' r'apua(?:[?!]+)?$')
 @priority('low')
 def help2(bot, trigger):
     response = (

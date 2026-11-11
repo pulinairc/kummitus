@@ -8,10 +8,15 @@ http://sopel.chat/
 """
 
 from sopel.module import commands
-from sopel import web
+import requests
 from bs4 import BeautifulSoup
 from urllib.parse import quote
 import sys
+
+
+def fetch(url):
+    """Sopel 8 dropped sopel.web.get; this keeps its UTF-8 decoding."""
+    return requests.get(url, timeout=20, headers={'User-Agent': 'Sopel (https://sopel.chat)'}).content.decode('utf-8', 'replace')
 
 
 @commands('us')
@@ -35,7 +40,7 @@ def urbaani(bot, trigger):
 
     # Tarkistaa onko maaritelmia, jos ei niin postaa ekan löydön
     sana = ""
-    soup = BeautifulSoup(web.get("http://urbaanisanakirja.com/search/?q="+hakusana))
+    soup = BeautifulSoup(fetch("http://urbaanisanakirja.com/search/?q="+hakusana))
     try:
         url = ""
         sana = ""
@@ -57,7 +62,7 @@ def urbaani(bot, trigger):
             link = (soup.find_all("table", attrs={'class': "table table-condensed table-striped"})[0]).find_all("a", href=True)
             sana = link[0].text
             url = link[0]['href']
-        soup = BeautifulSoup(web.get("http://urbaanisanakirja.com" + url))
+        soup = BeautifulSoup(fetch("http://urbaanisanakirja.com" + url))
     except IndexError:
         bot.say("Hakusanalla ei löytynyt tuloksia")
         return

@@ -24,7 +24,7 @@ def module(bot, trigger):
         As interval 1h40min, 2h, 30min or 10s
     """
     
-    if not bot.memory.contains('reminder_queue'):
+    if 'reminder_queue' not in bot.memory:
         bot.memory['reminder_queue'] = {}
 
     now = datetime.datetime.now()
