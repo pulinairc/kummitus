@@ -1,3 +1,7 @@
+### [Unreleased]
+
+* Fix Dropbox image links without a description
+
 ### 2.7.1: 2026-11-10
 
 * Rewrite !matka as travel module

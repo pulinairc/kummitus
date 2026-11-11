@@ -9,7 +9,7 @@ import os
 import re
 import socket
 import time
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse
 
 import requests
 import sopel.module
@@ -197,9 +197,21 @@ def resolve_page(url):
     return None
 
 
+def direct_url(url):
+    """A Dropbox share link opens a web page; with raw=1 it serves the file itself."""
+    parts = urlparse(url)
+    host = (parts.hostname or '').lower()
+    if host not in ('dropbox.com', 'www.dropbox.com'):
+        return url
+    if not parts.path.startswith(('/scl/fi/', '/s/')):
+        return url
+    query = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k != 'dl']
+    return parts._replace(query=urlencode(query + [('raw', '1')])).geturl()
+
+
 def candidate_url(url):
     """The direct media URL for a posted link, or None when it is not media."""
-    clean = url.rstrip('.,;:!?)]}\'"')
+    clean = direct_url(url.rstrip('.,;:!?)]}\'"'))
     path = urlparse(clean).path.lower()
     if path.endswith(IMAGE_EXT) or path.endswith(OTHER_EXT):
         return clean
