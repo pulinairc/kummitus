@@ -1,6 +1,6 @@
 """
 travel.py - Distance and travel times between two places
-Copyright 2026, Roni "rolle" Laukkarinen
+Copyright 2026, Rolle Laukkarinen
 
 !matka helsinki kaustinen
 !matka Helsingistä Kaustiselle

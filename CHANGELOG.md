@@ -1,3 +1,7 @@
+### 2.10.0: 2026-11-12
+
+* Add YouTube title, uploader, date, views and likes
+
 ### 2.9.1: 2026-11-11
 
 * Remove the wit.ai token from the code

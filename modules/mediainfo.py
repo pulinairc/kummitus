@@ -1,6 +1,6 @@
 """
 mediainfo.py - Describe media links posted on the channel
-Copyright 2026, Roni "rolle" Laukkarinen
+Copyright 2026, Rolle Laukkarinen
 Licensed under the Eiffel Forum License 2.
 """
 import base64

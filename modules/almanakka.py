@@ -1,6 +1,6 @@
 """
 almanakka.py - Sopel Almanakka Module
-Copyright 2020, Roni "rolle" Laukkarinen <roni@dude.fi>
+Copyright 2020, Rolle Laukkarinen
 Licensed under the Eiffel Forum License 2.
 http://sopel.chat/
 """

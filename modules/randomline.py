@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 randomline.py
-Made by Roni "rolle" Laukkarinen
+Made by Rolle Laukkarinen
 """
 import os
 import glob

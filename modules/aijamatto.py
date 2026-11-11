@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 aijamatto.py
-Made by Roni "rolle" Laukkarinen
+Made by Rolle Laukkarinen
 """
 import sopel.module
 import random
