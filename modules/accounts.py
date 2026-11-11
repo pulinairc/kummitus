@@ -9,9 +9,9 @@ import os
 import requests
 import sopel.module
 from dotenv import load_dotenv
-from sopel import logger
+from sopel.tools import get_logger
 
-LOGGER = logger.get_logger(__name__)
+LOGGER = get_logger(__name__)
 load_dotenv('/home/rolle/.sopel/.env')
 
 API = 'https://chat.pulina.fi/accounts'
