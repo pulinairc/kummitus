@@ -1,3 +1,7 @@
+### 2.11.0: 2026-11-13
+
+* Add channel rules and conduct to AI replies
+
 ### 2.10.4: 2026-11-13
 
 * Add the pulina.fi stats that statbot kept

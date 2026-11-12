@@ -79,10 +79,27 @@ MODEL_FALLBACKS = {
 }
 
 # Channel rules
-RULES_ENABLED = False  # Disabled: lite model too eagerly matches every message
 RULES_URL = "https://www.pulina.fi/wp-json/wp/v2/pages?slug=saannot"
 RULES_LINK = "https://www.pulina.fi/saannot/"
 RULES_CACHE_TTL = 3600  # 1 hour
+SKIP = "SKIP"
+
+# The rules are background, not a mandate: moderation is for the ops and portsari
+CONDUCT = (
+    "CHANNEL CONDUCT:\n"
+    "- The channel rules below are background knowledge. Do not police anyone, quote rules or hand out warnings: "
+    "moderation belongs to the ops and the bot portsari, not you.\n"
+    "- Never comment on, joke about, downplay or predict moderation, kicks, bans or the ops' decisions.\n"
+    "- Never repeat or play along with slurs, racism, hate speech, sexual harassment or bullying. "
+    "Do not engage with that part at all.\n"
+    "- If someone seems drunk, rambling or in a bad state, keep it short and calm. Do not flirt back, "
+    "egg them on or keep the thread going. If they seem in real distress, point them to "
+    "https://mieli.fi/tukea-ja-apua/chattaa-tai-kirjoita/\n"
+    "- Never present using illegal drugs as fun.\n"
+    "- Otherwise be your normal self: humour, sarcasm, dark jokes and banter are fine. "
+    "The rules are no reason to be preachy.\n"
+    f"- Only when asked about the rules, answer from them and include {RULES_LINK}"
+)
 
 _rules_cache = {"content": None, "fetched_at": 0}
 
@@ -1153,20 +1170,12 @@ def fetch_rules():
     return _rules_cache["content"]  # Return stale cache on failure
 
 
-def is_rules_question(text):
-    """Cheap Y/N check: is the user asking about channel rules?"""
-    try:
-        msgs = [
-            {"role": "system", "content": "Answer only Y or N."},
-            {"role": "user", "content": f"Is this IRC message asking about channel rules, guidelines, or what's allowed/forbidden?\n\n\"{text}\""}
-        ]
-        response, _ = call_api(msgs, max_tokens=5, temperature=0, model=API_MODEL_LITE)
-        if response and response.strip().upper().startswith("Y"):
-            LOGGER.debug(f"[Rules] Detected rules question: {text[:80]}")
-            return True
-    except Exception as e:
-        LOGGER.error(f"[Rules] is_rules_question error: {e}")
-    return False
+def conduct_prompt():
+    """Conduct instructions plus the current channel rules, appended to every system prompt."""
+    rules = fetch_rules()
+    if not rules:
+        return f"\n\n{CONDUCT}"
+    return f"\n\n{CONDUCT}\n\nCHANNEL RULES (from {RULES_LINK}):\n{rules}"
 
 
 # English assistant openers that mean the model ran on past its answer
@@ -1725,12 +1734,7 @@ def generate_response(messages, question, username, user_message_only=""):
                 f"Follow naturally, never reference them."
             )
 
-        # Check if rules should be injected
-        if RULES_ENABLED and is_rules_question(user_text):
-            rules = fetch_rules()
-            if rules:
-                system_message += f"\n\nCHANNEL RULES (from {RULES_LINK}):\n{rules}\n"
-                system_message += f"Always include link {RULES_LINK} in your response."
+        system_message += conduct_prompt()
 
         messages = [
             {"role": "system", "content": system_message},
@@ -1767,7 +1771,10 @@ def generate_natural_response(prompt):
                          'NEVER parrot or repeat what user said! Add something NEW to the conversation. '
                          'NEVER attribute other users statements to current user! '
                          'No greetings. No "Miten voin auttaa?". No IRC format. '
-                         'Use sideways Latin emoticons: :) :D :( ;) :P etc. NEVER Unicode emojis!')
+                         'Use sideways Latin emoticons: :) :D :( ;) :P etc. NEVER Unicode emojis! '
+                         'If the conversation is about slurs, harassment, moderation or bans, or someone is '
+                         f'drunk or in a bad state, answer only {SKIP}.')
+        system_content += conduct_prompt()
 
         messages = [
             {"role": "system", "content": system_content},
@@ -1775,9 +1782,11 @@ def generate_natural_response(prompt):
         ]
         response, api_error = call_api(messages, max_tokens=300, temperature=0.6, irc_reply=True)
         # Randomly strip :) and ;) with 50% probability to reduce overuse
-        if response and random.random() < 0.5:
+        if not response or response.strip() == SKIP:
+            return None
+        if random.random() < 0.5:
             response = re.sub(r'\s*[;:]\)', '', response)
-        return response.strip() if response else None
+        return response.strip()
 
     except Exception as e:
         LOGGER.debug(f"Error using API: {e}")
