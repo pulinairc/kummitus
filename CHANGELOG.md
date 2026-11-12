@@ -1,3 +1,7 @@
+### 2.12.0: 2026-11-13
+
+* Add likes and length to YouTube titles with an API key
+
 ### 2.11.1: 2026-11-13
 
 * Fix YouTube links in capitals getting no title

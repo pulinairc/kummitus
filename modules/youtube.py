@@ -4,15 +4,24 @@ Copyright 2026, Rolle Laukkarinen
 Licensed under the Eiffel Forum License 2.
 """
 import json
+import os
 import re
 import time
 from datetime import date
 
 import requests
 import sopel.module
+from dotenv import load_dotenv
 from sopel import logger
 
 LOGGER = logger.get_logger(__name__)
+load_dotenv('/home/rolle/.sopel/.env')
+
+# YouTube's own API gives everything, likes and length too, which the watch page leaves out for servers.
+API_URL = 'https://www.googleapis.com/youtube/v3/videos'
+API_KEY = os.getenv('YOUTUBE_API_KEY')
+ISO_DURATION = re.compile(r'P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?')
+GONE = 'Yksityinen tai poistettu video · YouTube'
 
 # With or without https://: youtu.be/<id>, watch?v=<id>, /shorts/, /live/, /embed/, /v/.
 YT_RE = re.compile(
@@ -119,7 +128,50 @@ def oembed_line(vid):
     return '%s · lataaja: %s · YouTube' % (o['title'], o['author_name'])
 
 
+def iso_seconds(text):
+    """"PT1H2M3S" as 3723."""
+    m = ISO_DURATION.fullmatch(text or '')
+    if not m or not any(m.groups()):
+        return None
+    d, h, mins, s = (int(x or 0) for x in m.groups())
+    return ((d * 24 + h) * 60 + mins) * 60 + s
+
+
+def line_from_api(item):
+    snippet, stats = item.get('snippet') or {}, item.get('statistics') or {}
+    parts = [snippet.get('title'), 'lataaja: %s' % snippet.get('channelTitle')]
+    if snippet.get('publishedAt'):
+        parts.append(date.fromisoformat(snippet['publishedAt'][:10]).strftime('%-d.%-m.%Y'))
+    if snippet.get('liveBroadcastContent') == 'live':
+        parts.append('suora lähetys')
+    else:
+        seconds = iso_seconds((item.get('contentDetails') or {}).get('duration'))
+        if seconds:
+            parts.append(clock(seconds))
+    if stats.get('viewCount'):
+        parts.append('%s katselua' % number(stats['viewCount']))
+    if stats.get('likeCount'):
+        parts.append('%s tykkäystä' % number(stats['likeCount']))
+    parts.append('YouTube')
+    return ' · '.join(p for p in parts if p)
+
+
+def api_line(vid):
+    """None without a key or when the API fails, so the page is read instead."""
+    if not API_KEY:
+        return None
+    r = requests.get(API_URL, params={'part': 'snippet,statistics,contentDetails', 'id': vid, 'key': API_KEY}, timeout=TIMEOUT)
+    if r.status_code != 200:
+        LOGGER.warning('[YOUTUBE] API %s for %s' % (r.status_code, vid))
+        return None
+    items = r.json().get('items') or []
+    return line_from_api(items[0]) if items else GONE
+
+
 def describe(vid):
+    line = api_line(vid)
+    if line:
+        return line
     page = fetch_page(vid)
     player = json_after(page, PLAYER_MARK)
     details = (player or {}).get('videoDetails')
@@ -128,7 +180,7 @@ def describe(vid):
         line = page_line(page) or oembed_line(vid)
         status = ((player or {}).get('playabilityStatus') or {}).get('status')
         if not line and status in ('ERROR', 'LOGIN_REQUIRED', 'UNPLAYABLE'):
-            return 'Yksityinen tai poistettu video · YouTube'
+            return GONE
         return line
 
     micro = (player.get('microformat') or {}).get('playerMicroformatRenderer') or {}
@@ -181,4 +233,11 @@ if __name__ == '__main__':
     assert video_id('https://notyoutube.com/watch?v=dQw4w9WgXcQ') is None
     assert number(1836175875) == '1 836 175 875'
     assert clock(213) == '3:33' and clock(3700) == '1:01:40'
+    assert iso_seconds('PT3M33S') == 213 and iso_seconds('PT1H1M40S') == 3700 and iso_seconds('P1DT1S') == 86401
+    assert iso_seconds('P0D') == 0 and iso_seconds('') is None
+    item = {'snippet': {'title': 'Walking In The Air', 'channelTitle': 'Jarkko Ahola', 'publishedAt': '2020-12-14T17:00:09Z',
+                        'liveBroadcastContent': 'none'},
+            'statistics': {'viewCount': '314266', 'likeCount': '3849'}, 'contentDetails': {'duration': 'PT4M35S'}}
+    assert line_from_api(item) == ('Walking In The Air · lataaja: Jarkko Ahola · 14.12.2020 · 4:35 · 314 266 katselua'
+                                   ' · 3 849 tykkäystä · YouTube'), line_from_api(item)
     print('ok')
