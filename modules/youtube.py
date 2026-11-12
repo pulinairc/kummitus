@@ -32,6 +32,7 @@ HEADERS = {
 TIMEOUT = 10
 MAX_BYTES = 4 * 1024 * 1024
 PLAYER_MARK = 'ytInitialPlayerResponse = '
+DATA_MARK = 'ytInitialData = '
 LIKES_RE = re.compile(r'"likeCount":"(\d+)"')
 REPOST_SECONDS = 600
 SAID_PER_LINE = 2
@@ -66,12 +67,45 @@ def fetch_page(vid):
     return body.decode('utf-8', errors='ignore')
 
 
-def player_of(page):
-    start = page.find(PLAYER_MARK)
+def json_after(page, mark):
+    start = page.find(mark)
     if start == -1:
         return None
-    player, _ = json.JSONDecoder().raw_decode(page, start + len(PLAYER_MARK))
-    return player
+    found, _ = json.JSONDecoder().raw_decode(page, start + len(mark))
+    return found
+
+
+def first(o, key):
+    """The first value under key anywhere in nested JSON."""
+    if isinstance(o, dict):
+        if key in o:
+            return o[key]
+        o = list(o.values())
+    if isinstance(o, list):
+        for v in o:
+            found = first(v, key)
+            if found is not None:
+                return found
+    return None
+
+
+def text_of(o):
+    o = o or {}
+    return o.get('simpleText') or ''.join(r.get('text', '') for r in o.get('runs', []))
+
+
+def page_line(page):
+    """Title, uploader, date and views from the page itself: YouTube still shows them to servers it asks
+    to sign in, only the player details are left out."""
+    data = json_after(page, DATA_MARK)
+    primary = first(data, 'videoPrimaryInfoRenderer')
+    if not primary or not text_of(primary.get('title')):
+        return None
+    owner = first(first(data, 'videoSecondaryInfoRenderer'), 'videoOwnerRenderer') or {}
+    views = first(primary, 'originalViewCount')
+    parts = [text_of(primary['title']), 'lataaja: %s' % text_of(owner.get('title')) if owner.get('title') else None,
+             text_of(primary.get('dateText')), '%s katselua' % number(views) if views else None, 'YouTube']
+    return ' · '.join(p for p in parts if p)
 
 
 def oembed_line(vid):
@@ -87,13 +121,15 @@ def oembed_line(vid):
 
 def describe(vid):
     page = fetch_page(vid)
-    player = player_of(page)
+    player = json_after(page, PLAYER_MARK)
     details = (player or {}).get('videoDetails')
     if not details:
+        # A server's address gets "sign in to confirm you're not a bot" (LOGIN_REQUIRED) for every video.
+        line = page_line(page) or oembed_line(vid)
         status = ((player or {}).get('playabilityStatus') or {}).get('status')
-        if status in ('ERROR', 'LOGIN_REQUIRED', 'UNPLAYABLE'):
+        if not line and status in ('ERROR', 'LOGIN_REQUIRED', 'UNPLAYABLE'):
             return 'Yksityinen tai poistettu video · YouTube'
-        return oembed_line(vid)
+        return line
 
     micro = (player.get('microformat') or {}).get('playerMicroformatRenderer') or {}
     parts = [details.get('title'), 'lataaja: %s' % details.get('author')]
@@ -132,6 +168,8 @@ def youtube_auto(bot, trigger):
         if line:
             _recent[vid] = now
             bot.say('\x02%s\x0F' % line, trigger.sender)
+        else:
+            LOGGER.warning('[YOUTUBE] %s: nothing to say' % vid)
         if len(seen) >= SAID_PER_LINE:
             break
 

@@ -1,3 +1,7 @@
+### 2.10.2: 2026-11-12
+
+* Fix YouTube titles missing on the server
+
 ### 2.10.1: 2026-11-12
 
 * Change YouTube separators to center dots
