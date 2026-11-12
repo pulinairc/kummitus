@@ -149,7 +149,7 @@ def describe(vid):
     return ' · '.join(p for p in parts if p)
 
 
-@sopel.module.rule(r'(?u).*(?:youtube\.com|youtu\.be)/\S+')
+@sopel.module.rule(r'(?iu).*(?:youtube\.com|youtu\.be)/\S+')
 def youtube_auto(bot, trigger):
     if trigger.nick == bot.nick:
         return

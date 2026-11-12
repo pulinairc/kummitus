@@ -1,3 +1,7 @@
+### 2.11.1: 2026-11-13
+
+* Fix YouTube links in capitals getting no title
+
 ### 2.11.0: 2026-11-13
 
 * Add channel rules and conduct to AI replies
