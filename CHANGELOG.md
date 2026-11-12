@@ -1,3 +1,7 @@
+### 2.10.3: 2026-11-12
+
+* Fix autokick reacting to private messages, hosts and ops
+
 ### 2.10.2: 2026-11-12
 
 * Fix YouTube titles missing on the server
