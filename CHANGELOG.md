@@ -1,3 +1,7 @@
+### 2.10.4: 2026-11-13
+
+* Add the pulina.fi stats that statbot kept
+
 ### 2.10.3: 2026-11-12
 
 * Fix autokick reacting to private messages, hosts and ops
