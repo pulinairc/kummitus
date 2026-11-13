@@ -1,3 +1,8 @@
+### 2.13.3: 2026-11-13
+
+* Remove AI chat in private messages
+* Fix flood breaks resetting on restart
+
 ### 2.13.2: 2026-11-13
 
 * Change YouTube numbers to use a dot, like 89.27k

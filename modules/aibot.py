@@ -33,9 +33,22 @@ FLOOD_WINDOW_SECONDS = 120
 # Each break in a row is longer, and an hour after the last one ends the count starts over.
 FLOOD_BREAKS_MIN = (5, 15, 30, 60)
 FLOOD_FORGIVE_SECONDS = 3600
-user_message_times = {}
-user_flood_until = {}
-user_flood_strikes = {}
+# Kept on disk so a restart or deploy does not wipe a running break or the count
+FLOOD_STATE_FILE = '/home/rolle/.sopel/flood_state.json'
+# On these hosts many people share one address, so the ident tells them apart
+FLOOD_SHARED_HOSTS = ('pulina.fi', 'botit.pulina.fi')
+
+
+def load_flood_state():
+    try:
+        with open(FLOOD_STATE_FILE) as f:
+            state = json.load(f)
+        return state['times'], state['until'], {k: tuple(v) for k, v in state['strikes'].items()}
+    except (OSError, ValueError, KeyError):
+        return {}, {}, {}
+
+
+user_message_times, user_flood_until, user_flood_strikes = load_flood_state()
 
 # Files
 LOG_FILE = '/home/rolle/.sopel/pulina.log'
@@ -1124,24 +1137,42 @@ def get_last_lines(message=None, mentioned_nick=None):
         LOGGER.debug(f"Error reading log file: {e}")
         return ""
 
-def flood_check(nick, now):
+def flood_key(trigger):
+    """One person behind several nicks or clients (naaqquli and naaqquli-) shares one count, by host."""
+    host = (trigger.host or '').lower()
+    if not host or host in FLOOD_SHARED_HOSTS:
+        return f"{trigger.user}@{host}".lower() if host else trigger.nick.lower()
+    return host
+
+
+def save_flood_state():
+    try:
+        with open(FLOOD_STATE_FILE, 'w') as f:
+            json.dump({'times': user_message_times, 'until': user_flood_until, 'strikes': user_flood_strikes}, f)
+    except OSError as e:
+        LOGGER.error(f"[FLOOD] Saving flood state failed: {e}")
+
+
+def flood_check(key, now):
     """(True, None) to answer; (False, minutes) when a break starts now; (False, None) during one."""
-    if now < user_flood_until.get(nick, 0):
+    if now < user_flood_until.get(key, 0):
         return False, None
-    times = [t for t in user_message_times.get(nick, []) if now - t < 3600]
+    times = [t for t in user_message_times.get(key, []) if now - t < 3600]
     recent = [t for t in times if now - t < FLOOD_WINDOW_SECONDS]
     if len(recent) < FLOOD_MAX_PER_2MIN and len(times) < FLOOD_MAX_PER_HOUR:
         times.append(now)
-        user_message_times[nick] = times
+        user_message_times[key] = times
+        save_flood_state()
         return True, None
-    strikes, last_end = user_flood_strikes.get(nick, (0, 0))
+    strikes, last_end = user_flood_strikes.get(key, (0, 0))
     if now - last_end > FLOOD_FORGIVE_SECONDS:
         strikes = 0
     minutes = FLOOD_BREAKS_MIN[min(strikes, len(FLOOD_BREAKS_MIN) - 1)]
-    user_flood_until[nick] = now + minutes * 60
-    user_flood_strikes[nick] = (strikes + 1, user_flood_until[nick])
+    user_flood_until[key] = now + minutes * 60
+    user_flood_strikes[key] = (strikes + 1, user_flood_until[key])
     # The 2 min window starts over after the break; the hour keeps counting answered asks.
-    user_message_times[nick] = [t for t in times if now - t >= FLOOD_WINDOW_SECONDS]
+    user_message_times[key] = [t for t in times if now - t >= FLOOD_WINDOW_SECONDS]
+    save_flood_state()
     return False, minutes
 
 
@@ -1883,19 +1914,18 @@ def respond_to_questions(bot, trigger):
     # Match all Finnish declensions of "kummitus" (kummitusta, kummituksen, kummitukselle, etc.)
     msg_lower = trigger.group(0).lower()
     bot_mentioned = 'kummitu' in msg_lower  # Common stem for all forms
-    if bot_mentioned or trigger.is_privmsg:
+    # No AI chat in private: kummitus talks only on the channel, where people and Portsari can see it
+    if trigger.is_privmsg:
+        return
+
+    if bot_mentioned:
         now = time.time()
-        nick = trigger.nick.lower()
-        allowed, minutes = flood_check(nick, now)
+        allowed, minutes = flood_check(flood_key(trigger), now)
         if not allowed:
             if minutes:
                 resume_time = datetime.fromtimestamp(now + minutes * 60).strftime('%H:%M')
                 bot.say(f"{trigger.nick}: Pidetään {minutes} minuutin tauko. Voit jatkaa klo {resume_time}. Katso kohta 10: https://www.pulina.fi/saannot")
             return
-        # Do not reply if the private message is !reload or !restart
-        if trigger.is_privmsg and trigger.group(0).startswith("!"):
-            return
-
         # Get the last lines from pulina.log, excluding bot's own messages
         lastlines = get_last_lines()
 
