@@ -6,6 +6,7 @@ Licensed under the Eiffel Forum License 2.
 import base64
 import ipaddress
 import json
+import mimetypes
 import os
 import re
 import shutil
@@ -197,10 +198,26 @@ def resolve_page(url):
             tag = soup.find('meta', attrs={'property': prop}) or \
                 soup.find('meta', attrs={'name': prop})
             if tag and tag.get('content'):
-                return urljoin(url, tag['content'])
+                image = urlparse(urljoin(url, tag['content']))
+                # imgur's ?fb is a 600x315 crop for Facebook
+                return (image._replace(query='') if image.hostname == 'i.imgur.com' else image).geturl()
     except Exception as e:
         LOGGER.debug('og:image lookup failed for %s: %s' % (url, e))
     return None
+
+
+IMGUR_PAGE = re.compile(r'^/([A-Za-z0-9]{5,8})$')
+
+
+def imgur_picture(url):
+    """The picture behind an imgur page. Its ids carry a digit or a capital, site pages do not."""
+    parts = urlparse(url)
+    match = IMGUR_PAGE.match(parts.path)
+    if (parts.hostname or '').lower() not in ('imgur.com', 'www.imgur.com', 'm.imgur.com') or not match:
+        return None
+    if not re.search(r'[0-9A-Z]', match.group(1)):
+        return None
+    return 'https://i.imgur.com/%s.jpeg' % match.group(1)
 
 
 def direct_url(url):
@@ -218,6 +235,9 @@ def direct_url(url):
 def candidate_url(url):
     """The direct media URL for a posted link, or None when it is not media."""
     clean = direct_url(url.rstrip('.,;:!?)]}\'"'))
+    picture = imgur_picture(clean)
+    if picture:
+        return picture
     path = urlparse(clean).path.lower()
     if path.endswith(IMAGE_EXT) or path.endswith(OTHER_EXT):
         return clean
@@ -344,7 +364,10 @@ def describe_media(url):
 
     final, ctype, size, head = fetch_head(target)
     if not final:
-        return None
+        # imgur answers this server 429; the model still fetches the picture itself.
+        if not urlparse(target).path.lower().endswith(IMAGE_EXT):
+            return None
+        final, ctype, size, head = target, mimetypes.guess_type(target)[0] or '', None, b''
 
     kind = kind_of(final, ctype or '')
     if not kind:
@@ -361,6 +384,8 @@ def describe_media(url):
         'url': final,
         'ts': time.time(),
     }
+    if not head and not entry['description']:
+        return None
     if kind == 'video':
         entry.update(video_facts(final))
     cache[url] = entry

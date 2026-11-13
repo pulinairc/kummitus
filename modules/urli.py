@@ -44,6 +44,7 @@ BOT_CHECK_TITLE = re.compile(
     r'|are you a robot|robot or human|captcha|one more step|pardon our interruption|request blocked'
     r'|please verify you are a human|verifying you are human', re.IGNORECASE)
 HTTP_ERROR = 400
+IMGUR_PICTURE = re.compile(r'^https?://(?:www\.|m\.)?imgur\.com/(?=[a-z]*[0-9A-Z])[A-Za-z0-9]{5,8}/?$')
 BOT_CHECK_STATUS = (403, 429, 503)  # Statuses bot checks answer with; other errors get no title
 FLARESOLVERR_URL = os.getenv('FLARESOLVERR_URL')
 FLARESOLVERR_TOKEN = os.getenv('FLARESOLVERR_TOKEN')
@@ -207,8 +208,9 @@ def title_from_html(content):
     content = title_tag_data.sub(r'<\1title>', content)
     content = quoted_title.sub('', content)
 
-    start = content.rfind('<title>')
-    end = content.rfind('</title>')
+    # The first title is the page's; later ones belong to inline SVG icons.
+    start = content.find('<title>')
+    end = content.find('</title>', start)
     if start == -1 or end == -1:
         return None
     title = web.decode(content[start + 7:end])
@@ -247,8 +249,8 @@ def find_title(url, verify=True):
 
     # special cases 
 
-    # youtube.py answers YouTube links.
-    if YOUTUBE_HOST.search(url):
+    # youtube.py answers YouTube links, mediainfo.py imgur pictures.
+    if YOUTUBE_HOST.search(url) or IMGUR_PICTURE.match(url):
         return None
 
     # twatter

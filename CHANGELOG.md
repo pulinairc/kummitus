@@ -1,3 +1,7 @@
+### 2.15.1: 2026-11-14
+
+* Fix imgur links titled "Back to the top"
+
 ### 2.15.0: 2026-11-13
 
 * Add real titles behind bot checks via FlareSolverr
