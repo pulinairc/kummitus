@@ -1,3 +1,7 @@
+### 2.11.2: 2026-11-13
+
+* Remove autokick, Portsari judges slurs
+
 ### 2.11.1: 2026-11-13
 
 * Fix replying in English when asked to
