@@ -1,3 +1,7 @@
+### 2.13.1: 2026-11-13
+
+* Change bot flood breaks to 5, 15, 30 and 60 minutes
+
 ### 2.13.0: 2026-11-13
 
 * Change bot flood breaks to grow when someone keeps on

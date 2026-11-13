@@ -30,8 +30,8 @@ last_response_time = None
 FLOOD_MAX_PER_2MIN = 3
 FLOOD_MAX_PER_HOUR = 8
 FLOOD_WINDOW_SECONDS = 120
-# Each break in a row is longer, and an hour without one starts the count over.
-FLOOD_BREAKS_MIN = (2, 5, 10, 20, 30)
+# Each break in a row is longer, and an hour after the last one ends the count starts over.
+FLOOD_BREAKS_MIN = (5, 15, 30, 60)
 FLOOD_FORGIVE_SECONDS = 3600
 user_message_times = {}
 user_flood_until = {}
@@ -1134,12 +1134,12 @@ def flood_check(nick, now):
         times.append(now)
         user_message_times[nick] = times
         return True, None
-    strikes, last = user_flood_strikes.get(nick, (0, 0))
-    if now - last > FLOOD_FORGIVE_SECONDS:
+    strikes, last_end = user_flood_strikes.get(nick, (0, 0))
+    if now - last_end > FLOOD_FORGIVE_SECONDS:
         strikes = 0
     minutes = FLOOD_BREAKS_MIN[min(strikes, len(FLOOD_BREAKS_MIN) - 1)]
-    user_flood_strikes[nick] = (strikes + 1, now)
     user_flood_until[nick] = now + minutes * 60
+    user_flood_strikes[nick] = (strikes + 1, user_flood_until[nick])
     # The 2 min window starts over after the break; the hour keeps counting answered asks.
     user_message_times[nick] = [t for t in times if now - t >= FLOOD_WINDOW_SECONDS]
     return False, minutes
