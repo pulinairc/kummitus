@@ -261,6 +261,7 @@ def resolve(text):
 
 @sopel.module.example('!matka Helsinki Kaustinen')
 @sopel.module.commands('matka', 'välimatka', 'valimatka', 'etäisyys')
+@sopel.module.require_chanmsg
 def travel_command(bot, trigger):
     text = (trigger.group(2) or '').strip()
     if not text:

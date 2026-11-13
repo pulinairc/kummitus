@@ -375,6 +375,7 @@ def format_line(entry):
 
 
 @sopel.module.rule(r'(?u).*https?://\S+.*')
+@sopel.module.require_chanmsg
 def media_auto(bot, trigger):
     if trigger.nick == bot.nick:
         return
@@ -396,6 +397,7 @@ def media_auto(bot, trigger):
 
 
 @sopel.module.commands('media', 'kuva')
+@sopel.module.require_chanmsg
 def media_command(bot, trigger):
     """Kerro mitä annetussa medialinkissä on."""
     arg = trigger.group(2)

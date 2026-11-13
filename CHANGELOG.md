@@ -1,3 +1,7 @@
+### 2.13.4: 2026-11-13
+
+* Remove AI image and travel answers in private
+
 ### 2.13.3: 2026-11-13
 
 * Remove AI chat in private messages
