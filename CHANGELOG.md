@@ -1,3 +1,7 @@
+### 2.14.0: 2026-11-13
+
+* Change flood breaks to scale with usage
+
 ### 2.13.6: 2026-11-13
 
 * Fix speaking up after every restart
