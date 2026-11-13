@@ -55,8 +55,18 @@ def video_id(text):
 
 
 def number(n):
-    """1836175875 as 1 836 175 875, the Finnish way."""
-    return '{:,}'.format(int(n)).replace(',', ' ')
+    """666 as is, 89273 as 89,27k, 6230000 as 6,23 miljoonaa: short and without thousands separators."""
+    n = int(n)
+    for size, one, many in ((10**9, 'miljardi', 'miljardia'), (10**6, 'miljoona', 'miljoonaa')):
+        if round(n / size, 2) >= 1:
+            shown = decimals(n / size)
+            return '%s %s' % (shown, one if shown == '1' else many)
+    return '%sk' % decimals(n / 1000) if n >= 1000 else str(n)
+
+
+def decimals(x):
+    """Up to two decimals with a Finnish comma, trailing zeros dropped."""
+    return ('%.2f' % x).rstrip('0').rstrip('.').replace('.', ',')
 
 
 def clock(seconds):
@@ -231,13 +241,15 @@ if __name__ == '__main__':
     assert video_id('youtube.com/shorts/ZUcoknZFUPg toimiiko') == 'ZUcoknZFUPg'
     assert video_id('https://m.youtube.com/watch?feature=share&v=dQw4w9WgXcQ&t=4') == 'dQw4w9WgXcQ'
     assert video_id('https://notyoutube.com/watch?v=dQw4w9WgXcQ') is None
-    assert number(1836175875) == '1 836 175 875'
+    assert number(666) == '666' and number(999) == '999' and number(1000) == '1k' and number(66000) == '66k'
+    assert number(66660) == '66,66k' and number(89273) == '89,27k' and number(666666) == '666,67k'
+    assert number(999995) == '1 miljoona' and number(6230000) == '6,23 miljoonaa' and number(1836175875) == '1,84 miljardia'
     assert clock(213) == '3:33' and clock(3700) == '1:01:40'
     assert iso_seconds('PT3M33S') == 213 and iso_seconds('PT1H1M40S') == 3700 and iso_seconds('P1DT1S') == 86401
     assert iso_seconds('P0D') == 0 and iso_seconds('') is None
     item = {'snippet': {'title': 'Walking In The Air', 'channelTitle': 'Jarkko Ahola', 'publishedAt': '2020-12-14T17:00:09Z',
                         'liveBroadcastContent': 'none'},
             'statistics': {'viewCount': '314266', 'likeCount': '3849'}, 'contentDetails': {'duration': 'PT4M35S'}}
-    assert line_from_api(item) == ('Walking In The Air · lataaja: Jarkko Ahola · 14.12.2020 · 4:35 · 314 266 katselua'
-                                   ' · 3 849 tykkäystä · YouTube'), line_from_api(item)
+    assert line_from_api(item) == ('Walking In The Air · lataaja: Jarkko Ahola · 14.12.2020 · 4:35 · 314,27k katselua'
+                                   ' · 3,85k tykkäystä · YouTube'), line_from_api(item)
     print('ok')

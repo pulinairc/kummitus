@@ -1,3 +1,7 @@
+### 2.12.2: 2026-11-13
+
+* Change YouTube numbers to short forms like 89,27k
+
 ### 2.12.1: 2026-11-13
 
 * Fix replying in English when asked to
