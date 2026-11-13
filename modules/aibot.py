@@ -1137,12 +1137,17 @@ def get_last_lines(message=None, mentioned_nick=None):
         LOGGER.debug(f"Error reading log file: {e}")
         return ""
 
-def flood_key(trigger):
-    """One person behind several nicks or clients (naaqquli and naaqquli-) shares one count, by host."""
+def flood_keys(trigger):
+    """Everything that marks one person: the host (or ident on a shared host) and the nick without its
+    trailing extras, so naaqquli, naaqquli-, naaqquli_ and naaqquli2 share one count on any address."""
+    nick = trigger.nick.lower()
+    base = 'nick:' + (re.sub(r'[\W_\d]+$', '', nick) or nick)
     host = (trigger.host or '').lower()
-    if not host or host in FLOOD_SHARED_HOSTS:
-        return f"{trigger.user}@{host}".lower() if host else trigger.nick.lower()
-    return host
+    if not host:
+        return (base,)
+    if host in FLOOD_SHARED_HOSTS:
+        return (base, f"{trigger.user}@{host}".lower())
+    return (base, host)
 
 
 def save_flood_state():
@@ -1153,25 +1158,27 @@ def save_flood_state():
         LOGGER.error(f"[FLOOD] Saving flood state failed: {e}")
 
 
-def flood_check(key, now):
-    """(True, None) to answer; (False, minutes) when a break starts now; (False, None) during one."""
-    if now < user_flood_until.get(key, 0):
+def flood_check(keys, now):
+    """(True, None) to answer; (False, minutes) when a break starts now; (False, None) during one.
+    `keys` all mark the same person: a break on any of them holds, and the counts are merged."""
+    if any(now < user_flood_until.get(key, 0) for key in keys):
         return False, None
-    times = [t for t in user_message_times.get(key, []) if now - t < 3600]
+    times = sorted({t for key in keys for t in user_message_times.get(key, []) if now - t < 3600})
     recent = [t for t in times if now - t < FLOOD_WINDOW_SECONDS]
     if len(recent) < FLOOD_MAX_PER_2MIN and len(times) < FLOOD_MAX_PER_HOUR:
-        times.append(now)
-        user_message_times[key] = times
+        for key in keys:
+            user_message_times[key] = times + [now]
         save_flood_state()
         return True, None
-    strikes, last_end = user_flood_strikes.get(key, (0, 0))
+    strikes, last_end = max(user_flood_strikes.get(key, (0, 0)) for key in keys)
     if now - last_end > FLOOD_FORGIVE_SECONDS:
         strikes = 0
     minutes = FLOOD_BREAKS_MIN[min(strikes, len(FLOOD_BREAKS_MIN) - 1)]
-    user_flood_until[key] = now + minutes * 60
-    user_flood_strikes[key] = (strikes + 1, user_flood_until[key])
-    # The 2 min window starts over after the break; the hour keeps counting answered asks.
-    user_message_times[key] = [t for t in times if now - t >= FLOOD_WINDOW_SECONDS]
+    for key in keys:
+        user_flood_until[key] = now + minutes * 60
+        user_flood_strikes[key] = (strikes + 1, now + minutes * 60)
+        # The 2 min window starts over after the break; the hour keeps counting answered asks.
+        user_message_times[key] = [t for t in times if now - t >= FLOOD_WINDOW_SECONDS]
     save_flood_state()
     return False, minutes
 
@@ -1920,7 +1927,7 @@ def respond_to_questions(bot, trigger):
 
     if bot_mentioned:
         now = time.time()
-        allowed, minutes = flood_check(flood_key(trigger), now)
+        allowed, minutes = flood_check(flood_keys(trigger), now)
         if not allowed:
             if minutes:
                 resume_time = datetime.fromtimestamp(now + minutes * 60).strftime('%H:%M')

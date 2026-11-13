@@ -1,3 +1,7 @@
+### 2.13.5: 2026-11-13
+
+* Count nick variants as one person
+
 ### 2.13.4: 2026-11-13
 
 * Remove AI image and travel answers in private
