@@ -1,3 +1,7 @@
+### 2.15.0: 2026-11-13
+
+* Add real titles behind bot checks via FlareSolverr
+
 ### 2.14.1: 2026-11-13
 
 * Fix bot check pages shown as link titles

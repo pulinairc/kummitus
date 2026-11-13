@@ -14,9 +14,13 @@ from sopel.module import commands, rule, example
 from sopel.config.types import ValidatedAttribute, ListAttribute, StaticSection
 
 import requests
+from dotenv import load_dotenv
 
+import os
 import urllib.request
 import json
+
+load_dotenv('/home/rolle/.sopel/.env')
 
 USER_AGENT = 'Sopel/{} (https://sopel.chat)'.format(__version__)
 default_headers = {'User-Agent': USER_AGENT}
@@ -33,13 +37,18 @@ re_dcc = re.compile(r'(?i)dcc\ssend')
 # for anybody.
 max_bytes = 655360
 
-# A bot check or an error page has a title too ("Vercel Security Checkpoint"); saying it would only mislead,
-# so such pages get no title at all.
+# A bot check page has a title too ("Vercel Security Checkpoint"). Such pages are fetched again through
+# FlareSolverr, a real browser on toybox that runs the check, and the real title is shown.
 BOT_CHECK_TITLE = re.compile(
     r'security checkpoint|just a moment|attention required|checking your browser|access denied|ddos-guard'
     r'|are you a robot|robot or human|captcha|one more step|pardon our interruption|request blocked'
     r'|please verify you are a human|verifying you are human', re.IGNORECASE)
 HTTP_ERROR = 400
+BOT_CHECK_STATUS = (403, 429, 503)  # Statuses bot checks answer with; other errors get no title
+FLARESOLVERR_URL = os.getenv('FLARESOLVERR_URL')
+FLARESOLVERR_TOKEN = os.getenv('FLARESOLVERR_TOKEN')
+FLARESOLVERR_WAIT = 5  # Seconds the browser waits for a check like Vercel's to finish
+FLARESOLVERR_TIMEOUT = 90
 
 YOUTUBE_HOST = re.compile(r'^https?://(?:[\w-]+\.)?(?:youtube\.com|youtu\.be)/', re.IGNORECASE)
 TWITTER = ['https://twitter.com', 'https://m.twitter.com', 'https://mobile.twitter.com']
@@ -191,6 +200,48 @@ def check_callbacks(bot, trigger, url, run=True):
     return matched
 
 
+def title_from_html(content):
+    """The cleaned <title> of a page, or None."""
+    # Some cleanup that I don't really grok, but was in the original, so
+    # we'll keep it (with the compiled regexes made global) for now.
+    content = title_tag_data.sub(r'<\1title>', content)
+    content = quoted_title.sub('', content)
+
+    start = content.rfind('<title>')
+    end = content.rfind('</title>')
+    if start == -1 or end == -1:
+        return None
+    title = web.decode(content[start + 7:end])
+    title = title.strip()[:200]
+
+    title = ' '.join(title.split())  # cleanly remove multiple spaces
+
+    # More cryptic regex substitutions. This one looks to be myano's invention.
+    title = re_dcc.sub('', title)
+
+    # twatter hack
+    title = "Twitter".join(title.rsplit("nitter", 1))
+    return title or None
+
+
+def solved_title(url):
+    """The title of a page behind a bot check, fetched through FlareSolverr."""
+    if not FLARESOLVERR_URL:
+        return None
+    try:
+        response = requests.post(
+            FLARESOLVERR_URL, timeout=FLARESOLVERR_TIMEOUT,
+            headers={'X-Flaresolverr-Token': FLARESOLVERR_TOKEN or ''},
+            json={'cmd': 'request.get', 'url': url, 'maxTimeout': 60000, 'waitInSeconds': FLARESOLVERR_WAIT})
+        body = (response.json().get('solution') or {}).get('response') or ''
+    except (requests.RequestException, ValueError):
+        return None
+    title = title_from_html(body)
+    if not title or BOT_CHECK_TITLE.search(title):
+        return None
+    return title
+
+
 def find_title(url, verify=True):
     """Return the title for the given URL."""
 
@@ -213,7 +264,7 @@ def find_title(url, verify=True):
                                 headers=default_headers)
         if response.status_code >= HTTP_ERROR:
             response.close()
-            return None
+            return solved_title(url) if response.status_code in BOT_CHECK_STATUS else None
         content = b''
         for byte in response.iter_content(chunk_size=512):
             content += byte
@@ -226,29 +277,10 @@ def find_title(url, verify=True):
     except requests.exceptions.ConnectionError:
         return None
 
-    # Some cleanup that I don't really grok, but was in the original, so
-    # we'll keep it (with the compiled regexes made global) for now.
-    content = title_tag_data.sub(r'<\1title>', content)
-    content = quoted_title.sub('', content)
-
-    start = content.rfind('<title>')
-    end = content.rfind('</title>')
-    if start == -1 or end == -1:
-        return
-    title = web.decode(content[start + 7:end])
-    title = title.strip()[:200]
-
-    title = ' '.join(title.split())  # cleanly remove multiple spaces
-
-    # More cryptic regex substitutions. This one looks to be myano's invention.
-    title = re_dcc.sub('', title)
-
-    # twatter hack
-    title = "Twitter".join(title.rsplit("nitter", 1))
-
-    if BOT_CHECK_TITLE.search(title):
-        return None
-    return title or None
+    title = title_from_html(content)
+    if title and BOT_CHECK_TITLE.search(title):
+        return solved_title(url)
+    return title
 
 
 def get_hostname(url):
