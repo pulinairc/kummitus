@@ -64,6 +64,10 @@ def number(n):
     return '%sk' % decimals(n / 1000) if n >= 1000 else str(n)
 
 
+def views_text(n):
+    return '%s %s' % (number(n), 'katsomiskerta' if int(n) == 1 else 'katsomiskertaa')
+
+
 def decimals(x):
     """Up to two decimals with a dot, trailing zeros dropped."""
     return ('%.2f' % x).rstrip('0').rstrip('.')
@@ -123,7 +127,7 @@ def page_line(page):
     owner = first(first(data, 'videoSecondaryInfoRenderer'), 'videoOwnerRenderer') or {}
     views = first(primary, 'originalViewCount')
     parts = [text_of(primary['title']), 'lataaja: %s' % text_of(owner.get('title')) if owner.get('title') else None,
-             text_of(primary.get('dateText')), '%s katselua' % number(views) if views else None, 'YouTube']
+             text_of(primary.get('dateText')), views_text(views) if views else None, 'YouTube']
     return ' · '.join(p for p in parts if p)
 
 
@@ -159,7 +163,7 @@ def line_from_api(item):
         if seconds:
             parts.append(clock(seconds))
     if stats.get('viewCount'):
-        parts.append('%s katselua' % number(stats['viewCount']))
+        parts.append(views_text(stats['viewCount']))
     if stats.get('likeCount'):
         parts.append('%s tykkäystä' % number(stats['likeCount']))
     parts.append('YouTube')
@@ -203,7 +207,7 @@ def describe(vid):
     elif details.get('lengthSeconds') not in (None, '0'):
         parts.append(clock(details['lengthSeconds']))
     if details.get('viewCount'):
-        parts.append('%s katselua' % number(details['viewCount']))
+        parts.append(views_text(details['viewCount']))
     likes = LIKES_RE.search(page)
     if likes:
         parts.append('%s tykkäystä' % number(likes.group(1)))
@@ -245,11 +249,12 @@ if __name__ == '__main__':
     assert number(66660) == '66.66k' and number(89273) == '89.27k' and number(666666) == '666.67k'
     assert number(999995) == '1 miljoona' and number(6230000) == '6.23 miljoonaa' and number(1836175875) == '1.84 miljardia'
     assert clock(213) == '3:33' and clock(3700) == '1:01:40'
+    assert views_text(1) == '1 katsomiskerta' and views_text(2) == '2 katsomiskertaa' and views_text(6230000) == '6.23 miljoonaa katsomiskertaa'
     assert iso_seconds('PT3M33S') == 213 and iso_seconds('PT1H1M40S') == 3700 and iso_seconds('P1DT1S') == 86401
     assert iso_seconds('P0D') == 0 and iso_seconds('') is None
     item = {'snippet': {'title': 'Walking In The Air', 'channelTitle': 'Jarkko Ahola', 'publishedAt': '2020-12-14T17:00:09Z',
                         'liveBroadcastContent': 'none'},
             'statistics': {'viewCount': '314266', 'likeCount': '3849'}, 'contentDetails': {'duration': 'PT4M35S'}}
-    assert line_from_api(item) == ('Walking In The Air · lataaja: Jarkko Ahola · 14.12.2020 · 4:35 · 314.27k katselua'
+    assert line_from_api(item) == ('Walking In The Air · lataaja: Jarkko Ahola · 14.12.2020 · 4:35 · 314.27k katsomiskertaa'
                                    ' · 3.85k tykkäystä · YouTube'), line_from_api(item)
     print('ok')
