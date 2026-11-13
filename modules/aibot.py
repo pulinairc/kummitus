@@ -24,7 +24,28 @@ LOGGER = logger.get_logger(__name__)
 
 # Define a cooldown period in seconds
 COOLDOWN_PERIOD = 14400
-last_response_time = None
+# When the last unprompted comment was made. Kept on disk: in memory a restart reset it, and kummitus
+# spoke up right after every restart.
+LAST_RESPONSE_FILE = '/home/rolle/.sopel/last_spontaneous.txt'
+
+
+def load_last_response_time():
+    try:
+        with open(LAST_RESPONSE_FILE) as f:
+            return float(f.read().strip())
+    except (OSError, ValueError):
+        return time.time()  # No record yet: wait a full cooldown rather than speak at once
+
+
+def save_last_response_time(when):
+    try:
+        with open(LAST_RESPONSE_FILE, 'w') as f:
+            f.write(str(when))
+    except OSError as e:
+        LOGGER.error(f"[COOLDOWN] Saving last response time failed: {e}")
+
+
+last_response_time = load_last_response_time()
 
 # Flood protection: 3 asks in 2 min or 8 answered in an hour start a break that grows if it goes on
 FLOOD_MAX_PER_2MIN = 3
@@ -1781,7 +1802,9 @@ def generate_response(messages, question, username, user_message_only=""):
             "RULES:\n"
             f"1. Focus on {username}'s message. Use chat history ONLY when asked or clearly relevant.\n"
             "2. Don't mix up who said what - attribute statements to correct person!\n"
-            "3. NEVER parrot. NEVER repeat yourself.\n"
+            "3. NEVER parrot: do not repeat or sum up what was said, and do not echo words, numbers or names "
+            "from the message or the chat history back. Bring your own point, a question or a short reaction "
+            "instead. NEVER repeat yourself.\n"
             "4. No greetings, no 'Miten voin auttaa?'\n"
             "5. No markdown, no timestamps.\n"
             "6. Chat naturally in Finnish.\n"
@@ -1838,7 +1861,8 @@ def store_user_notes(username, message):
 def generate_natural_response(prompt):
     try:
         system_content = ('IRC bot. Max 220 chars. Respond in Finnish. '
-                         'NEVER parrot or repeat what user said! Add something NEW to the conversation. '
+                         'NEVER parrot: do not repeat or sum up what was said, and do not echo its words, numbers '
+                         'or names back. Add something NEW to the conversation, or answer SKIP if you have nothing. '
                          'NEVER attribute other users statements to current user! '
                          'No greetings. No "Miten voin auttaa?". No IRC format. '
                          'Use sideways Latin emoticons: :) :D :( ;) :P etc. NEVER Unicode emojis! '
@@ -2098,6 +2122,7 @@ def respond_to_questions(bot, trigger):
 
             # Log last response time
             last_response_time = time.time()
+            save_last_response_time(last_response_time)
 
             # Send the response to the channel
             bot.say(f"{response}", trigger.sender)

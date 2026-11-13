@@ -1,3 +1,8 @@
+### 2.13.6: 2026-11-13
+
+* Fix speaking up after every restart
+* Fix echoing what people just said
+
 ### 2.13.5: 2026-11-13
 
 * Count nick variants as one person
