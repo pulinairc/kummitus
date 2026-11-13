@@ -1,3 +1,8 @@
+### 2.13.0: 2026-11-13
+
+* Change bot flood breaks to grow when someone keeps on
+* Fix kummitus flirting back
+
 ### 2.12.2: 2026-11-13
 
 * Change YouTube numbers to short forms like 89,27k

@@ -26,12 +26,16 @@ LOGGER = logger.get_logger(__name__)
 COOLDOWN_PERIOD = 14400
 last_response_time = None
 
-# Flood protection: max 3 per 2 min, max 8 per hour, always a 2 min break
+# Flood protection: 3 asks in 2 min or 8 answered in an hour start a break that grows if it goes on
 FLOOD_MAX_PER_2MIN = 3
 FLOOD_MAX_PER_HOUR = 8
-FLOOD_BREAK_SECONDS = 120
+FLOOD_WINDOW_SECONDS = 120
+# Each break in a row is longer, and an hour without one starts the count over.
+FLOOD_BREAKS_MIN = (2, 5, 10, 20, 30)
+FLOOD_FORGIVE_SECONDS = 3600
 user_message_times = {}
 user_flood_until = {}
+user_flood_strikes = {}
 
 # Files
 LOG_FILE = '/home/rolle/.sopel/pulina.log'
@@ -92,9 +96,14 @@ CONDUCT = (
     "- Never comment on, joke about, downplay or predict moderation, kicks, bans or the ops' decisions.\n"
     "- Never repeat or play along with slurs, racism, hate speech, sexual harassment or bullying. "
     "Do not engage with that part at all.\n"
-    "- If someone seems drunk, rambling or in a bad state, keep it short and calm. Do not flirt back, "
+    "- If someone seems drunk, rambling or in a bad state, keep it short and calm. Do not "
     "egg them on or keep the thread going. If they seem in real distress, point them to "
     "https://mieli.fi/tukea-ja-apua/chattaa-tai-kirjoita/\n"
+    "- Never flirt or play along with romance, with anyone. If someone flirts, says they love you, calls you "
+    "their partner or asks you out, say briefly and kindly that you are a bot and nobody's partner, then move on. "
+    "No hearts, kisses, pet names (rakas, kulta, oma), \"tykkään sinusta\", couple or engagement jokes, and no "
+    "roleplayed touching like *silittää* or *halaa*.\n"
+    "- Do not encourage anyone to treat you as their only friend. Be friendly, and point them to the people on the channel.\n"
     "- Never present using illegal drugs as fun.\n"
     "- Always write in Finnish, even when someone asks you to speak another language: the channel is Finnish only "
     "(rule 3). Do not argue about whether you broke a rule.\n"
@@ -1115,6 +1124,27 @@ def get_last_lines(message=None, mentioned_nick=None):
         LOGGER.debug(f"Error reading log file: {e}")
         return ""
 
+def flood_check(nick, now):
+    """(True, None) to answer; (False, minutes) when a break starts now; (False, None) during one."""
+    if now < user_flood_until.get(nick, 0):
+        return False, None
+    times = [t for t in user_message_times.get(nick, []) if now - t < 3600]
+    recent = [t for t in times if now - t < FLOOD_WINDOW_SECONDS]
+    if len(recent) < FLOOD_MAX_PER_2MIN and len(times) < FLOOD_MAX_PER_HOUR:
+        times.append(now)
+        user_message_times[nick] = times
+        return True, None
+    strikes, last = user_flood_strikes.get(nick, (0, 0))
+    if now - last > FLOOD_FORGIVE_SECONDS:
+        strikes = 0
+    minutes = FLOOD_BREAKS_MIN[min(strikes, len(FLOOD_BREAKS_MIN) - 1)]
+    user_flood_strikes[nick] = (strikes + 1, now)
+    user_flood_until[nick] = now + minutes * 60
+    # The 2 min window starts over after the break; the hour keeps counting answered asks.
+    user_message_times[nick] = [t for t in times if now - t >= FLOOD_WINDOW_SECONDS]
+    return False, minutes
+
+
 # Add cooldown for random responses
 def handle_cooldown():
     if last_response_time and (time.time() - last_response_time) < COOLDOWN_PERIOD:
@@ -1854,29 +1884,14 @@ def respond_to_questions(bot, trigger):
     msg_lower = trigger.group(0).lower()
     bot_mentioned = 'kummitu' in msg_lower  # Common stem for all forms
     if bot_mentioned or trigger.is_privmsg:
-        # Flood protection: hitting either limit costs a flat 2 min break
         now = time.time()
         nick = trigger.nick.lower()
-
-        break_until = user_flood_until.get(nick, 0)
-        if now < break_until:
+        allowed, minutes = flood_check(nick, now)
+        if not allowed:
+            if minutes:
+                resume_time = datetime.fromtimestamp(now + minutes * 60).strftime('%H:%M')
+                bot.say(f"{trigger.nick}: Pidetään {minutes} minuutin tauko. Voit jatkaa klo {resume_time}. Katso kohta 10: https://www.pulina.fi/saannot")
             return
-        if break_until:
-            # Break served, forget the old history so it cannot trigger again
-            user_flood_until.pop(nick, None)
-            user_message_times[nick] = []
-
-        times = [t for t in user_message_times.get(nick, []) if now - t < 3600]
-        recent = [t for t in times if now - t < FLOOD_BREAK_SECONDS]
-
-        if len(times) >= FLOOD_MAX_PER_HOUR or len(recent) >= FLOOD_MAX_PER_2MIN:
-            user_flood_until[nick] = now + FLOOD_BREAK_SECONDS
-            resume_time = datetime.fromtimestamp(now + FLOOD_BREAK_SECONDS).strftime('%H:%M')
-            bot.say(f"{trigger.nick}: Pidetään 2 minuutin tauko. Voit jatkaa klo {resume_time}. Katso kohta 10: https://www.pulina.fi/saannot")
-            return
-
-        times.append(now)
-        user_message_times[nick] = times
         # Do not reply if the private message is !reload or !restart
         if trigger.is_privmsg and trigger.group(0).startswith("!"):
             return
