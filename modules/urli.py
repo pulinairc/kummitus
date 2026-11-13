@@ -33,6 +33,14 @@ re_dcc = re.compile(r'(?i)dcc\ssend')
 # for anybody.
 max_bytes = 655360
 
+# A bot check or an error page has a title too ("Vercel Security Checkpoint"); saying it would only mislead,
+# so such pages get no title at all.
+BOT_CHECK_TITLE = re.compile(
+    r'security checkpoint|just a moment|attention required|checking your browser|access denied|ddos-guard'
+    r'|are you a robot|robot or human|captcha|one more step|pardon our interruption|request blocked'
+    r'|please verify you are a human|verifying you are human', re.IGNORECASE)
+HTTP_ERROR = 400
+
 YOUTUBE_HOST = re.compile(r'^https?://(?:[\w-]+\.)?(?:youtube\.com|youtu\.be)/', re.IGNORECASE)
 TWITTER = ['https://twitter.com', 'https://m.twitter.com', 'https://mobile.twitter.com']
 
@@ -203,6 +211,9 @@ def find_title(url, verify=True):
     try:
         response = requests.get(url, stream=True, verify=verify,
                                 headers=default_headers)
+        if response.status_code >= HTTP_ERROR:
+            response.close()
+            return None
         content = b''
         for byte in response.iter_content(chunk_size=512):
             content += byte
@@ -235,6 +246,8 @@ def find_title(url, verify=True):
     # twatter hack
     title = "Twitter".join(title.rsplit("nitter", 1))
 
+    if BOT_CHECK_TITLE.search(title):
+        return None
     return title or None
 
 

@@ -1,3 +1,7 @@
+### 2.14.1: 2026-11-13
+
+* Fix bot check pages shown as link titles
+
 ### 2.14.0: 2026-11-13
 
 * Change flood breaks to scale with usage
