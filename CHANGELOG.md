@@ -1,3 +1,10 @@
+### 2.15.2: 2026-11-16
+
+* Rewrite log search on a full-text index
+* Let the model decide when to search logs
+* Search every day since 2008, not one file
+* Remove shell calls from log search
+
 ### 2.15.1: 2026-11-14
 
 * Fix imgur links titled "Back to the top"

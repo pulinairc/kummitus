@@ -29,3 +29,4 @@ test_api.py
 modules/liputuspaivat_cache.json
 media_cache.json
 modules/travel_cache.json
+*.db-journal
