@@ -1017,44 +1017,73 @@ def _logindex():
         _logindex_module = module
     return _logindex_module
 
+STATUS_PARAM = {
+    "type": "string",
+    "description": (
+        "A short Finnish line in your own voice telling the user you are digging into the logs and it "
+        "takes a moment, e.g. 'Okei, kaivan logeja, tässä voi mennä hetki...'. Vary it, no nick, max 100 chars."),
+}
+FILTER_PARAMS = {
+    "nick": {"type": "string", "description": "Only lines written by this nick."},
+    "date_from": {"type": "string", "description": "YYYY-MM-DD, inclusive."},
+    "date_to": {"type": "string", "description": "YYYY-MM-DD, inclusive."},
+}
+TERMS_PARAM = {
+    "type": "array",
+    "items": {"type": "string"},
+    "description": (
+        "Search words, ORed and ranked by how many match. Finnish inflects, so give stems with a trailing * "
+        "(ajur* matches ajuri, ajurin, ajureita) plus synonyms and spelling variants. A multi-word string "
+        "must match all its words."),
+}
 LOG_SEARCH_TOOLS = [{
     "type": "function",
     "function": {
         "name": "search_logs",
         "description": (
-            "Search the #pulina IRC channel logs, every day from 8.4.2008 to today. Use it only when "
-            "the user asks about the channel's past: what someone said, when something was discussed, "
-            "who first mentioned something, what was talked about on a given day or period. "
-            "Never use it for ordinary chat or for the last few minutes, which are already in the chat history."),
+            "Read #pulina IRC channel logs, every day from 8.4.2008 to today. Use it when the user asks about "
+            "the channel's past: what someone said, when something was discussed, what happened on a day or "
+            "in a period. Never for ordinary chat or the last few minutes, which are in the chat history."),
         "parameters": {
             "type": "object",
             "properties": {
-                "terms": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": (
-                        "Search words, ORed and ranked by how many match. Finnish inflects, so give stems "
-                        "with a trailing * (ajur* matches ajuri, ajurin, ajureita) plus synonyms and "
-                        "spelling variants. A multi-word string must match all its words. Leave empty "
-                        "to browse a period or a nick."),
-                },
-                "nick": {"type": "string", "description": "Only lines written by this nick."},
-                "date_from": {"type": "string", "description": "YYYY-MM-DD, inclusive."},
-                "date_to": {"type": "string", "description": "YYYY-MM-DD, inclusive."},
+                "status": STATUS_PARAM,
+                "terms": dict(TERMS_PARAM, description=TERMS_PARAM["description"]
+                              + " Leave empty to read a period or a nick: you get excerpts spread across it."),
+                **FILTER_PARAMS,
                 "order": {
                     "type": "string",
                     "enum": ["relevance", "oldest", "newest"],
-                    "description": "relevance by default; oldest for 'first time', newest for 'last time'."},
+                    "description": ("oldest only for 'first time', newest only for 'last time'. "
+                                    "Leave out for overviews and topic searches."),
+                },
             },
+            "required": ["status"],
+        },
+    },
+}, {
+    "type": "function",
+    "function": {
+        "name": "log_stats",
+        "description": (
+            "Exact counts from the #pulina logs. Use it for any numbers question: who talks most (top_nicks), "
+            "who uses a word most (top_nicks with terms), how often something is mentioned and per year "
+            "(count), when a nick first and last spoke and how active they are (nick_span). "
+            "Never state a number about the logs without this tool."),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "status": STATUS_PARAM,
+                "kind": {"type": "string", "enum": ["top_nicks", "count", "nick_span"]},
+                "terms": TERMS_PARAM,
+                **FILTER_PARAMS,
+            },
+            "required": ["status", "kind"],
         },
     },
 }]
 
-def run_log_search(arguments):
-    try:
-        args = json.loads(arguments or "{}")
-    except ValueError:
-        return "Virheelliset hakuparametrit."
+def run_log_tool(name, args):
     index = _logindex()
     try:
         index.update()
@@ -1063,13 +1092,16 @@ def run_log_search(arguments):
     terms = args.get("terms") or []
     if isinstance(terms, str):
         terms = [terms]
-    LOGGER.info(f"[LOG-SEARCH] {args}")
-    return index.search(terms=terms, nick=args.get("nick"), date_from=args.get("date_from"),
-                        date_to=args.get("date_to"), order=args.get("order") or "relevance")
+    filters = dict(nick=args.get("nick"), date_from=args.get("date_from"), date_to=args.get("date_to"))
+    LOGGER.info(f"[LOG-SEARCH] {name} {args}")
+    if name == "log_stats":
+        return index.stats(args.get("kind") or "count", terms=terms, **filters)
+    return index.search(terms=terms, order=args.get("order") or "relevance", **filters)
 
-def chat_with_log_search(messages):
+def chat_with_log_search(messages, status_callback=None):
     """Reply, letting the model search the channel logs when the question needs them."""
-    for _ in range(3):
+    announced = False
+    for _ in range(4):
         response, error = call_api(messages, max_tokens=300, temperature=0.7, irc_reply=True,
                                    tools=LOG_SEARCH_TOOLS)
         if not isinstance(response, dict):
@@ -1078,8 +1110,19 @@ def chat_with_log_search(messages):
         messages = messages + [response]
         for call in response["tool_calls"]:
             function = call.get("function", {})
-            result = (run_log_search(function.get("arguments"))
-                      if function.get("name") == "search_logs" else "Tuntematon työkalu.")
+            name = function.get("name")
+            try:
+                args = json.loads(function.get("arguments") or "{}")
+            except ValueError:
+                args = None
+            if name not in ("search_logs", "log_stats") or not isinstance(args, dict):
+                result = "Virheellinen työkalukutsu."
+            else:
+                status = str(args.get("status") or "").strip()
+                if status and status_callback and not announced:
+                    announced = True
+                    status_callback(re.sub(r'^[^\s:]+:\s*', '', status)[:150])
+                result = run_log_tool(name, args)
             messages.append({"role": "tool", "tool_call_id": call.get("id"), "content": result})
     return None, "liian monta lokihakua"
 
@@ -1173,7 +1216,7 @@ def fetch_url_content(url):
         return f"Odottamaton virhe sivun noutamisessa: {str(e)}"
 
 # Function to call OpenAI API and generate a response
-def generate_response(messages, question, username, user_message_only=""):
+def generate_response(messages, question, username, user_message_only="", status_callback=None):
     try:
         # Extract URLs from the question
         urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', question)
@@ -1293,7 +1336,7 @@ def generate_response(messages, question, username, user_message_only=""):
             "9. ADDRESSING: start the reply with the nick you are speaking to, then a colon. "
             f"Normally that is {username}. If {username} asks you to tell, say or relay something "
             "to someone else, use THAT person's nick instead. Only use nicks seen in the chat history.\n"
-            "10. CHANNEL HISTORY: search_logs reaches every line since 8.4.2008. Use it when asked about the "
+            "10. CHANNEL HISTORY: search_logs and log_stats reach every line since 8.4.2008. Use them when asked about the "
             "channel's past. Answer only from what it returns, say the date (d.M.yyyy) and who said it, "
             "and say plainly if nothing was found. Never invent log content."
         )
@@ -1316,7 +1359,7 @@ def generate_response(messages, question, username, user_message_only=""):
             {"role": "system", "content": system_message},
             {"role": "user", "content": prompt}
         ]
-        api_response, api_error = chat_with_log_search(messages)
+        api_response, api_error = chat_with_log_search(messages, status_callback)
         if api_response:
             # Strip any leading timestamps that model might echo
             api_response = re.sub(r'^\d{2}:\d{2}\s*', '', api_response)
@@ -1524,7 +1567,8 @@ def respond_to_questions(bot, trigger):
             "\n" +
             (user_message if user_message else "")
         )
-        response = generate_response(lastlines, prompt, trigger.nick, user_message)
+        response = generate_response(lastlines, prompt, trigger.nick, user_message,
+                                     lambda status: bot.say(f"{trigger.nick}: {status}", trigger.sender))
 
         # Clean up the response - remove any IRC-style formatting that might be in the AI response
         clean_response = re.sub(r'^\d{2}:\d{2}\s*<[^>]+>\s*', '', response)  # Remove timestamp and nickname patterns

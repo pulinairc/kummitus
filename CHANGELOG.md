@@ -1,3 +1,9 @@
+### 2.16.0: 2026-11-16
+
+* Add exact log stats for counts and rankings
+* Spread month overviews across the whole period
+* Say a loading line before digging logs
+
 ### 2.15.2: 2026-11-16
 
 * Rewrite log search on a full-text index

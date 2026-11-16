@@ -20,6 +20,7 @@ ACTION = re.compile(r'^(\d\d:\d\d)(?::\d\d)?\s+\*\s+(\S+)\s+(.*)$')
 FILE_DAY = re.compile(r'pul-(\d{4}-\d\d-\d\d)\.log$')
 
 MAX_HITS = 8
+OVERVIEW_HITS = 15
 CONTEXT = 4
 MAX_TERMS = 8
 
@@ -128,7 +129,16 @@ def _fmt_day(day):
     return label
 
 
-def _windows(db, hits):
+def _spread(db, base, args, total):
+    """Lines evenly spaced across a period, so an overview sees all of it."""
+    if not total:
+        return []
+    step = max(total // OVERVIEW_HITS, 1)
+    offsets = [step // 2 + i * step for i in range(OVERVIEW_HITS) if step // 2 + i * step < total]
+    return [db.execute(base + ' ORDER BY l.id LIMIT 1 OFFSET ?', args + [o]).fetchone() for o in offsets]
+
+
+def _windows(db, hits, limit=MAX_HITS):
     """Merge hits on nearby lines into one excerpt each."""
     excerpts, seen = [], set()
     for row_id, day in hits:
@@ -138,52 +148,105 @@ def _windows(db, hits):
         seen.update(r[0] for r in rows)
         excerpts.append('[%s]\n%s' % (_fmt_day(day), '\n'.join(
             '%s <%s> %s' % (r[1], r[2], r[3][:300]) for r in rows)))
-        if len(excerpts) >= MAX_HITS:
+        if len(excerpts) >= limit:
             break
     return excerpts
+
+
+def _filters(nick, date_from, date_to):
+    where, args = [], []
+    if nick:
+        where.append('l.nick = ? COLLATE NOCASE')
+        args.append(nick.strip().lstrip('@+'))
+    if date_from:
+        where.append('l.day >= ?')
+        args.append(date_from)
+    if date_to:
+        where.append('l.day <= ?')
+        args.append(date_to)
+    return where, args
+
+
+def _source(query, where):
+    """FROM clause for matching lines, full-text first so filters never drive the scan."""
+    if query:
+        return ('FROM lines_fts f CROSS JOIN lines l ON l.id = f.rowid WHERE lines_fts MATCH ?'
+                + ''.join(' AND ' + w for w in where))
+    return 'FROM lines l' + (' WHERE ' + ' AND '.join(where) if where else '')
 
 
 def search(terms=None, nick=None, date_from=None, date_to=None, order='relevance'):
     """Return a plain text block of dated log excerpts for the model to read."""
     db = connect()
     try:
-        where, args = [], []
-        if nick:
-            where.append('l.nick = ? COLLATE NOCASE')
-            args.append(nick.strip().lstrip('@+'))
-        if date_from:
-            where.append('l.day >= ?')
-            args.append(date_from)
-        if date_to:
-            where.append('l.day <= ?')
-            args.append(date_to)
-
+        where, args = _filters(nick, date_from, date_to)
         query = fts_query(terms or [])
         if query:
-            sql = ('SELECT l.id, l.day FROM lines_fts f CROSS JOIN lines l ON l.id = f.rowid '
-                   'WHERE lines_fts MATCH ?' + ''.join(' AND ' + w for w in where))
+            source = _source(query, where)
+            sql = 'SELECT l.id, l.day ' + source
             sql += {'oldest': ' ORDER BY l.id', 'newest': ' ORDER BY l.id DESC'}.get(order, ' ORDER BY f.rank')
-            total = db.execute('SELECT count(*) FROM lines_fts f CROSS JOIN lines l ON l.id = f.rowid '
-                               'WHERE lines_fts MATCH ?' + ''.join(' AND ' + w for w in where),
-                               [query] + args).fetchone()[0]
+            total = db.execute('SELECT count(*) ' + source, [query] + args).fetchone()[0]
             hits = db.execute(sql + ' LIMIT 60', [query] + args).fetchall()
         else:
             # No search words: browse the period itself
-            base = 'SELECT l.id, l.day FROM lines l' + (' WHERE ' + ' AND '.join(where) if where else '')
-            total = db.execute('SELECT count(*) FROM (%s)' % base, args).fetchone()[0]
+            base = 'SELECT l.id, l.day ' + _source(None, where)
+            total = db.execute('SELECT count(*) ' + _source(None, where), args).fetchone()[0]
             if order == 'oldest':
                 hits = db.execute(base + ' ORDER BY l.id LIMIT 1', args).fetchall()
             elif order == 'newest':
                 hits = db.execute(base + ' ORDER BY l.id DESC LIMIT 1', args).fetchall()
             else:
-                hits = db.execute(base + ' ORDER BY random() LIMIT %d' % MAX_HITS, args).fetchall()
+                hits = _spread(db, base, args, total)
 
         if not hits:
             return 'Ei osumia lokeista (haku: %s).' % (query or 'aikaväli')
-        excerpts = _windows(db, hits)
+        excerpts = _windows(db, hits, OVERVIEW_HITS if not query and order not in ('oldest', 'newest') else MAX_HITS)
         return 'Osumia yhteensä %d, näytetään %d otetta:\n\n%s' % (total, len(excerpts), '\n\n'.join(excerpts))
     except sqlite3.OperationalError as e:
         return 'Lokihaku epäonnistui: %s' % e
+    finally:
+        db.close()
+
+
+def stats(kind, terms=None, nick=None, date_from=None, date_to=None):
+    """Real counts for the model, so it never has to guess numbers."""
+    db = connect()
+    try:
+        where, args = _filters(nick, date_from, date_to)
+        query = fts_query(terms or [])
+        source = _source(query, where)
+        params = ([query] if query else []) + args
+        scope = 'hakusanat: %s' % ', '.join(terms) if query else 'kaikki rivit'
+
+        if kind == 'top_nicks':
+            rows = db.execute('SELECT l.nick, count(*) c %s GROUP BY l.nick COLLATE NOCASE '
+                              'ORDER BY c DESC LIMIT 15' % source, params).fetchall()
+            if not rows:
+                return 'Ei rivejä (%s).' % scope
+            return 'Eniten rivejä (%s):\n%s' % (scope, '\n'.join(
+                '%d. %s: %d' % (i + 1, n, c) for i, (n, c) in enumerate(rows)))
+
+        if kind == 'nick_span':
+            if not nick:
+                return 'nick_span tarvitsee nickin.'
+            first = db.execute('SELECT l.day, l.time, l.text %s ORDER BY l.id LIMIT 1' % source, params).fetchone()
+            if not first:
+                return 'Nickiltä %s ei löydy rivejä.' % nick
+            last = db.execute('SELECT l.day, l.time, l.text %s ORDER BY l.id DESC LIMIT 1' % source, params).fetchone()
+            count, days = db.execute('SELECT count(*), count(DISTINCT l.day) %s' % source, params).fetchone()
+            return ('%s (%s): ensimmäinen rivi %s klo %s: %s\nviimeisin rivi %s klo %s: %s\n'
+                    'rivejä %d, aktiivisia päiviä %d' % (
+                        nick, scope, _fmt_day(first[0]), first[1], first[2][:200],
+                        _fmt_day(last[0]), last[1], last[2][:200], count, days))
+
+        # count: total and per year
+        rows = db.execute('SELECT substr(l.day, 1, 4) y, count(*) %s GROUP BY y ORDER BY y' % source,
+                          params).fetchall()
+        total = sum(c for _, c in rows)
+        return 'Rivejä yhteensä %d (%s%s).\nVuosittain: %s' % (
+            total, scope, ', nick %s' % nick if nick else '', ', '.join('%s: %d' % r for r in rows) or '-')
+    except sqlite3.OperationalError as e:
+        return 'Tilastohaku epäonnistui: %s' % e
     finally:
         db.close()
 
