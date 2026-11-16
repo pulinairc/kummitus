@@ -1,7 +1,7 @@
 ### 2.16.1: 2026-11-16
 
-* Fix "liian monta lokihakua" on long searches
-* Match nick variants like marko*
+* Always answer after long log searches
+* Match nick prefixes in log searches
 
 ### 2.16.0: 2026-11-16
 

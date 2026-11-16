@@ -1023,10 +1023,10 @@ STATUS_PARAM = {
     "type": "string",
     "description": (
         "A short Finnish line in your own voice telling the user you are digging into the logs and it "
-        "takes a moment, e.g. 'Okei, kaivan logeja, tässä voi mennä hetki...'. Vary it, no nick, max 100 chars."),
+        "takes a moment. Vary it, no nick, max 100 chars."),
 }
 FILTER_PARAMS = {
-    "nick": {"type": "string", "description": "Only lines written by this nick. A trailing * matches nick variants (marko* matches Marko, markok, marko_)."},
+    "nick": {"type": "string", "description": "Only lines written by this nick. A trailing * matches every nick starting with it."},
     "date_from": {"type": "string", "description": "YYYY-MM-DD, inclusive."},
     "date_to": {"type": "string", "description": "YYYY-MM-DD, inclusive."},
 }
@@ -1034,8 +1034,8 @@ TERMS_PARAM = {
     "type": "array",
     "items": {"type": "string"},
     "description": (
-        "Search words, ORed and ranked by how many match. Finnish inflects, so give stems with a trailing * "
-        "(ajur* matches ajuri, ajurin, ajureita) plus synonyms and spelling variants. A multi-word string "
+        "Search words, ORed and ranked by how many match. Finnish inflects, so give short stems with a trailing * "
+        "that survive every inflection, plus synonyms and spelling variants. A multi-word string "
         "must match all its words."),
 }
 LOG_SEARCH_TOOLS = [{
