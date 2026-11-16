@@ -1,3 +1,8 @@
+### 2.16.1: 2026-11-16
+
+* Fix "liian monta lokihakua" on long searches
+* Match nick variants like marko*
+
 ### 2.16.0: 2026-11-16
 
 * Add exact log stats for counts and rankings

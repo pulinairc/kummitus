@@ -156,8 +156,13 @@ def _windows(db, hits, limit=MAX_HITS):
 def _filters(nick, date_from, date_to):
     where, args = [], []
     if nick:
-        where.append('l.nick = ? COLLATE NOCASE')
-        args.append(nick.strip().lstrip('@+'))
+        nick = nick.strip().lstrip('@+')
+        if '*' in nick:
+            where.append("l.nick LIKE ? ESCAPE '\\'")
+            args.append(re.sub(r'([%_\\])', r'\\\1', nick).replace('*', '%'))
+        else:
+            where.append('l.nick = ? COLLATE NOCASE')
+            args.append(nick)
     if date_from:
         where.append('l.day >= ?')
         args.append(date_from)
@@ -229,6 +234,18 @@ def stats(kind, terms=None, nick=None, date_from=None, date_to=None):
         if kind == 'nick_span':
             if not nick:
                 return 'nick_span tarvitsee nickin.'
+            if '*' in nick:
+                rows = db.execute('SELECT l.nick, min(l.id), max(l.id), count(*) %s GROUP BY l.nick COLLATE NOCASE '
+                                  'ORDER BY min(l.id) LIMIT 15' % source, params).fetchall()
+                if not rows:
+                    return 'Nickejä %s ei löydy.' % nick
+                out = []
+                for name, first_id, last_id, count in rows:
+                    first = db.execute('SELECT day, time FROM lines WHERE id = ?', (first_id,)).fetchone()
+                    last = db.execute('SELECT day, time FROM lines WHERE id = ?', (last_id,)).fetchone()
+                    out.append('%s: ensimmäinen rivi %s klo %s, viimeisin %s klo %s, rivejä %d' % (
+                        name, _fmt_day(first[0]), first[1], _fmt_day(last[0]), last[1], count))
+                return 'Nickit %s (%s), vanhin ensin:\n%s' % (nick, scope, '\n'.join(out))
             first = db.execute('SELECT l.day, l.time, l.text %s ORDER BY l.id LIMIT 1' % source, params).fetchone()
             if not first:
                 return 'Nickiltä %s ei löydy rivejä.' % nick

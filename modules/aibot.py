@@ -754,7 +754,7 @@ def trim_drift(content, finish_reason):
 
     return content.strip()
 
-def call_api(messages, max_tokens=300, temperature=0.7, model=None, irc_reply=False, tools=None):
+def call_api(messages, max_tokens=300, temperature=0.7, model=None, irc_reply=False, tools=None, tool_choice=None):
     """Call the chat API with retry logic (5s, then 10s delays)
     Returns tuple: (response_text, error_info) where error_info is None on success
     irc_reply=True enforces a single-line reply and trims model run-on.
@@ -779,6 +779,8 @@ def call_api(messages, max_tokens=300, temperature=0.7, model=None, irc_reply=Fa
                 payload["stop"] = ["\n\n"]
             if tools:
                 payload["tools"] = tools
+            if tool_choice:
+                payload["tool_choice"] = tool_choice
 
             response = requests.post(
                 API_URL,
@@ -1024,7 +1026,7 @@ STATUS_PARAM = {
         "takes a moment, e.g. 'Okei, kaivan logeja, tässä voi mennä hetki...'. Vary it, no nick, max 100 chars."),
 }
 FILTER_PARAMS = {
-    "nick": {"type": "string", "description": "Only lines written by this nick."},
+    "nick": {"type": "string", "description": "Only lines written by this nick. A trailing * matches nick variants (marko* matches Marko, markok, marko_)."},
     "date_from": {"type": "string", "description": "YYYY-MM-DD, inclusive."},
     "date_to": {"type": "string", "description": "YYYY-MM-DD, inclusive."},
 }
@@ -1098,14 +1100,20 @@ def run_log_tool(name, args):
         return index.stats(args.get("kind") or "count", terms=terms, **filters)
     return index.search(terms=terms, order=args.get("order") or "relevance", **filters)
 
+LOG_TOOL_ROUNDS = 6
+
 def chat_with_log_search(messages, status_callback=None):
     """Reply, letting the model search the channel logs when the question needs them."""
     announced = False
-    for _ in range(4):
+    for round_ in range(LOG_TOOL_ROUNDS + 1):
+        # Last round has tools off, so the model answers with what it found
+        final = round_ == LOG_TOOL_ROUNDS
         response, error = call_api(messages, max_tokens=300, temperature=0.7, irc_reply=True,
-                                   tools=LOG_SEARCH_TOOLS)
+                                   tools=LOG_SEARCH_TOOLS, tool_choice="none" if final else None)
         if not isinstance(response, dict):
             return response, error
+        if final:
+            break
         # The whole assistant message goes back: Gemini needs its reasoning_details
         messages = messages + [response]
         for call in response["tool_calls"]:
