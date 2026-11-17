@@ -48,36 +48,22 @@ def save_last_response_time(when):
 
 last_response_time = load_last_response_time()
 
-# Flood protection relative to how much and how often someone asks. Every answered question adds a point
-# that fades by half in FLOOD_HALF_LIFE. Reaching FLOOD_POINTS_MAX starts a break that lasts until the
-# points have faded to FLOOD_POINTS_RESUME, so the more someone asked, the longer it is. Every earlier
-# break in the last FLOOD_STRIKE_MEMORY doubles the next one, up to FLOOD_BREAK_MAX. Pacing questions
-# with pauses keeps the points up, so it cannot go on for long: about one question an hour is the most
-# that never meets a break. A quick burst (4 in 2 minutes) gets a short break of its own.
-FLOOD_HALF_LIFE = 6 * 3600
-FLOOD_POINTS_MAX = 10
-FLOOD_POINTS_RESUME = 5
-FLOOD_BURST_COUNT = 3
-FLOOD_BURST_WINDOW = 120
-FLOOD_BURST_BREAK = 300
-FLOOD_STRIKE_MEMORY = 12 * 3600
-FLOOD_BREAK_MAX = 24 * 3600
-# Kept on disk so a restart or deploy does not wipe a running break or the points
-FLOOD_STATE_FILE = '/home/rolle/.sopel/flood_points.json'
+# Rule 10: one person's chat with the bot must not take over the channel. A question gets an answer while
+# the asker has had fewer than SHARE_FLOOR answers in the last SHARE_WINDOW, or other people's lines in it
+# outnumber those answers SHARE_RATIO to one. The wait ends as soon as the channel has moved on.
+SHARE_WINDOW = 30 * 60
+SHARE_RATIO = 3
+SHARE_FLOOR = 3
 # On these hosts many people share one address, so the ident tells them apart
-FLOOD_SHARED_HOSTS = ('pulina.fi', 'botit.pulina.fi')
+SHARED_HOSTS = ('pulina.fi', 'botit.pulina.fi')
+# Other bots' lines are not conversation
+OTHER_BOTS = ('orvokki', 'portsari')
 
-
-def load_flood_state():
-    try:
-        with open(FLOOD_STATE_FILE) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {}
-
-
-# key -> {'points', 'at', 'times', 'until', 'breaks'}
-flood_state = load_flood_state()
+# (time, person keys) for every channel line, and for every answered question, within SHARE_WINDOW
+channel_lines = []
+answered_lines = []
+# person key -> time until which they have been told to wait
+told_to_wait = {}
 
 # Files
 LOG_FILE = '/home/rolle/.sopel/pulina.log'
@@ -608,60 +594,29 @@ def get_last_lines(message=None, mentioned_nick=None):
         LOGGER.debug(f"Error reading log file: {e}")
         return ""
 
-def flood_keys(trigger):
+def person_keys(trigger):
     """Everything that marks one person: the host (or ident on a shared host) and the nick without its
-    trailing extras, so naaqquli, naaqquli-, naaqquli_ and naaqquli2 share one count on any address."""
+    trailing extras, so naaqquli, naaqquli-, naaqquli_ and naaqquli2 count as one on any address."""
     nick = trigger.nick.lower()
     base = 'nick:' + (re.sub(r'[\W_\d]+$', '', nick) or nick)
     host = (trigger.host or '').lower()
     if not host:
-        return (base,)
-    if host in FLOOD_SHARED_HOSTS:
-        return (base, f"{trigger.user}@{host}".lower())
-    return (base, host)
+        return frozenset((base,))
+    if host in SHARED_HOSTS:
+        return frozenset((base, f"{trigger.user}@{host}".lower()))
+    return frozenset((base, host))
 
 
-def save_flood_state():
-    try:
-        with open(FLOOD_STATE_FILE, 'w') as f:
-            json.dump(flood_state, f)
-    except OSError as e:
-        LOGGER.error(f"[FLOOD] Saving flood state failed: {e}")
-
-
-def flood_check(keys, now):
-    """(True, None) to answer; (False, seconds) when a break starts now; (False, None) during one.
-    `keys` all mark the same person: a break on any of them holds, and their points are merged."""
-    records = [flood_state.get(key, {}) for key in keys]
-    if any(now < r.get('until', 0) for r in records):
-        return False, None
-
-    points = max((r.get('points', 0) * 0.5 ** ((now - r.get('at', now)) / FLOOD_HALF_LIFE) for r in records), default=0)
-    recent = sorted({t for r in records for t in r.get('times', []) if now - t < FLOOD_BURST_WINDOW})
-    breaks = sorted({t for r in records for t in r.get('breaks', []) if now - t < FLOOD_STRIKE_MEMORY})
-
-    if len(recent) >= FLOOD_BURST_COUNT:
-        length = FLOOD_BURST_BREAK
-    elif points + 1 > FLOOD_POINTS_MAX:
-        length = FLOOD_HALF_LIFE * math.log2((points + 1) / FLOOD_POINTS_RESUME)
-    else:
-        record = {'points': points + 1, 'at': now, 'times': recent + [now], 'until': 0, 'breaks': breaks}
-        for key in keys:
-            flood_state[key] = record
-        save_flood_state()
-        return True, None
-
-    length = min(length * 2 ** len(breaks), FLOOD_BREAK_MAX)
-    record = {'points': points, 'at': now, 'times': [], 'until': now + length, 'breaks': breaks + [now]}
-    for key in keys:
-        flood_state[key] = record
-    save_flood_state()
-    return False, length
-
-
-def format_break(seconds):
-    minutes = math.ceil(seconds / 60)
-    return f"{round(minutes / 60)} tunnin" if minutes >= 120 else f"{minutes} minuutin"
+def share_wait(keys, now):
+    """Seconds until the person may get an answer if nobody else speaks meanwhile, 0 when they may now."""
+    mine = [t for t, k in answered_lines if k & keys]
+    others = [t for t, k in channel_lines if not k & keys]
+    # Allowed again at the latest when enough old lines have left the window
+    for at in sorted({now} | {t + SHARE_WINDOW for t in mine + others if t + SHARE_WINDOW > now}):
+        answers = sum(1 for t in mine if t > at - SHARE_WINDOW)
+        if answers < SHARE_FLOOR or answers * SHARE_RATIO <= sum(1 for t in others if t > at - SHARE_WINDOW):
+            return at - now
+    return 0
 
 
 # Add cooldown for random responses
@@ -1483,17 +1438,26 @@ def respond_to_questions(bot, trigger):
     if trigger.is_privmsg:
         return
 
+    for lines in (channel_lines, answered_lines):
+        lines[:] = [line for line in lines if line[0] > time.time() - SHARE_WINDOW]
+    if trigger.nick.lower() not in OTHER_BOTS:
+        channel_lines.append((time.time(), person_keys(trigger)))
+
     if bot_mentioned:
         now = time.time()
         chan = bot.channels.get(trigger.sender)
         is_op = bool(chan) and (chan.is_op(trigger.nick) or chan.is_halfop(trigger.nick))
         # Ops are never limited, like every other moderation tool on the channel
-        allowed, seconds = (True, None) if is_op else flood_check(flood_keys(trigger), now)
-        if not allowed:
-            if seconds:
-                resume_time = datetime.fromtimestamp(now + seconds).strftime('%H:%M')
-                bot.say(f"{trigger.nick}: Pidetään {format_break(seconds)} tauko. Voit jatkaa klo {resume_time}. Katso kohta 10: https://www.pulina.fi/saannot")
+        keys = person_keys(trigger)
+        wait = 0 if is_op else share_wait(keys, now)
+        if wait:
+            if not any(told_to_wait.get(key, 0) > now for key in keys):
+                for key in keys:
+                    told_to_wait[key] = now + wait
+                resume_time = datetime.fromtimestamp(math.ceil((now + wait) / 60) * 60).strftime('%H:%M')
+                bot.say(f"{trigger.nick}: Annetaan muidenkin puhua välillä. Voit jatkaa viimeistään klo {resume_time}, aiemmin jos kanavalla puhutaan muuta. Katso kohta 10: https://www.pulina.fi/saannot")
             return
+        answered_lines.append((now, keys))
         # Get the last lines from pulina.log, excluding bot's own messages
         lastlines = get_last_lines()
 

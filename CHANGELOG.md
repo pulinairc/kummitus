@@ -1,3 +1,7 @@
+### 2.16.2: 2026-11-17
+
+* Change bot limit to depend on channel share
+
 ### 2.16.1: 2026-11-16
 
 * Always answer after long log searches
