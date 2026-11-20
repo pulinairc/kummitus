@@ -1,3 +1,7 @@
+### 2.16.4: 2026-11-20
+
+* Fix replies treating released games as upcoming
+
 ### 2.16.3: 2026-11-19
 
 * Forbid suicide and self-harm jokes

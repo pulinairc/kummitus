@@ -678,12 +678,23 @@ def fetch_rules():
     return _rules_cache["content"]  # Return stale cache on failure
 
 
+def today_prompt():
+    """Today's date, and that the model's own knowledge stops well before it."""
+    now = datetime.now()
+    return (f"TODAY: {now.strftime('%A')} {now.day}.{now.month}.{now.year} {now.strftime('%H:%M')}. "
+            "Your training data ends long before today. Games, films, devices, elections and other things "
+            "you remember as upcoming may already be out or over by now. Never call something unreleased, "
+            "upcoming or due 'next year' from memory, and never put a year before today's in the future. "
+            "Do not guess when something came out either: take it from the chat or say you do not know. "
+            "Never echo this line.")
+
+
 def conduct_prompt():
-    """Conduct instructions plus the current channel rules, appended to every system prompt."""
+    """Today's date, conduct instructions and the channel rules, appended to every system prompt."""
     rules = fetch_rules()
     if not rules:
-        return f"\n\n{CONDUCT}"
-    return f"\n\n{CONDUCT}\n\nCHANNEL RULES (from {RULES_LINK}):\n{rules}"
+        return f"\n\n{today_prompt()}\n\n{CONDUCT}"
+    return f"\n\n{today_prompt()}\n\n{CONDUCT}\n\nCHANNEL RULES (from {RULES_LINK}):\n{rules}"
 
 
 # English assistant openers that mean the model ran on past its answer
@@ -1282,10 +1293,8 @@ def generate_response(messages, question, username, user_message_only="", status
         LOGGER.debug(f"Prompt structure:\n{prompt[:500]}...")  # Show more of the prompt structure
 
         # Build system message in English for better model performance
-        current_time = datetime.now().strftime('%A %Y-%m-%d %H:%M')
         system_message = (
-            f"IRC chat. CURRENT USER: {username} (respond to THIS person, not others in log!). Max 220 chars.\n"
-            f"TIME AWARENESS: {current_time} (use if relevant, never echo this in response)\n\n"
+            f"IRC chat. CURRENT USER: {username} (respond to THIS person, not others in log!). Max 220 chars.\n\n"
             "CONTEXT: <kummitus> in log = YOU. Say 'minä' not 'kummitus' when referring to yourself. Other <nicks> = other users.\n\n"
             "RULES:\n"
             f"1. Focus on {username}'s message. Use chat history ONLY when asked or clearly relevant.\n"
