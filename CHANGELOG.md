@@ -1,6 +1,6 @@
 ### 2.16.5: 2026-11-22
 
-* Change Todoist suggestions to 0do
+* Remove task app suggestions
 
 ### 2.16.4: 2026-11-20
 
