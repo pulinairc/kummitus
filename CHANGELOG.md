@@ -1,3 +1,7 @@
+### 2.16.5: 2026-11-22
+
+* Change Todoist suggestions to 0do
+
 ### 2.16.4: 2026-11-20
 
 * Fix replies treating released games as upcoming
